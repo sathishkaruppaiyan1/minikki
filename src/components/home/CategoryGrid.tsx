@@ -1,7 +1,35 @@
 import { Link } from "react-router-dom";
-import { categories } from "@/data/products";
+import { useWooCommerceCategories } from "@/hooks/useWooCommerce";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const CategoryGrid = () => {
+  const { data, isLoading } = useWooCommerceCategories();
+  const categories = data?.categories || [];
+
+  if (isLoading) {
+    return (
+      <section className="py-12 lg:py-16">
+        <div className="container mx-auto px-4">
+          <h2 className="font-heading text-2xl lg:text-3xl font-semibold text-center mb-8">
+            Shop By Category
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="space-y-3">
+                <Skeleton className="aspect-[3/4] w-full" />
+                <Skeleton className="h-4 w-3/4 mx-auto" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (categories.length === 0) {
+    return null;
+  }
+
   return (
     <section className="py-12 lg:py-16">
       <div className="container mx-auto px-4">
