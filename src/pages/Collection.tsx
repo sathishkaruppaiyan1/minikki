@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { SlidersHorizontal, Grid3X3, LayoutList, X } from "lucide-react";
 import Layout from "@/components/layout/Layout";
@@ -90,6 +90,18 @@ const Collection = () => {
     : category?.name || (slug === "all" ? "All Products" : slug);
 
   const hasActiveFilters = inStockOnly || onSaleOnly || priceRange.min > 0 || priceRange.max < 50000;
+
+  // Prevent body scroll when filter drawer is open
+  useEffect(() => {
+    if (showFilters) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [showFilters]);
 
   return (
     <Layout>
@@ -255,92 +267,124 @@ const Collection = () => {
               </div>
             </div>
 
-            {/* Mobile Filters */}
+            {/* Mobile Filter Sidebar Canvas */}
             {showFilters && (
-              <div className="lg:hidden mb-6 p-4 border border-border animate-fade-in">
-                <div className="space-y-4">
-                  {/* Clear Filters */}
-                  {hasActiveFilters && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={clearFilters}
-                      className="w-full font-bold"
+              <div className="lg:hidden fixed inset-0 z-50">
+                {/* Backdrop */}
+                <div
+                  className="absolute inset-0 bg-black/50"
+                  onClick={() => setShowFilters(false)}
+                />
+
+                {/* Sidebar */}
+                <div className="absolute left-0 top-0 h-full w-80 max-w-[85vw] bg-background shadow-xl animate-slide-in-left overflow-y-auto">
+                  {/* Header */}
+                  <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-background z-10">
+                    <h2 className="text-lg font-bold">Filters</h2>
+                    <button
+                      onClick={() => setShowFilters(false)}
+                      className="p-2 hover:bg-muted rounded-full transition-colors"
                     >
-                      <X className="h-4 w-4 mr-2" />
-                      Clear Filters
-                    </Button>
-                  )}
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
 
-                  <div>
-                    <h3 className="font-bold mb-2">Categories</h3>
-                    <div className="flex flex-wrap gap-2">
-                      <a
-                        href="/collections/all"
-                        className={`px-3 py-1.5 border text-sm font-medium transition-colors ${
-                          slug === "all"
-                            ? "border-primary text-primary bg-primary/10"
-                            : "border-border hover:border-foreground"
-                        }`}
+                  <div className="p-4 space-y-6">
+                    {/* Clear Filters */}
+                    {hasActiveFilters && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearFilters}
+                        className="w-full font-bold"
                       >
-                        All
-                      </a>
-                      {categories.map((cat) => (
-                        <a
-                          key={cat.id}
-                          href={`/collections/${cat.slug}`}
-                          className={`px-3 py-1.5 border text-sm font-medium transition-colors ${
-                            slug === cat.slug
-                              ? "border-primary text-primary bg-primary/10"
-                              : "border-border hover:border-foreground"
-                          }`}
-                        >
-                          {cat.name}
-                        </a>
-                      ))}
-                    </div>
-                  </div>
+                        <X className="h-4 w-4 mr-2" />
+                        Clear Filters
+                      </Button>
+                    )}
 
-                  <div>
-                    <h3 className="font-bold mb-2">Availability</h3>
-                    <div className="flex flex-wrap gap-4">
-                      <label className="flex items-center gap-2 text-sm cursor-pointer font-medium">
-                        <Checkbox
-                          checked={inStockOnly}
-                          onCheckedChange={(checked) => setInStockOnly(checked === true)}
-                        />
-                        In Stock
-                      </label>
-                      <label className="flex items-center gap-2 text-sm cursor-pointer font-medium">
-                        <Checkbox
-                          checked={onSaleOnly}
-                          onCheckedChange={(checked) => setOnSaleOnly(checked === true)}
-                        />
-                        On Sale
-                      </label>
+                    {/* Categories */}
+                    <div>
+                      <h3 className="font-bold mb-3">CATEGORIES</h3>
+                      <ul className="space-y-2 text-sm">
+                        <li>
+                          <a
+                            href="/collections/all"
+                            onClick={() => setShowFilters(false)}
+                            className={`block py-1 hover:text-primary transition-colors ${
+                              slug === "all" ? "text-primary font-bold" : "font-medium"
+                            }`}
+                          >
+                            All Products
+                          </a>
+                        </li>
+                        {categories.map((cat) => (
+                          <li key={cat.id}>
+                            <a
+                              href={`/collections/${cat.slug}`}
+                              onClick={() => setShowFilters(false)}
+                              className={`block py-1 hover:text-primary transition-colors ${
+                                slug === cat.slug ? "text-primary font-bold" : "font-medium"
+                              }`}
+                            >
+                              {cat.name}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  </div>
 
-                  <div>
-                    <h3 className="font-bold mb-2">Price Range</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">Rs.</span>
-                      <input
-                        type="number"
-                        value={priceRange.min}
-                        onChange={(e) => setPriceRange(prev => ({ ...prev, min: +e.target.value }))}
-                        className="w-20 px-2 py-1.5 border border-border text-sm font-medium"
-                        placeholder="0"
-                      />
-                      <span className="text-sm font-medium">to</span>
-                      <input
-                        type="number"
-                        value={priceRange.max}
-                        onChange={(e) => setPriceRange(prev => ({ ...prev, max: +e.target.value }))}
-                        className="w-20 px-2 py-1.5 border border-border text-sm font-medium"
-                        placeholder="50000"
-                      />
+                    {/* Availability */}
+                    <div>
+                      <h3 className="font-bold mb-3">AVAILABILITY</h3>
+                      <div className="space-y-3">
+                        <label className="flex items-center gap-2 text-sm cursor-pointer font-medium">
+                          <Checkbox
+                            checked={inStockOnly}
+                            onCheckedChange={(checked) => setInStockOnly(checked === true)}
+                          />
+                          In Stock Only
+                        </label>
+                        <label className="flex items-center gap-2 text-sm cursor-pointer font-medium">
+                          <Checkbox
+                            checked={onSaleOnly}
+                            onCheckedChange={(checked) => setOnSaleOnly(checked === true)}
+                          />
+                          On Sale
+                        </label>
+                      </div>
                     </div>
+
+                    {/* Price */}
+                    <div>
+                      <h3 className="font-bold mb-3">PRICE</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Rs.</span>
+                        <input
+                          type="number"
+                          value={priceRange.min}
+                          onChange={(e) => setPriceRange(prev => ({ ...prev, min: +e.target.value }))}
+                          className="w-20 px-2 py-1.5 border border-border text-sm font-medium"
+                          placeholder="0"
+                        />
+                        <span className="text-sm font-medium">to</span>
+                        <input
+                          type="number"
+                          value={priceRange.max}
+                          onChange={(e) => setPriceRange(prev => ({ ...prev, max: +e.target.value }))}
+                          className="w-20 px-2 py-1.5 border border-border text-sm font-medium"
+                          placeholder="50000"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Apply Button */}
+                    <Button
+                      onClick={() => setShowFilters(false)}
+                      className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold"
+                    >
+                      APPLY FILTERS
+                    </Button>
                   </div>
                 </div>
               </div>

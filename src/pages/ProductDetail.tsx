@@ -235,18 +235,37 @@ const ProductDetail = () => {
                     const colorName = typeof color === "string" ? color : color.name;
                     const colorHex = typeof color === "string" ? getColorHex(color) : color.hex;
                     const isSelected = selectedColor?.toLowerCase() === colorName.toLowerCase();
+
+                    // Get variation image for this color
+                    const variationForColor = product.variationImages?.find(
+                      (v) => v.color.toLowerCase() === colorName.toLowerCase()
+                    );
+                    const variationImage = variationForColor?.images?.[0];
+
                     return (
                       <button
                         key={index}
                         onClick={() => setSelectedColor(isSelected ? null : colorName)}
-                        className={`w-8 h-8 rounded-full border-2 transition-all ${
+                        className={`w-12 h-12 rounded-md border-2 transition-all overflow-hidden ${
                           isSelected
                             ? "ring-2 ring-foreground ring-offset-2 border-foreground"
                             : "border-border hover:border-foreground"
                         }`}
-                        style={{ backgroundColor: colorHex }}
                         title={colorName}
-                      />
+                      >
+                        {variationImage ? (
+                          <img
+                            src={variationImage}
+                            alt={colorName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div
+                            className="w-full h-full"
+                            style={{ backgroundColor: colorHex }}
+                          />
+                        )}
+                      </button>
                     );
                   })}
                 </div>
@@ -262,7 +281,7 @@ const ProductDetail = () => {
                     <button
                       key={size}
                       onClick={() => setSelectedSize(size)}
-                      className={`min-w-[50px] h-10 px-4 rounded-full border text-sm font-medium transition-all ${
+                      className={`min-w-[48px] h-12 px-3 border text-base font-bold transition-all ${
                         selectedSize === size
                           ? "border-foreground bg-foreground text-background"
                           : "border-border hover:border-foreground bg-background"
@@ -275,19 +294,21 @@ const ProductDetail = () => {
               </div>
             )}
 
-            {/* Stitching Requirement (Optional - show if applicable) */}
-            <div className="flex items-center justify-between py-3 border border-border rounded px-4">
-              <span className="text-sm">Available: In SL Stitching Requirement Type</span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            {/* Add to Cart & Buy Now Buttons */}
+            <div className="flex flex-col gap-3">
+              <Button
+                className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none text-base font-bold"
+                disabled={product.isSoldOut}
+              >
+                {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
+              </Button>
+              <Button
+                className="w-full h-12 bg-[#8B0000] text-white hover:bg-[#6B0000] rounded-none text-base font-bold"
+                disabled={product.isSoldOut}
+              >
+                BUY NOW
+              </Button>
             </div>
-
-            {/* Add to Cart Button */}
-            <Button
-              className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none text-base font-medium"
-              disabled={product.isSoldOut}
-            >
-              {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
-            </Button>
 
             {/* Accordion Sections */}
             <div className="border-t border-border">

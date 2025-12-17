@@ -208,28 +208,47 @@ const ProductCard = ({ product }: ProductCardProps) => {
           <span className="price text-sm font-bold">{formatPrice(product.price)}</span>
         </div>
 
-        {/* Color swatches */}
+        {/* Color swatches with variation images */}
         {product.colors && product.colors.length > 1 && (
           <div className="flex gap-1">
             {product.colors.slice(0, 4).map((color, index) => {
               const colorName = getColorName(color);
               const isSelected = selectedColor?.toLowerCase() === colorName.toLowerCase();
+
+              // Get variation image for this color
+              const variationForColor = product.variationImages?.find(
+                (v) => v.color.toLowerCase() === colorName.toLowerCase()
+              );
+              const variationImage = variationForColor?.images?.[0];
+
               return (
                 <button
                   key={index}
-                  className={`w-5 h-5 rounded-full border transition-all ${
+                  className={`w-8 h-8 rounded-md border overflow-hidden transition-all ${
                     isSelected
                       ? "ring-2 ring-primary ring-offset-1 border-primary"
                       : "border-border hover:ring-2 hover:ring-primary hover:ring-offset-1"
                   }`}
-                  style={{ backgroundColor: getColorHex(color) }}
                   title={colorName}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     setSelectedColor(isSelected ? null : colorName);
                   }}
-                />
+                >
+                  {variationImage ? (
+                    <img
+                      src={variationImage}
+                      alt={colorName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-full h-full"
+                      style={{ backgroundColor: getColorHex(color) }}
+                    />
+                  )}
+                </button>
               );
             })}
             {product.colors.length > 4 && (
