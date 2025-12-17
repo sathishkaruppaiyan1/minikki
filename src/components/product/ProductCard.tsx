@@ -156,8 +156,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
           )}
         </div>
 
-        {/* Action buttons */}
-        <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Action buttons - always visible on mobile */}
+        <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           <Button
             variant="icon"
             size="iconSm"
@@ -185,8 +185,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
           </Button>
         </div>
 
-        {/* Add to Cart on hover - bottom */}
-        <div className="absolute bottom-0 left-0 right-0 bg-foreground text-background py-3 text-center font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        {/* Add to Cart on hover - bottom (visible on mobile tap) */}
+        <div className="absolute bottom-0 left-0 right-0 bg-foreground text-background py-3 text-center font-bold text-sm opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer"
           onClick={handleAddToCart}
         >
           {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
