@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { SlidersHorizontal, Grid3X3, LayoutList, ChevronDown } from "lucide-react";
+import { SlidersHorizontal, Grid3X3, LayoutList } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { products, categories } from "@/data/products";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useWooCommerceProducts, useWooCommerceCategories } from "@/hooks/useWooCommerce";
 
 const Collection = () => {
   const { slug } = useParams();
@@ -13,11 +14,17 @@ const Collection = () => {
   const [gridView, setGridView] = useState<"grid" | "list">("grid");
   const [priceRange, setPriceRange] = useState({ min: 0, max: 10000 });
 
-  const category = categories.find(c => c.slug === slug);
-  const filteredProducts = slug === "all" 
-    ? products 
-    : products.filter(p => p.category === slug);
+  const { data: categoriesData, isLoading: categoriesLoading } = useWooCommerceCategories();
+  const { data: productsData, isLoading: productsLoading } = useWooCommerceProducts({
+    category: slug === "all" ? undefined : slug,
+    perPage: 20,
+  });
 
+  const categories = categoriesData?.categories || [];
+  const products = productsData?.products || [];
+  const isLoading = categoriesLoading || productsLoading;
+
+  const category = categories.find(c => c.slug === slug);
   const categoryTitle = category?.name || (slug === "all" ? "All Products" : slug);
 
   return (
@@ -39,20 +46,38 @@ const Collection = () => {
             <div className="sticky top-24 space-y-6">
               <div>
                 <h3 className="font-semibold mb-3">CATEGORIES</h3>
-                <ul className="space-y-2 text-sm">
-                  {categories.map((cat) => (
-                    <li key={cat.id}>
+                {categoriesLoading ? (
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Skeleton key={i} className="h-4 w-24" />
+                    ))}
+                  </div>
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    <li>
                       <a
-                        href={`/collections/${cat.slug}`}
+                        href="/collections/all"
                         className={`hover:text-primary transition-colors ${
-                          slug === cat.slug ? "text-primary font-medium" : ""
+                          slug === "all" ? "text-primary font-medium" : ""
                         }`}
                       >
-                        {cat.name}
+                        All Products
                       </a>
                     </li>
-                  ))}
-                </ul>
+                    {categories.map((cat) => (
+                      <li key={cat.id}>
+                        <a
+                          href={`/collections/${cat.slug}`}
+                          className={`hover:text-primary transition-colors ${
+                            slug === cat.slug ? "text-primary font-medium" : ""
+                          }`}
+                        >
+                          {cat.name}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div>
@@ -108,7 +133,7 @@ const Collection = () => {
                   Filter
                 </Button>
                 <span className="text-sm text-muted-foreground">
-                  {filteredProducts.length} items
+                  {productsData?.total || 0} items
                 </span>
               </div>
 
@@ -148,6 +173,16 @@ const Collection = () => {
                   <div>
                     <h3 className="font-semibold mb-2">Categories</h3>
                     <div className="flex flex-wrap gap-2">
+                      <a
+                        href="/collections/all"
+                        className={`px-3 py-1 border text-sm transition-colors ${
+                          slug === "all"
+                            ? "border-primary text-primary"
+                            : "border-border hover:border-foreground"
+                        }`}
+                      >
+                        All
+                      </a>
                       {categories.map((cat) => (
                         <a
                           key={cat.id}
@@ -168,17 +203,33 @@ const Collection = () => {
             )}
 
             {/* Products Grid */}
-            <div className={`grid gap-4 lg:gap-6 ${
-              gridView === "grid" 
-                ? "grid-cols-2 md:grid-cols-3" 
-                : "grid-cols-1"
-            }`}>
-              {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            {isLoading ? (
+              <div className={`grid gap-4 lg:gap-6 ${
+                gridView === "grid" 
+                  ? "grid-cols-2 md:grid-cols-3" 
+                  : "grid-cols-1"
+              }`}>
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="space-y-3">
+                    <Skeleton className="aspect-[3/4] w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={`grid gap-4 lg:gap-6 ${
+                gridView === "grid" 
+                  ? "grid-cols-2 md:grid-cols-3" 
+                  : "grid-cols-1"
+              }`}>
+                {products.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            )}
 
-            {filteredProducts.length === 0 && (
+            {!isLoading && products.length === 0 && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No products found in this category.</p>
               </div>

@@ -1,1 +1,7 @@
 project_id = "pwgjbvtvmjbvfdrxgaob"
+
+[functions.woocommerce-products]
+verify_jwt = false
+
+[functions.woocommerce-categories]
+verify_jwt = false
