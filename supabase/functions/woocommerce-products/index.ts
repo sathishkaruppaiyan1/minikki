@@ -73,6 +73,7 @@ serve(async (req) => {
     const fetchVariations = async (productId: string): Promise<any[]> => {
       try {
         const variationsUrl = `${storeUrl}/wp-json/wc/v3/products/${productId}/variations?per_page=100`;
+        console.log(`Fetching variations from: ${variationsUrl}`);
         const variationsResponse = await fetch(variationsUrl, {
           method: 'GET',
           headers: {
@@ -82,7 +83,14 @@ serve(async (req) => {
         });
 
         if (variationsResponse.ok) {
-          return await variationsResponse.json();
+          const variations = await variationsResponse.json();
+          console.log(`Found ${variations.length} variations for product ${productId}`);
+          if (variations.length > 0) {
+            console.log(`First variation sample:`, JSON.stringify(variations[0], null, 2));
+          }
+          return variations;
+        } else {
+          console.error(`Failed to fetch variations: ${variationsResponse.status}`);
         }
       } catch (err) {
         console.error(`Error fetching variations for product ${productId}:`, err);
@@ -122,9 +130,11 @@ serve(async (req) => {
       let allVariationImageUrls: string[] = [];
 
       // If product is variable, fetch variations
-      if (product.type === 'variable' && product.variations?.length > 0) {
+      console.log(`Product ${product.id} type: ${product.type}, variations count: ${product.variations?.length || 0}`);
+      
+      if (product.type === 'variable') {
         const variations = await fetchVariations(product.id.toString());
-        console.log(`Product ${product.id} has ${variations.length} variations`);
+        console.log(`Fetched ${variations.length} variations for product ${product.id}`);
 
         for (const variation of variations) {
           const colorAttr = variation.attributes?.find(
