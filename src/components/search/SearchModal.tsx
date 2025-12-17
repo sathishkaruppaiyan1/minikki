@@ -6,9 +6,9 @@ import { useSearch } from "@/contexts/SearchContext";
 import { useWooCommerceProducts } from "@/hooks/useWooCommerce";
 
 const AdornSearch = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
-    <circle cx="10" cy="10" r="7" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M15 15L21 21" strokeLinecap="round" strokeLinejoin="round"/>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="10" cy="10" r="7" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M15 15L21 21" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -56,7 +56,7 @@ const SearchModal = () => {
                 placeholder="Search for products..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full h-14 pl-12 pr-4 text-lg border-border rounded-none"
+                className="w-full h-14 pl-12 pr-4 text-lg border-2 border-foreground rounded-none placeholder:font-medium"
                 autoFocus
               />
             </div>

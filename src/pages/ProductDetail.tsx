@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { ChevronRight, Truck, Package, ShieldCheck, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
 import { useWooCommerceProductById, useWooCommerceProducts } from "@/hooks/useWooCommerce";
+import { useCart } from "@/contexts/CartContext";
 import type { Product } from "@/types/product";
 
 // Common color name to hex mapping
@@ -43,8 +44,24 @@ const colorNameToHex: Record<string, string> = {
 const ProductDetail = () => {
   const { id } = useParams();
   const { data: product, isLoading, error } = useWooCommerceProductById(id || "");
+  const { addToCart } = useCart();
+  const navigate = useNavigate();
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+
+  // Set default selections
+  useEffect(() => {
+    if (product) {
+      if (product.colors && product.colors.length > 0 && !selectedColor) {
+        const firstColor = product.colors[0];
+        setSelectedColor(typeof firstColor === "string" ? firstColor : firstColor.name);
+      }
+      if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+        setSelectedSize(product.sizes[0]);
+      }
+    }
+  }, [product]);
+  const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const [expandedSection, setExpandedSection] = useState<string | null>("description");
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
@@ -190,11 +207,10 @@ const ProductDetail = () => {
                   <button
                     key={index}
                     onClick={() => setActiveImage(index)}
-                    className={`flex-shrink-0 w-16 h-20 border-2 transition-all overflow-hidden ${
-                      activeImage === index
-                        ? "border-foreground"
-                        : "border-transparent hover:border-muted-foreground"
-                    }`}
+                    className={`flex-shrink-0 w-16 h-20 border-2 transition-all overflow-hidden ${activeImage === index
+                      ? "border-foreground"
+                      : "border-transparent hover:border-muted-foreground"
+                      }`}
                   >
                     <img
                       src={image}
@@ -246,11 +262,10 @@ const ProductDetail = () => {
                       <button
                         key={index}
                         onClick={() => setSelectedColor(isSelected ? null : colorName)}
-                        className={`w-12 h-12 rounded-md border-2 transition-all overflow-hidden ${
-                          isSelected
-                            ? "ring-2 ring-foreground ring-offset-2 border-foreground"
-                            : "border-border hover:border-foreground"
-                        }`}
+                        className={`w-12 h-12 rounded-md border-2 transition-all overflow-hidden ${isSelected
+                          ? "ring-2 ring-foreground ring-offset-2 border-foreground"
+                          : "border-border hover:border-foreground"
+                          }`}
                         title={colorName}
                       >
                         {variationImage ? (
@@ -281,11 +296,10 @@ const ProductDetail = () => {
                     <button
                       key={size}
                       onClick={() => setSelectedSize(size)}
-                      className={`min-w-[48px] h-12 px-3 border text-base font-bold transition-all ${
-                        selectedSize === size
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-border hover:border-foreground bg-background"
-                      }`}
+                      className={`min-w-[48px] h-12 px-3 border text-base font-bold transition-all ${selectedSize === size
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border hover:border-foreground bg-background"
+                        }`}
                     >
                       {size}
                     </button>
@@ -294,17 +308,43 @@ const ProductDetail = () => {
               </div>
             )}
 
+            {/* Quantity Selector */}
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">Quantity</span>
+              <div className="flex items-center border border-border bg-background">
+                <button
+                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                  className="px-3 py-2 hover:bg-muted transition-colors"
+                  disabled={quantity <= 1}
+                >
+                  -
+                </button>
+                <span className="w-10 text-center font-medium">{quantity}</span>
+                <button
+                  onClick={() => setQuantity(q => q + 1)}
+                  className="px-3 py-2 hover:bg-muted transition-colors"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
             {/* Add to Cart & Buy Now Buttons */}
             <div className="flex flex-col gap-3">
               <Button
                 className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none text-base font-bold"
                 disabled={product.isSoldOut}
+                onClick={() => addToCart(product, quantity, selectedSize || undefined, selectedColor || undefined)}
               >
                 {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
               </Button>
               <Button
                 className="w-full h-12 bg-[#8B0000] text-white hover:bg-[#6B0000] rounded-none text-base font-bold"
                 disabled={product.isSoldOut}
+                onClick={() => {
+                  addToCart(product, quantity, selectedSize || undefined, selectedColor || undefined);
+                  navigate("/cart");
+                }}
               >
                 BUY NOW
               </Button>
@@ -450,7 +490,7 @@ const ProductDetail = () => {
           </section>
         )}
       </div>
-    </Layout>
+    </Layout >
   );
 };
 

@@ -3,6 +3,8 @@ import HeroBanner from "@/components/home/HeroBanner";
 import CategoryGrid from "@/components/home/CategoryGrid";
 import ProductSection from "@/components/home/ProductSection";
 import StorySection from "@/components/home/StorySection";
+import ShopByReels from "@/components/home/ShopByReels";
+import ReviewsSlider from "@/components/home/ReviewsSlider";
 import { useWooCommerceProducts } from "@/hooks/useWooCommerce";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -41,6 +43,8 @@ const Index = () => {
             products={bestSellers}
             viewAllLink="/collections/all"
           />
+          <ShopByReels />
+          <ReviewsSlider />
           <StorySection />
           <ProductSection
             title="New Arrivals"

@@ -233,11 +233,10 @@ const Checkout = () => {
                   <h2 className="text-xl font-bold mb-4">Payment Method</h2>
                   <div className="space-y-3">
                     <label
-                      className={`flex items-center gap-3 p-4 border cursor-pointer transition-colors ${
-                        paymentMethod === "cod"
-                          ? "border-foreground bg-muted"
-                          : "border-border hover:border-foreground"
-                      }`}
+                      className={`flex items-center gap-3 p-4 border cursor-pointer transition-colors ${paymentMethod === "cod"
+                        ? "border-foreground bg-muted"
+                        : "border-border hover:border-foreground"
+                        }`}
                     >
                       <input
                         type="radio"
@@ -253,11 +252,10 @@ const Checkout = () => {
                       </div>
                     </label>
                     <label
-                      className={`flex items-center gap-3 p-4 border cursor-pointer transition-colors ${
-                        paymentMethod === "online"
-                          ? "border-foreground bg-muted"
-                          : "border-border hover:border-foreground"
-                      }`}
+                      className={`flex items-center gap-3 p-4 border cursor-pointer transition-colors ${paymentMethod === "online"
+                        ? "border-foreground bg-muted"
+                        : "border-border hover:border-foreground"
+                        }`}
                     >
                       <input
                         type="radio"
@@ -297,8 +295,10 @@ const Checkout = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-sm truncate">{item.product.name}</p>
-                          {item.size && (
-                            <p className="text-xs text-muted-foreground">Size: {item.size}</p>
+                          {(item.size || item.color) && (
+                            <p className="text-xs text-muted-foreground uppercase">
+                              {[item.size, item.color].filter(Boolean).join(", ")}
+                            </p>
                           )}
                           <p className="font-bold text-sm mt-1">{formatPrice(item.product.price * item.quantity)}</p>
                         </div>

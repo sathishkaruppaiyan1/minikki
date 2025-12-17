@@ -58,8 +58,11 @@ const CartDrawer = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-sm truncate">{item.product.name}</h3>
-                    {item.size && (
-                      <p className="text-xs text-muted-foreground mt-1">Size: {item.size}</p>
+                    {/* Variations - Single line "S, BLUE" */}
+                    {(item.size || item.color) && (
+                      <p className="text-xs text-muted-foreground mt-1 uppercase">
+                        {[item.size, item.color].filter(Boolean).join(", ")}
+                      </p>
                     )}
                     <p className="font-bold text-sm mt-1">{formatPrice(item.product.price)}</p>
 
@@ -109,9 +112,11 @@ const CartDrawer = () => {
                   VIEW CART
                 </Button>
               </Link>
-              <Button className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold">
-                CHECKOUT
-              </Button>
+              <Link to="/checkout" onClick={() => setIsOpen(false)}>
+                <Button className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold">
+                  CHECKOUT
+                </Button>
+              </Link>
             </div>
           </div>
         )}

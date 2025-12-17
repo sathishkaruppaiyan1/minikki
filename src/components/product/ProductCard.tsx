@@ -9,23 +9,23 @@ import { useQuickView } from "@/contexts/QuickViewContext";
 // Adorn Icons
 const AdornHeart = ({ filled }: { filled?: boolean }) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5">
-    <path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35Z" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35Z" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
 const AdornEye = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round"/>
-    <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
 const AdornBag = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <path d="M6 6H21L19 16H8L6 6Z" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M6 6L5 3H2" strokeLinecap="round" strokeLinejoin="round"/>
-    <circle cx="10" cy="20" r="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <circle cx="17" cy="20" r="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M6 6H21L19 16H8L6 6Z" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M6 6L5 3H2" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="10" cy="20" r="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="17" cy="20" r="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -87,7 +87,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { openQuickView } = useQuickView();
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(
+    product.colors && product.colors.length > 0
+      ? (typeof product.colors[0] === "string" ? product.colors[0] : product.colors[0].name)
+      : null
+  );
 
   const formatPrice = (price: number) => {
     return `Rs. ${price.toLocaleString("en-IN")}`;
@@ -111,7 +115,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product, 1);
+    // Default to first size if available, or just add product
+    const size = product.sizes && product.sizes.length > 0 ? product.sizes[0] : undefined;
+    addToCart(product, 1, size, selectedColor || undefined);
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
@@ -156,7 +162,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           )}
         </div>
 
-        {/* Action buttons - always visible on mobile */}
+        {/* Action buttons - hidden on mobile for Cart, visible on hover desktop */}
         <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           <Button
             variant="icon"
@@ -177,7 +183,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           <Button
             variant="icon"
             size="iconSm"
-            className="bg-background/90 hover:bg-background shadow-sm"
+            className="hidden md:inline-flex bg-background/90 hover:bg-background shadow-sm"
             onClick={handleAddToCart}
             disabled={product.isSoldOut}
           >
@@ -185,8 +191,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
           </Button>
         </div>
 
-        {/* Add to Cart on hover - bottom (visible on mobile tap) */}
-        <div className="absolute bottom-0 left-0 right-0 bg-foreground text-background py-3 text-center font-bold text-sm opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer"
+        {/* Add to Cart on hover - bottom (hidden on mobile, visible on desktop hover) */}
+        <div className="hidden md:block absolute bottom-0 left-0 right-0 bg-foreground text-background py-3 text-center font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
           onClick={handleAddToCart}
         >
           {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
@@ -224,11 +230,10 @@ const ProductCard = ({ product }: ProductCardProps) => {
               return (
                 <button
                   key={index}
-                  className={`w-8 h-8 rounded-md border overflow-hidden transition-all ${
-                    isSelected
+                  className={`w-8 h-8 rounded-md border overflow-hidden transition-all ${isSelected
                       ? "ring-2 ring-primary ring-offset-1 border-primary"
                       : "border-border hover:ring-2 hover:ring-primary hover:ring-offset-1"
-                  }`}
+                    }`}
                   title={colorName}
                   onClick={(e) => {
                     e.preventDefault();
