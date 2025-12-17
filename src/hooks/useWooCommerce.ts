@@ -98,7 +98,7 @@ export const useWooCommerceProduct = (slug: string) => {
     queryFn: async (): Promise<Product | null> => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      
+
       const response = await fetch(
         `${supabaseUrl}/functions/v1/woocommerce-products?search=${encodeURIComponent(slug)}&per_page=1`,
         {
@@ -118,5 +118,34 @@ export const useWooCommerceProduct = (slug: string) => {
       return data.products?.find((p: Product) => p.slug === slug) || null;
     },
     enabled: !!slug,
+  });
+};
+
+export const useWooCommerceProductById = (id: string) => {
+  return useQuery({
+    queryKey: ["woocommerce-product-id", id],
+    queryFn: async (): Promise<Product | null> => {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/woocommerce-products?id=${id}`,
+        {
+          method: "GET",
+          headers: {
+            "apikey": supabaseKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch product");
+      }
+
+      const data = await response.json();
+      return data.products?.[0] || null;
+    },
+    enabled: !!id,
   });
 };

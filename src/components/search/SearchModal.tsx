@@ -1,0 +1,133 @@
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { X, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { useSearch } from "@/contexts/SearchContext";
+import { useWooCommerceProducts } from "@/hooks/useWooCommerce";
+
+const AdornSearch = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+    <circle cx="10" cy="10" r="7" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M15 15L21 21" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const SearchModal = () => {
+  const { isOpen, closeSearch, query, setQuery } = useSearch();
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+
+  const { data, isLoading } = useWooCommerceProducts({
+    search: debouncedQuery,
+    perPage: 8,
+  });
+
+  const products = debouncedQuery.length >= 2 ? data?.products || [] : [];
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  if (!isOpen) return null;
+
+  const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}`;
+
+  return (
+    <div className="fixed inset-0 z-50">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={closeSearch}
+      />
+
+      {/* Modal */}
+      <div className="absolute top-0 left-0 right-0 bg-background shadow-xl animate-fade-in">
+        <div className="container mx-auto px-4 py-6">
+          {/* Search Input */}
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <AdornSearch />
+              </div>
+              <Input
+                type="text"
+                placeholder="Search for products..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full h-14 pl-12 pr-4 text-lg border-border rounded-none"
+                autoFocus
+              />
+            </div>
+            <button
+              onClick={closeSearch}
+              className="p-3 hover:bg-muted rounded-full transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
+          {/* Results */}
+          <div className="mt-6 max-h-[60vh] overflow-auto">
+            {query.length < 2 ? (
+              <p className="text-center text-muted-foreground py-8">
+                Type at least 2 characters to search
+              </p>
+            ) : isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : products.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                No products found for "{query}"
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {products.map((product) => (
+                  <Link
+                    key={product.id}
+                    to={`/product/${product.id}`}
+                    onClick={closeSearch}
+                    className="group"
+                  >
+                    <div className="aspect-[3/4] bg-muted overflow-hidden">
+                      <img
+                        src={product.images[0] || "/placeholder.svg"}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                    <div className="mt-2">
+                      <h3 className="text-sm font-bold truncate group-hover:text-primary transition-colors">
+                        {product.name}
+                      </h3>
+                      <p className="text-sm font-bold text-primary mt-1">
+                        {formatPrice(product.price)}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* View All Results */}
+          {products.length > 0 && (
+            <div className="mt-6 text-center border-t border-border pt-4">
+              <Link
+                to={`/collections/all?search=${encodeURIComponent(query)}`}
+                onClick={closeSearch}
+                className="text-sm font-bold underline hover:text-primary transition-colors"
+              >
+                View all results for "{query}"
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SearchModal;

@@ -4,6 +4,11 @@ export interface ProductColor {
   image: string;
 }
 
+export interface VariationImages {
+  color: string;
+  images: string[];
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -12,9 +17,11 @@ export interface Product {
   originalPrice?: number;
   category: string;
   categorySlug?: string;
+  categoryId?: string;
   colors: ProductColor[] | string[];
   sizes: string[];
   images: string[];
+  variationImages?: VariationImages[];
   description: string;
   shortDescription?: string;
   fabric?: string;

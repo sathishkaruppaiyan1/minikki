@@ -90,12 +90,17 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-medium;
     font-family: var(--font-body);
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
+    @apply font-bold;
+  }
+
+  p, span, a, li {
+    @apply font-medium;
   }
 }
 
