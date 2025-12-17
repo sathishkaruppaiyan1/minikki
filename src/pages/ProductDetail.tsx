@@ -6,6 +6,12 @@ import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { products } from "@/data/products";
+import type { ProductColor } from "@/types/product";
+
+// Helper to check if color is ProductColor object or string
+const isProductColor = (color: ProductColor | string): color is ProductColor => {
+  return typeof color === 'object' && 'hex' in color;
+};
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -56,7 +62,11 @@ const ProductDetail = () => {
           <div className="space-y-4">
             <div className="aspect-[3/4] overflow-hidden bg-muted relative">
               <img
-                src={product.colors[selectedColor]?.image || product.images[activeImage]}
+                src={(() => {
+                  const color = product.colors[selectedColor];
+                  if (color && isProductColor(color)) return color.image;
+                  return product.images[activeImage];
+                })()}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
@@ -109,7 +119,13 @@ const ProductDetail = () => {
             {/* Color Selection */}
             <div>
               <p className="text-sm font-medium mb-2">
-                COLOR: <span className="font-normal">{product.colors[selectedColor]?.name}</span>
+                COLOR: <span className="font-normal">
+                  {(() => {
+                    const color = product.colors[selectedColor];
+                    if (color && isProductColor(color)) return color.name;
+                    return typeof color === 'string' ? color : '';
+                  })()}
+                </span>
               </p>
               <div className="flex gap-2">
                 {product.colors.map((color, index) => (
@@ -121,8 +137,8 @@ const ProductDetail = () => {
                         ? "border-foreground ring-2 ring-offset-2 ring-foreground"
                         : "border-border hover:border-foreground"
                     }`}
-                    style={{ backgroundColor: color.hex }}
-                    title={color.name}
+                    style={{ backgroundColor: isProductColor(color) ? color.hex : color }}
+                    title={isProductColor(color) ? color.name : color}
                   />
                 ))}
               </div>
