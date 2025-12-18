@@ -233,9 +233,14 @@ const ProductDetail = () => {
               <div className="flex items-center gap-3 mt-2">
                 <span className="text-xl font-medium">{formatPrice(product.price)}</span>
                 {product.originalPrice && product.originalPrice > product.price && (
-                  <span className="text-muted-foreground line-through text-lg">
-                    {formatPrice(product.originalPrice)}
-                  </span>
+                  <>
+                    <span className="text-muted-foreground/60 line-through text-lg">
+                      {formatPrice(product.originalPrice)}
+                    </span>
+                    <span className="text-sm font-bold text-[#FF0000] border border-[#FF0000] px-2 py-0.5 rounded-sm">
+                      {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                    </span>
+                  </>
                 )}
               </div>
             </div>

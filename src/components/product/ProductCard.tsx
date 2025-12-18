@@ -207,11 +207,18 @@ const ProductCard = ({ product }: ProductCardProps) => {
           </h3>
         </Link>
 
-        <div className="flex items-center gap-2">
-          {product.originalPrice && product.originalPrice > product.price && (
-            <span className="price-old text-sm">{formatPrice(product.originalPrice)}</span>
-          )}
+        <div className="flex items-center flex-wrap gap-2">
           <span className="price text-sm font-bold">{formatPrice(product.price)}</span>
+          {product.originalPrice && product.originalPrice > product.price && (
+            <>
+              <span className="price-old text-xs text-muted-foreground/60 line-through">
+                {formatPrice(product.originalPrice)}
+              </span>
+              <span className="text-xs font-bold text-[#FF0000]">
+                {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+              </span>
+            </>
+          )}
         </div>
 
         {/* Color swatches with variation images */}
@@ -231,8 +238,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
                 <button
                   key={index}
                   className={`w-8 h-8 rounded-md border overflow-hidden transition-all ${isSelected
-                      ? "ring-2 ring-primary ring-offset-1 border-primary"
-                      : "border-border hover:ring-2 hover:ring-primary hover:ring-offset-1"
+                    ? "ring-2 ring-primary ring-offset-1 border-primary"
+                    : "border-border hover:ring-2 hover:ring-primary hover:ring-offset-1"
                     }`}
                   title={colorName}
                   onClick={(e) => {
