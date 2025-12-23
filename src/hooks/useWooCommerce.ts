@@ -42,7 +42,7 @@ export const useWooCommerceProducts = (params: ProductsParams = {}) => {
       // Since we can't pass query params through invoke, we'll use fetch directly
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      
+
       const response = await fetch(
         `${supabaseUrl}/functions/v1/woocommerce-products?${queryParams.toString()}`,
         {
@@ -60,7 +60,8 @@ export const useWooCommerceProducts = (params: ProductsParams = {}) => {
 
       return response.json();
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    staleTime: 1000 * 60 * 30, // Cache for 30 minutes
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -70,7 +71,7 @@ export const useWooCommerceCategories = () => {
     queryFn: async (): Promise<CategoriesResponse> => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      
+
       const response = await fetch(
         `${supabaseUrl}/functions/v1/woocommerce-categories`,
         {
@@ -88,7 +89,8 @@ export const useWooCommerceCategories = () => {
 
       return response.json();
     },
-    staleTime: 1000 * 60 * 10, // Cache for 10 minutes
+    staleTime: 1000 * 60 * 60, // Cache for 60 minutes
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -147,5 +149,7 @@ export const useWooCommerceProductById = (id: string) => {
       return data.products?.[0] || null;
     },
     enabled: !!id,
+    staleTime: 1000 * 60 * 30, // Cache for 30 minutes
+    refetchOnWindowFocus: false,
   });
 };

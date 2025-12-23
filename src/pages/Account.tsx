@@ -27,7 +27,7 @@ const Account = () => {
                                 <Label htmlFor="password">Password</Label>
                                 <Input id="password" type="password" />
                             </div>
-                            <Button className="w-full">Login</Button>
+                            <Button className="w-full bg-[#800000] text-white hover:bg-[#600000]">Login</Button>
                         </div>
                         <div className="text-center text-sm text-muted-foreground">
                             <a href="#" className="hover:underline">Forgot your password?</a>
@@ -48,7 +48,7 @@ const Account = () => {
                                 <Label htmlFor="register-password">Password</Label>
                                 <Input id="register-password" type="password" />
                             </div>
-                            <Button className="w-full">Create Account</Button>
+                            <Button className="w-full bg-[#800000] text-white hover:bg-[#600000]">Create Account</Button>
                         </div>
                     </TabsContent>
                 </Tabs>

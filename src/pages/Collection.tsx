@@ -6,6 +6,7 @@ import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import LoadingScreen from "@/components/ui/LoadingScreen";
 import { useWooCommerceProducts, useWooCommerceCategories } from "@/hooks/useWooCommerce";
 
 type SortOption = "default" | "price-low" | "price-high" | "newest" | "name-asc" | "name-desc";
@@ -146,9 +147,8 @@ const Collection = () => {
                     <li>
                       <a
                         href="/collections/all"
-                        className={`hover:text-primary transition-colors ${
-                          slug === "all" ? "text-primary font-bold" : "font-medium"
-                        }`}
+                        className={`hover:text-primary transition-colors ${slug === "all" ? "text-primary font-bold" : "font-medium"
+                          }`}
                       >
                         All Products
                       </a>
@@ -157,9 +157,8 @@ const Collection = () => {
                       <li key={cat.id}>
                         <a
                           href={`/collections/${cat.slug}`}
-                          className={`hover:text-primary transition-colors ${
-                            slug === cat.slug ? "text-primary font-bold" : "font-medium"
-                          }`}
+                          className={`hover:text-primary transition-colors ${slug === cat.slug ? "text-primary font-bold" : "font-medium"
+                            }`}
                         >
                           {cat.name}
                         </a>
@@ -311,9 +310,8 @@ const Collection = () => {
                           <a
                             href="/collections/all"
                             onClick={() => setShowFilters(false)}
-                            className={`block py-1 hover:text-primary transition-colors ${
-                              slug === "all" ? "text-primary font-bold" : "font-medium"
-                            }`}
+                            className={`block py-1 hover:text-primary transition-colors ${slug === "all" ? "text-primary font-bold" : "font-medium"
+                              }`}
                           >
                             All Products
                           </a>
@@ -323,9 +321,8 @@ const Collection = () => {
                             <a
                               href={`/collections/${cat.slug}`}
                               onClick={() => setShowFilters(false)}
-                              className={`block py-1 hover:text-primary transition-colors ${
-                                slug === cat.slug ? "text-primary font-bold" : "font-medium"
-                              }`}
+                              className={`block py-1 hover:text-primary transition-colors ${slug === cat.slug ? "text-primary font-bold" : "font-medium"
+                                }`}
                             >
                               {cat.name}
                             </a>
@@ -392,25 +389,12 @@ const Collection = () => {
 
             {/* Products Grid */}
             {isLoading ? (
-              <div className={`grid gap-4 lg:gap-6 ${
-                gridView === "grid" 
-                  ? "grid-cols-2 md:grid-cols-3" 
-                  : "grid-cols-1"
-              }`}>
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="space-y-3">
-                    <Skeleton className="aspect-[3/4] w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </div>
-                ))}
-              </div>
+              <LoadingScreen />
             ) : (
-              <div className={`grid gap-4 lg:gap-6 ${
-                gridView === "grid" 
-                  ? "grid-cols-2 md:grid-cols-3" 
+              <div className={`grid gap-4 lg:gap-6 ${gridView === "grid"
+                  ? "grid-cols-2 md:grid-cols-3"
                   : "grid-cols-1"
-              }`}>
+                }`}>
                 {products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}

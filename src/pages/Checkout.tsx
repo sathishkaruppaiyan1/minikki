@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronLeft, Lock } from "lucide-react";
 import Layout from "@/components/layout/Layout";
@@ -14,20 +14,24 @@ const Checkout = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    email: "",
-    phone: "",
-    firstName: "",
-    lastName: "",
-    address: "",
-    apartment: "",
+    name: "",
+    houseNo: "",
+    street: "",
+    landmark: "",
+    pincode: "",
     city: "",
     state: "",
-    pincode: "",
+    country: "India",
+    phone: "",
+    whatsapp: "",
+    alternatePhone: "",
+    email: "",
     saveInfo: true,
   });
 
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isFetchingPincode, setIsFetchingPincode] = useState(false);
 
   const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
 
@@ -37,6 +41,41 @@ const Checkout = () => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+
+    if (name === "pincode" && value.length === 6) {
+      fetchPincodeDetails(value);
+    }
+  };
+
+  const fetchPincodeDetails = async (pincode: string) => {
+    setIsFetchingPincode(true);
+    try {
+      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const data = await response.json();
+
+      if (data && data[0] && data[0].Status === "Success") {
+        const details = data[0].PostOffice[0];
+        setFormData((prev) => ({
+          ...prev,
+          city: details.District,
+          state: details.State,
+        }));
+        toast({
+          title: "Address Found",
+          description: `City: ${details.District}, State: ${details.State}`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Invalid Pincode",
+          description: "Could not fetch details for this pincode.",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching pincode:", error);
+    } finally {
+      setIsFetchingPincode(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,90 +136,92 @@ const Checkout = () => {
             <div className="grid lg:grid-cols-2 gap-12">
               {/* Left - Form */}
               <div className="space-y-8">
-                {/* Contact Information */}
-                <div>
-                  <h2 className="text-xl font-bold mb-4">Contact Information</h2>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="email" className="font-bold">Email Address</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        placeholder="your@email.com"
-                        className="mt-1 rounded-none"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone" className="font-bold">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        placeholder="+91 98765 43210"
-                        className="mt-1 rounded-none"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
 
                 {/* Shipping Address */}
                 <div>
                   <h2 className="text-xl font-bold mb-4">Shipping Address</h2>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="firstName" className="font-bold">First Name</Label>
-                        <Input
-                          id="firstName"
-                          name="firstName"
-                          value={formData.firstName}
-                          onChange={handleInputChange}
-                          className="mt-1 rounded-none"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="lastName" className="font-bold">Last Name</Label>
-                        <Input
-                          id="lastName"
-                          name="lastName"
-                          value={formData.lastName}
-                          onChange={handleInputChange}
-                          className="mt-1 rounded-none"
-                          required
-                        />
-                      </div>
-                    </div>
+
+                    {/* Name */}
                     <div>
-                      <Label htmlFor="address" className="font-bold">Address</Label>
+                      <Label htmlFor="name" className="font-bold">Name</Label>
                       <Input
-                        id="address"
-                        name="address"
-                        value={formData.address}
+                        id="name"
+                        name="name"
+                        value={formData.name}
                         onChange={handleInputChange}
-                        placeholder="House no, Building, Street, Area"
                         className="mt-1 rounded-none"
                         required
+                        placeholder="Full Name"
                       />
                     </div>
+
+                    {/* House no / building name */}
                     <div>
-                      <Label htmlFor="apartment" className="font-bold">Apartment, Suite, etc. (Optional)</Label>
+                      <Label htmlFor="houseNo" className="font-bold">House no / Building name</Label>
                       <Input
-                        id="apartment"
-                        name="apartment"
-                        value={formData.apartment}
+                        id="houseNo"
+                        name="houseNo"
+                        value={formData.houseNo}
                         onChange={handleInputChange}
                         className="mt-1 rounded-none"
+                        required
+                        placeholder="e.g. Flat 101, Galaxy Apartments"
                       />
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+
+                    {/* Street / Area / colony */}
+                    <div>
+                      <Label htmlFor="street" className="font-bold">Street / Area / Colony</Label>
+                      <Input
+                        id="street"
+                        name="street"
+                        value={formData.street}
+                        onChange={handleInputChange}
+                        className="mt-1 rounded-none"
+                        required
+                        placeholder="e.g. MG Road, Indiranagar"
+                      />
+                    </div>
+
+                    {/* Landmark */}
+                    <div>
+                      <Label htmlFor="landmark" className="font-bold">Landmark</Label>
+                      <Input
+                        id="landmark"
+                        name="landmark"
+                        value={formData.landmark}
+                        onChange={handleInputChange}
+                        className="mt-1 rounded-none"
+                        required
+                        placeholder="e.g. Near City Hospital"
+                      />
+                    </div>
+
+                    {/* Pincode */}
+                    <div>
+                      <Label htmlFor="pincode" className="font-bold">Pincode</Label>
+                      <div className="relative">
+                        <Input
+                          id="pincode"
+                          name="pincode"
+                          value={formData.pincode}
+                          onChange={handleInputChange}
+                          className="mt-1 rounded-none"
+                          required
+                          placeholder="6 Digit Pincode"
+                          maxLength={6}
+                        />
+                        {isFetchingPincode && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground animate-pulse">
+                            Fetching...
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* City & State (Auto-fetched) */}
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="city" className="font-bold">City</Label>
                         <Input
@@ -188,8 +229,9 @@ const Checkout = () => {
                           name="city"
                           value={formData.city}
                           onChange={handleInputChange}
-                          className="mt-1 rounded-none"
+                          className="mt-1 rounded-none bg-muted"
                           required
+                          readOnly
                         />
                       </div>
                       <div>
@@ -199,23 +241,88 @@ const Checkout = () => {
                           name="state"
                           value={formData.state}
                           onChange={handleInputChange}
-                          className="mt-1 rounded-none"
+                          className="mt-1 rounded-none bg-muted"
                           required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="pincode" className="font-bold">PIN Code</Label>
-                        <Input
-                          id="pincode"
-                          name="pincode"
-                          value={formData.pincode}
-                          onChange={handleInputChange}
-                          className="mt-1 rounded-none"
-                          required
+                          readOnly
                         />
                       </div>
                     </div>
-                    <label className="flex items-center gap-2 cursor-pointer">
+
+                    {/* Country (Default India) */}
+                    <div>
+                      <Label htmlFor="country" className="font-bold">Country</Label>
+                      <Input
+                        id="country"
+                        name="country"
+                        value={formData.country}
+                        onChange={handleInputChange}
+                        className="mt-1 rounded-none bg-muted"
+                        required
+                        readOnly
+                      />
+                    </div>
+
+                    {/* Phone number */}
+                    <div>
+                      <Label htmlFor="phone" className="font-bold">Phone number</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        className="mt-1 rounded-none"
+                        required
+                        placeholder="10 digit mobile number"
+                      />
+                    </div>
+
+                    {/* WhatsApp number */}
+                    <div>
+                      <Label htmlFor="whatsapp" className="font-bold">WhatsApp number</Label>
+                      <Input
+                        id="whatsapp"
+                        name="whatsapp"
+                        type="tel"
+                        value={formData.whatsapp}
+                        onChange={handleInputChange}
+                        className="mt-1 rounded-none"
+                        required
+                        placeholder="For order updates and tracking"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">To receive tracking and order details</p>
+                    </div>
+
+                    {/* Alternate number */}
+                    <div>
+                      <Label htmlFor="alternatePhone" className="font-bold">Alternate number</Label>
+                      <Input
+                        id="alternatePhone"
+                        name="alternatePhone"
+                        type="tel"
+                        value={formData.alternatePhone}
+                        onChange={handleInputChange}
+                        className="mt-1 rounded-none"
+                        placeholder="Optional"
+                      />
+                    </div>
+
+                    {/* Email ID */}
+                    <div>
+                      <Label htmlFor="email" className="font-bold">Email ID</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="mt-1 rounded-none"
+                        required
+                        placeholder="your@email.com"
+                      />
+                    </div>
+
+                    <label className="flex items-center gap-2 cursor-pointer pt-2">
                       <input
                         type="checkbox"
                         name="saveInfo"

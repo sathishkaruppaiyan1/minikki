@@ -1,36 +1,43 @@
+import { Link } from 'react-router-dom';
 import Layout from "@/components/layout/Layout";
-import HeroBanner from "@/components/home/HeroBanner";
+
 import CategoryGrid from "@/components/home/CategoryGrid";
 import ProductSection from "@/components/home/ProductSection";
 import StorySection from "@/components/home/StorySection";
-import ShopByReels from "@/components/home/ShopByReels";
 import ReviewsSlider from "@/components/home/ReviewsSlider";
 import { useWooCommerceProducts } from "@/hooks/useWooCommerce";
 import { Skeleton } from "@/components/ui/skeleton";
+import LoadingScreen from "@/components/ui/LoadingScreen";
 
 const Index = () => {
-  const { data, isLoading, error } = useWooCommerceProducts({ perPage: 12 });
+  const { data, isLoading, error } = useWooCommerceProducts({ perPage: 16 });
 
   const products = data?.products || [];
-  const bestSellers = products.slice(0, 8);
-  const newArrivals = products.filter(p => p.isNew).concat(products.slice(0, 4)).slice(0, 4);
+
+  // Ensure we have 8 products for New Arrivals, duplicating if necessary
+  const newArrivalsSource = products.slice(0, 8);
+  const newArrivals = newArrivalsSource.length > 0
+    ? [...newArrivalsSource, ...newArrivalsSource, ...newArrivalsSource].slice(0, 8)
+    : [];
+
+  // Ensure we have 8 products for Hot Sellers
+  const hotSellersSource = products.slice(8, 16);
+  // If we don't have enough distinct hot sellers, reuse products or duplicate whatever we have
+  const displayHotSellersSource = hotSellersSource.length > 0 ? hotSellersSource : products.slice(0, 8).reverse();
+  const displayHotSellers = displayHotSellersSource.length > 0
+    ? [...displayHotSellersSource, ...displayHotSellersSource, ...displayHotSellersSource].slice(0, 8)
+    : [];
 
   return (
     <Layout>
-      <HeroBanner />
+      <div className="w-full">
+        <Link to="/collections/all">
+          <img src="/new_arrival_banner.jpg" alt="Shop Now" className="w-full h-auto object-cover" />
+        </Link>
+      </div>
       <CategoryGrid />
       {isLoading ? (
-        <div className="container mx-auto px-4 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="space-y-3">
-                <Skeleton className="aspect-[3/4] w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-              </div>
-            ))}
-          </div>
-        </div>
+        <LoadingScreen />
       ) : error ? (
         <div className="container mx-auto px-4 py-12 text-center">
           <p className="text-muted-foreground">Failed to load products. Please try again.</p>
@@ -38,19 +45,21 @@ const Index = () => {
       ) : (
         <>
           <ProductSection
-            title="Hot Sellers"
-            emoji="🔥"
-            products={bestSellers}
-            viewAllLink="/collections/all"
-          />
-          <ShopByReels />
-          <ReviewsSlider />
-          <StorySection />
-          <ProductSection
             title="New Arrivals"
+            emoji="🔥"
             products={newArrivals}
             viewAllLink="/collections/all"
           />
+
+          <ProductSection
+            title="Hot Sellers"
+            emoji="⚡"
+            products={displayHotSellers}
+            viewAllLink="/collections/all"
+          />
+
+          <ReviewsSlider />
+          <StorySection />
         </>
       )}
     </Layout>

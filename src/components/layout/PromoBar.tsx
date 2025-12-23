@@ -8,7 +8,7 @@ const PromoBar = () => {
 
   return (
     <div className="promo-bar py-2 px-4 text-center text-sm relative">
-      <span>Free shipping for all the products</span>
+      <span className="font-medium tracking-wide">For International Shipments WhatsApp: 8939048873</span>
       <button
         onClick={() => setIsVisible(false)}
         className="absolute right-4 top-1/2 -translate-y-1/2 hover:opacity-70 transition-opacity"

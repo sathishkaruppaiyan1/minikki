@@ -12,25 +12,25 @@ import { X } from "lucide-react";
 // Adorn Icons - Light line style SVGs
 // Adorn Icons - Bolder style SVGs
 const AdornMenu = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+  <svg width="26px" height="26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '26px', height: '26px' }}>
     <path d="M3 6H21M3 12H21M3 18H21" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
 const AdornClose = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg width="26px" height="26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '26px', height: '26px' }}>
     <path d="M6 6L18 18M6 18L18 6" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
 const AdornHeart = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+  <svg width="26px" height="26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '26px', height: '26px' }}>
     <path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35Z" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
 const AdornCart = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+  <svg width="26px" height="26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '26px', height: '26px' }}>
     <path d="M6 6H21L19 16H8L6 6Z" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M6 6L5 3H2" strokeLinecap="round" strokeLinejoin="round" />
     <circle cx="10" cy="20" r="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -39,14 +39,14 @@ const AdornCart = () => (
 );
 
 const AdornUser = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+  <svg width="26px" height="26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '26px', height: '26px' }}>
     <circle cx="12" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M5.5 21C5.5 17.134 8.41015 14 12 14C15.5899 14 18.5 17.134 18.5 21" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
 const AdornSearch = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
     <circle cx="10" cy="10" r="7" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M15 15L21 21" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
@@ -71,19 +71,19 @@ const Header = () => {
       <header className="bg-background border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4">
           {/* Mobile Header */}
-          <div className="flex lg:hidden items-center justify-between h-14">
+          <div className="flex lg:hidden items-center justify-between h-16">
             {/* Left - Burger & Wishlist */}
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-11 w-11"
+                className="h-10 w-10 p-0"
+                style={{ height: '40px', width: '40px' }}
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
               >
                 {isMenuOpen ? <AdornClose /> : <AdornMenu />}
               </Button>
               <Link to="/wishlist">
-                <Button variant="ghost" size="icon" className="h-10 w-10">
+                <Button variant="ghost" className="h-10 w-10 p-0" style={{ height: '40px', width: '40px' }}>
                   <AdornHeart />
                 </Button>
               </Link>
@@ -99,20 +99,21 @@ const Header = () => {
             </Link>
 
             {/* Right - Cart & Account */}
+            {/* Right - Account & Cart */}
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-10 w-10 relative" onClick={() => setCartOpen(true)}>
+              <Link to="/account">
+                <Button variant="ghost" className="h-10 w-10 p-0" style={{ height: '40px', width: '40px' }}>
+                  <AdornUser />
+                </Button>
+              </Link>
+              <Button variant="ghost" className="h-10 w-10 relative p-0" style={{ height: '40px', width: '40px' }} onClick={() => setCartOpen(true)}>
                 <AdornCart />
                 {cartItems > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-[#800000] text-white text-[10px] flex items-center justify-center font-bold">
                     {cartItems}
                   </span>
                 )}
               </Button>
-              <Link to="/account">
-                <Button variant="ghost" size="icon" className="h-10 w-10">
-                  <AdornUser />
-                </Button>
-              </Link>
             </div>
           </div>
 
@@ -133,7 +134,7 @@ const Header = () => {
                 <Input
                   type="text"
                   placeholder="Search here for all products"
-                  className="w-full pl-4 pr-12 py-3 h-12 border-border rounded-md text-base cursor-pointer"
+                  className="w-full pl-4 pr-12 py-3 h-12 border-border rounded-full text-base cursor-pointer"
                   readOnly
                 />
                 <Button
@@ -171,7 +172,7 @@ const Header = () => {
                   <AdornHeart />
                 </Button>
                 {wishlistItems > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#800000] text-white text-xs flex items-center justify-center font-bold">
                     {wishlistItems}
                   </span>
                 )}
@@ -179,7 +180,7 @@ const Header = () => {
               <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
                 <AdornCart />
                 {cartItems > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#800000] text-white text-xs flex items-center justify-center font-bold">
                     {cartItems}
                   </span>
                 )}
@@ -268,12 +269,12 @@ const Header = () => {
       </header>
 
       {/* Mobile Search - Full Width below header (Not Sticky) */}
-      <div className="container mx-auto px-4 lg:hidden pb-3 pt-2">
+      <div className="container mx-auto px-4 lg:hidden pb-3 pt-4">
         <div className="relative" onClick={openSearch}>
           <Input
             type="text"
             placeholder="Search here for all products"
-            className="w-full pl-4 pr-12 py-2.5 border-2 border-foreground rounded-md cursor-pointer placeholder:font-medium"
+            className="w-full pl-4 pr-12 py-2 border-2 border-foreground rounded-xl cursor-pointer placeholder:font-medium h-10"
             readOnly
           />
           <Button

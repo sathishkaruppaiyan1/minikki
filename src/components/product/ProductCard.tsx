@@ -4,19 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Product, ProductColor } from "@/types/product";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
-import { useQuickView } from "@/contexts/QuickViewContext";
 
 // Adorn Icons
 const AdornHeart = ({ filled }: { filled?: boolean }) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5">
     <path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35Z" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const AdornEye = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeLinecap="round" strokeLinejoin="round" />
-    <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -86,12 +78,7 @@ const getColorName = (color: ProductColor | string): string => {
 const ProductCard = ({ product }: ProductCardProps) => {
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
-  const { openQuickView } = useQuickView();
-  const [selectedColor, setSelectedColor] = useState<string | null>(
-    product.colors && product.colors.length > 0
-      ? (typeof product.colors[0] === "string" ? product.colors[0] : product.colors[0].name)
-      : null
-  );
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
   const formatPrice = (price: number) => {
     return `Rs. ${price.toLocaleString("en-IN")}`;
@@ -126,15 +113,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
     toggleWishlist(product);
   };
 
-  const handleQuickView = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    openQuickView(product);
-  };
-
   return (
     <div className="group animate-fade-in">
-      <div className="relative overflow-hidden bg-muted aspect-[3/4]">
+      <div className="relative overflow-hidden bg-muted aspect-[9/16]">
         <Link to={`/product/${product.id}`}>
           <img
             src={getCurrentImage()}
@@ -175,14 +156,6 @@ const ProductCard = ({ product }: ProductCardProps) => {
           <Button
             variant="icon"
             size="iconSm"
-            className="bg-background/90 hover:bg-background shadow-sm"
-            onClick={handleQuickView}
-          >
-            <AdornEye />
-          </Button>
-          <Button
-            variant="icon"
-            size="iconSm"
             className="hidden md:inline-flex bg-background/90 hover:bg-background shadow-sm"
             onClick={handleAddToCart}
             disabled={product.isSoldOut}
@@ -202,13 +175,13 @@ const ProductCard = ({ product }: ProductCardProps) => {
       {/* Product info */}
       <div className="mt-3 space-y-2">
         <Link to={`/product/${product.id}`}>
-          <h3 className="text-sm font-bold hover:text-primary transition-colors line-clamp-1">
+          <h3 className="text-sm font-bold font-sans hover:text-primary transition-colors line-clamp-1">
             {product.name}
           </h3>
         </Link>
 
         <div className="flex items-center flex-wrap gap-2">
-          <span className="price text-sm font-bold">{formatPrice(product.price)}</span>
+          <span className="price text-sm font-bold text-[#800000]">{formatPrice(product.price)}</span>
           {product.originalPrice && product.originalPrice > product.price && (
             <>
               <span className="price-old text-xs text-muted-foreground/60 line-through">
@@ -238,8 +211,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
                 <button
                   key={index}
                   className={`w-8 h-8 rounded-md border overflow-hidden transition-all ${isSelected
-                    ? "ring-2 ring-primary ring-offset-1 border-primary"
-                    : "border-border hover:ring-2 hover:ring-primary hover:ring-offset-1"
+                    ? "ring-2 ring-[#800000] ring-offset-1 border-[#800000]"
+                    : "border-border hover:ring-2 hover:ring-[#800000] hover:ring-offset-1"
                     }`}
                   title={colorName}
                   onClick={(e) => {

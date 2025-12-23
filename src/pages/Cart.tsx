@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Minus, Plus, X, ShoppingBag, ArrowLeft } from "lucide-react";
+import { Minus, Plus, ShoppingBag, ArrowLeft, Trash2 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
@@ -67,24 +67,24 @@ const Cart = () => {
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 flex flex-col items-start text-left">
                           <Link
                             to={`/product/${item.product.id}`}
-                            className="font-bold hover:text-primary transition-colors line-clamp-2"
+                            className="font-bold hover:text-primary transition-colors line-clamp-2 text-left"
                           >
                             {item.product.name}
                           </Link>
                           {(item.size || item.color) && (
-                            <p className="text-sm text-muted-foreground mt-1 uppercase">
+                            <p className="text-sm text-muted-foreground mt-1 uppercase text-left">
                               {[item.size, item.color].filter(Boolean).join(", ")}
                             </p>
                           )}
                           <button
                             onClick={() => removeFromCart(item.product.id)}
-                            className="text-sm text-muted-foreground hover:text-destructive transition-colors mt-2 flex items-center gap-1"
+                            className="text-sm text-muted-foreground hover:text-destructive transition-colors mt-3 flex items-center gap-2 group"
                           >
-                            <X className="h-3 w-3" />
-                            Remove
+                            <Trash2 className="h-4 w-4 group-hover:text-destructive transition-colors" />
+                            <span>Remove</span>
                           </button>
                         </div>
                       </div>

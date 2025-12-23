@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ChevronRight, Truck, Package, ShieldCheck, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { ChevronRight, Truck, Package, ShieldCheck, ChevronDown, ChevronUp, Loader2, Heart, Ruler, Upload, Star } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
 import { useWooCommerceProductById, useWooCommerceProducts } from "@/hooks/useWooCommerce";
 import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
+import { toast } from "sonner";
 import type { Product } from "@/types/product";
 
 // Common color name to hex mapping
@@ -45,22 +47,16 @@ const ProductDetail = () => {
   const { id } = useParams();
   const { data: product, isLoading, error } = useWooCommerceProductById(id || "");
   const { addToCart } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
   const navigate = useNavigate();
+
+  // No default selection
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [showValidation, setShowValidation] = useState(false);
 
-  // Set default selections
-  useEffect(() => {
-    if (product) {
-      if (product.colors && product.colors.length > 0 && !selectedColor) {
-        const firstColor = product.colors[0];
-        setSelectedColor(typeof firstColor === "string" ? firstColor : firstColor.name);
-      }
-      if (product.sizes && product.sizes.length > 0 && !selectedSize) {
-        setSelectedSize(product.sizes[0]);
-      }
-    }
-  }, [product]);
+  // Removed useEffect for default selections
+
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const [expandedSection, setExpandedSection] = useState<string | null>("description");
@@ -127,6 +123,7 @@ const ProductDetail = () => {
   }
 
   const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
+  const inWishlist = isInWishlist(product.id);
 
   // Get display images based on selected color
   const getDisplayImages = (): string[] => {
@@ -157,6 +154,30 @@ const ProductDetail = () => {
     return doc.body.textContent || "";
   };
 
+  const handleAddToCart = (buyNow = false) => {
+    // Validation: Check if variation is selected if variations exist
+    if (product.colors && product.colors.length > 0 && !selectedColor) {
+      setShowValidation(true);
+      toast.error("Please select a color");
+      return;
+    }
+    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+      setShowValidation(true);
+      toast.error("Please select a size");
+      return;
+    }
+
+    addToCart(product, quantity, selectedSize || undefined, selectedColor || undefined);
+
+    if (buyNow) {
+      navigate("/cart");
+    } else {
+      setShowValidation(false);
+    }
+  };
+
+  const currentActiveImage = displayImages[activeImage] || "/placeholder.svg";
+
   return (
     <Layout>
       {/* Breadcrumb */}
@@ -182,12 +203,21 @@ const ProductDetail = () => {
           {/* Image Gallery */}
           <div className="space-y-4">
             {/* Main Image */}
-            <div className="aspect-[3/4] overflow-hidden bg-muted relative">
+            <div className="aspect-[3/4] overflow-hidden bg-muted relative group">
               <img
-                src={displayImages[activeImage] || "/placeholder.svg"}
+                src={currentActiveImage}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
+
+              {/* Wishlist Icon - Top Right */}
+              <button
+                onClick={() => toggleWishlist(product)}
+                className="absolute top-4 right-4 z-10 p-2 bg-white/80 rounded-full hover:bg-white transition-colors shadow-sm"
+              >
+                <Heart className={`h-6 w-6 ${inWishlist ? "fill-[#800000] text-[#800000]" : "text-gray-600"}`} />
+              </button>
+
               {selectedColor && (
                 <span className="absolute top-4 left-4 bg-[#8B4B6B] text-white text-sm px-4 py-2 font-medium capitalize">
                   {selectedColor} Color
@@ -231,7 +261,7 @@ const ProductDetail = () => {
                 {product.name}
               </h1>
               <div className="flex items-center gap-3 mt-2">
-                <span className="text-xl font-medium">{formatPrice(product.price)}</span>
+                <span className="text-xl font-medium text-[#800000]">{formatPrice(product.price)}</span>
                 {product.originalPrice && product.originalPrice > product.price && (
                   <>
                     <span className="text-muted-foreground/60 line-through text-lg">
@@ -248,9 +278,12 @@ const ProductDetail = () => {
             {/* Color Selection */}
             {product.colors && product.colors.length > 0 && (
               <div>
-                <p className="text-sm font-medium mb-3">
-                  Color{selectedColor && <span className="capitalize">: {selectedColor}</span>}
-                </p>
+                <div className="flex justify-between items-center mb-3">
+                  <p className={`text-sm font-medium ${showValidation && !selectedColor ? "text-red-600" : ""}`}>
+                    Color{selectedColor && <span className="capitalize">: {selectedColor}</span>}
+                    {showValidation && !selectedColor && <span className="ml-2 text-red-600 animate-pulse">(Required)</span>}
+                  </p>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {product.colors.map((color, index) => {
                     const colorName = typeof color === "string" ? color : color.name;
@@ -266,9 +299,12 @@ const ProductDetail = () => {
                     return (
                       <button
                         key={index}
-                        onClick={() => setSelectedColor(isSelected ? null : colorName)}
-                        className={`w-12 h-12 rounded-md border-2 transition-all overflow-hidden ${isSelected
-                          ? "ring-2 ring-foreground ring-offset-2 border-foreground"
+                        onClick={() => {
+                          setSelectedColor(isSelected ? null : colorName);
+                          if (showValidation) setShowValidation(false);
+                        }}
+                        className={`w-20 h-20 rounded-md border-2 transition-all overflow-hidden ${isSelected
+                          ? "border-black ring-0" // Black active border, no double ring
                           : "border-border hover:border-foreground"
                           }`}
                         title={colorName}
@@ -295,12 +331,23 @@ const ProductDetail = () => {
             {/* Size Selection */}
             {product.sizes.length > 0 && (
               <div>
-                <p className="text-sm font-medium mb-3">Size</p>
+                <div className="flex justify-between items-center mb-3">
+                  <p className={`text-sm font-medium ${showValidation && !selectedSize ? "text-red-600" : ""}`}>
+                    Size
+                    {showValidation && !selectedSize && <span className="ml-2 text-red-600 animate-pulse">(Required)</span>}
+                  </p>
+                  <button className="text-xs font-medium underline flex items-center gap-1 hover:text-primary">
+                    <Ruler className="w-3 h-3" /> Size Chart
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {product.sizes.map((size) => (
                     <button
                       key={size}
-                      onClick={() => setSelectedSize(size)}
+                      onClick={() => {
+                        setSelectedSize(size);
+                        if (showValidation) setShowValidation(false);
+                      }}
                       className={`min-w-[48px] h-12 px-3 border text-base font-bold transition-all ${selectedSize === size
                         ? "border-foreground bg-foreground text-background"
                         : "border-border hover:border-foreground bg-background"
@@ -334,29 +381,32 @@ const ProductDetail = () => {
               </div>
             </div>
 
-            {/* Add to Cart & Buy Now Buttons */}
-            <div className="flex flex-col gap-3">
-              <Button
-                className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none text-base font-bold"
-                disabled={product.isSoldOut}
-                onClick={() => addToCart(product, quantity, selectedSize || undefined, selectedColor || undefined)}
-              >
-                {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
-              </Button>
-              <Button
-                className="w-full h-12 bg-[#8B0000] text-white hover:bg-[#6B0000] rounded-none text-base font-bold"
-                disabled={product.isSoldOut}
-                onClick={() => {
-                  addToCart(product, quantity, selectedSize || undefined, selectedColor || undefined);
-                  navigate("/cart");
-                }}
-              >
-                BUY NOW
-              </Button>
+            {/* Dispatch Time & Buttons */}
+            <div className="space-y-4">
+              <div className="text-sm font-medium text-green-700">
+                Dispatch time : 5 days
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <Button
+                  className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none text-base font-bold"
+                  disabled={product.isSoldOut}
+                  onClick={() => handleAddToCart(false)}
+                >
+                  {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
+                </Button>
+                <Button
+                  className="w-full h-12 bg-[#8B0000] text-white hover:bg-[#6B0000] rounded-none text-base font-bold"
+                  disabled={product.isSoldOut}
+                  onClick={() => handleAddToCart(true)}
+                >
+                  BUY NOW
+                </Button>
+              </div>
             </div>
 
             {/* Accordion Sections */}
-            <div className="border-t border-border">
+            <div className="border-t border-border mt-6">
               {/* Description */}
               <div className="border-b border-border">
                 <button
@@ -428,6 +478,38 @@ const ProductDetail = () => {
                   </div>
                 )}
               </div>
+
+              {/* Reviews with Media Upload */}
+              <div className="border-b border-border">
+                <button
+                  onClick={() => toggleSection("reviews")}
+                  className="w-full flex items-center justify-between py-4 text-left"
+                >
+                  <span className="font-medium">Reviews</span>
+                  {expandedSection === "reviews" ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </button>
+                {expandedSection === "reviews" && (
+                  <div className="pb-4">
+                    <div className="flex flex-col gap-4">
+                      <div className="bg-muted/50 p-4 rounded-lg text-center">
+                        <p className="text-sm text-muted-foreground mb-3">Share your look with us!</p>
+                        <Button variant="outline" className="gap-2 w-full">
+                          <Upload className="w-4 h-4" /> Upload Image/Video
+                        </Button>
+                      </div>
+
+                      {/* Placeholder for existing reviews */}
+                      <div className="space-y-3">
+                        <p className="text-sm italic text-muted-foreground">No reviews yet. Be the first to review!</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -459,7 +541,7 @@ const ProductDetail = () => {
               <Truck className="h-6 w-6" />
             </div>
             <div>
-              <p className="font-medium text-sm">Fast Delivery</p>
+              <p className="font-medium text-sm">Free Shipping</p>
               <p className="text-xs text-muted-foreground">
                 FREE SHIPPING to All Over India
               </p>

@@ -56,7 +56,7 @@ const SearchModal = () => {
                 placeholder="Search for products..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full h-14 pl-12 pr-4 text-lg border-2 border-foreground rounded-none placeholder:font-medium"
+                className="w-full h-14 pl-12 pr-4 text-lg border-2 border-foreground rounded-none placeholder:font-medium focus-visible:ring-0 focus-visible:border-foreground"
                 autoFocus
               />
             </div>
@@ -67,6 +67,40 @@ const SearchModal = () => {
               <X className="h-6 w-6" />
             </button>
           </div>
+
+          {/* Trending & Related Searches (Only if query is empty or to encourage search) */}
+          {query.length === 0 && (
+            <div className="mt-8 space-y-6 animate-fade-in">
+              <div>
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Trending Searches</h3>
+                <div className="flex flex-wrap gap-2">
+                  {["Kurta Sets", "Lehenga", "Sarees", "Gowns", "Best Sellers"].map((term) => (
+                    <button
+                      key={term}
+                      onClick={() => setQuery(term)}
+                      className="px-4 py-2 bg-muted hover:bg-muted/80 text-sm font-medium transition-colors"
+                    >
+                      {term}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Related Searches</h3>
+                <div className="flex flex-wrap gap-2">
+                  {["Wedding Collection", "Party Wear", "Casual Ethnic", "New Arrivals"].map((term) => (
+                    <button
+                      key={term}
+                      onClick={() => setQuery(term)}
+                      className="px-4 py-2 border border-border hover:border-foreground text-sm font-medium transition-colors"
+                    >
+                      {term}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Results */}
           <div className="mt-6 max-h-[60vh] overflow-auto">
