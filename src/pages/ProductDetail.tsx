@@ -347,43 +347,18 @@ const ProductDetail = () => {
 
             {/* Navigation Dots */}
             {displayImages.length > 1 && (
-              <div className="space-y-3">
-                <div className="flex gap-2 justify-center mt-2">
-                  {displayImages.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setActiveImage(index)}
-                      className={`h-2 rounded-full transition-all duration-300 ${activeImage === index
-                        ? "w-6 bg-foreground"
-                        : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
-                        }`}
-                      aria-label={`Go to image ${index + 1}`}
-                    />
-                  ))}
-                </div>
-
-                {/* Thumbnails (variation gallery) */}
-                <div className="flex gap-2 overflow-x-auto pb-1 justify-center">
-                  {displayImages.map((img, index) => (
-                    <button
-                      key={img + index}
-                      type="button"
-                      onClick={() => setActiveImage(index)}
-                      className={`shrink-0 h-16 w-12 rounded-md overflow-hidden border transition-colors ${activeImage === index
-                        ? "border-ring ring-2 ring-ring ring-offset-2 ring-offset-background"
-                        : "border-border hover:border-foreground"
-                        }`}
-                      aria-label={`Select thumbnail ${index + 1}`}
-                    >
-                      <img
-                        src={img}
-                        alt={`${product.name} thumbnail ${index + 1}`}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    </button>
-                  ))}
-                </div>
+              <div className="flex gap-2 justify-center mt-2">
+                {displayImages.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setActiveImage(index)}
+                    className={`h-2 rounded-full transition-all duration-300 ${activeImage === index
+                      ? "w-6 bg-foreground"
+                      : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                      }`}
+                    aria-label={`Go to image ${index + 1}`}
+                  />
+                ))}
               </div>
             )}
           </div>
