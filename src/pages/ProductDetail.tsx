@@ -287,8 +287,8 @@ const ProductDetail = () => {
         </nav>
       </div>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+      <div className="container mx-auto px-4 py-2">
+        <div className="grid lg:grid-cols-2 gap-4 lg:gap-8">
           {/* Image Gallery */}
           <div className="space-y-4">
             {/* Main Image */}
@@ -371,7 +371,7 @@ const ProductDetail = () => {
                 {product.name}
               </h1>
               <div className="flex items-center gap-3 mt-2">
-                <span className="text-xl font-medium text-[#800000]">{formatPrice(product.price)}</span>
+                <span className="text-2xl font-bold text-[#800000]">{formatPrice(product.price)}</span>
                 {product.originalPrice && product.originalPrice > product.price && (
                   <>
                     <span className="text-muted-foreground/60 line-through text-lg">
@@ -383,6 +383,7 @@ const ProductDetail = () => {
                   </>
                 )}
               </div>
+              <p className="text-sm text-green-700 font-medium mt-1">Free Shipping</p>
             </div>
 
             {/* Color Selection */}
@@ -390,7 +391,7 @@ const ProductDetail = () => {
               <div>
                 <div className="flex justify-between items-center mb-3">
                   <p className={`text-sm font-medium ${showValidation && !selectedColor ? "text-red-600" : ""}`}>
-                    Color{selectedColor && <span className="capitalize">: {selectedColor}</span>}
+                    Color{selectedColor && <span className="capitalize font-bold text-[#800000]">: {selectedColor}</span>}
                     {showValidation && !selectedColor && <span className="ml-2 text-red-600 animate-pulse">(Required)</span>}
                   </p>
                 </div>
@@ -447,7 +448,7 @@ const ProductDetail = () => {
                     Size
                     {showValidation && !selectedSize && <span className="ml-2 text-red-600 animate-pulse">(Required)</span>}
                   </p>
-                  <button className="text-xs font-medium underline flex items-center gap-1 hover:text-primary">
+                  <button className="text-xs font-medium flex items-center gap-1 hover:text-primary border border-foreground px-2 py-1 rounded">
                     <Ruler className="w-3 h-3" /> Size Chart
                   </button>
                 </div>
@@ -495,20 +496,20 @@ const ProductDetail = () => {
 
             {/* Dispatch Time & Buttons */}
             <div className="space-y-4">
-              <div className="text-sm font-medium text-green-700">
+              <div className="text-sm font-bold text-green-700">
                 Dispatch time : 5 days
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-row gap-3">
                 <Button
-                  className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none text-base font-bold"
+                  className="flex-1 h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none text-base font-bold"
                   disabled={product.isSoldOut}
                   onClick={() => handleAddToCart(false)}
                 >
                   {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
                 </Button>
                 <Button
-                  className="w-full h-12 bg-[#8B0000] text-white hover:bg-[#6B0000] rounded-none text-base font-bold"
+                  className="flex-1 h-12 bg-[#8B0000] text-white hover:bg-[#6B0000] rounded-none text-base font-bold"
                   disabled={product.isSoldOut}
                   onClick={() => handleAddToCart(true)}
                 >
