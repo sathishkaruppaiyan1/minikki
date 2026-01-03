@@ -115,7 +115,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
   return (
     <div className="group animate-fade-in">
-      <div className="relative overflow-hidden bg-muted aspect-[9/16]">
+      <div className="relative overflow-hidden bg-muted aspect-[1/1.5]">
         <Link to={`/product/${product.id}`}>
           <img
             src={getCurrentImage()}
@@ -173,18 +173,18 @@ const ProductCard = ({ product }: ProductCardProps) => {
       </div>
 
       {/* Product info */}
-      <div className="mt-3 space-y-2">
+      <div className="mt-3 space-y-2 text-center">
         <Link to={`/product/${product.id}`}>
-          <h3 className="text-sm font-bold font-sans hover:text-primary transition-colors line-clamp-1">
+          <h3 className="text-base font-medium font-sans hover:text-primary transition-colors line-clamp-1">
             {product.name}
           </h3>
         </Link>
 
-        <div className="flex items-center flex-wrap gap-2">
-          <span className="price text-sm font-bold text-[#800000]">{formatPrice(product.price)}</span>
+        <div className="flex items-center justify-center flex-wrap gap-2">
+          <span className="price text-base font-bold text-[#800000]">{formatPrice(product.price)}</span>
           {product.originalPrice && product.originalPrice > product.price && (
             <>
-              <span className="price-old text-xs text-muted-foreground/60 line-through">
+              <span className="price-old text-sm text-muted-foreground/60 line-through">
                 {formatPrice(product.originalPrice)}
               </span>
               <span className="text-xs font-bold text-[#FF0000]">
@@ -196,7 +196,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
         {/* Color swatches with variation images */}
         {product.colors && product.colors.length > 1 && (
-          <div className="flex gap-1">
+          <div className="flex justify-center gap-2 w-full">
             {product.colors.slice(0, 4).map((color, index) => {
               const colorName = getColorName(color);
               const isSelected = selectedColor?.toLowerCase() === colorName.toLowerCase();
@@ -210,9 +210,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
               return (
                 <button
                   key={index}
-                  className={`w-8 h-8 rounded-md border overflow-hidden transition-all ${isSelected
-                    ? "ring-2 ring-[#800000] ring-offset-1 border-[#800000]"
-                    : "border-border hover:ring-2 hover:ring-[#800000] hover:ring-offset-1"
+                  className={`w-10 h-10 rounded-md overflow-hidden transition-all ${isSelected
+                    ? "border-2 border-black"
+                    : "border border-border hover:border-black"
                     }`}
                   title={colorName}
                   onClick={(e) => {

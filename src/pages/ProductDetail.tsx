@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ChevronRight, Truck, Package, ShieldCheck, ChevronDown, ChevronUp, Loader2, Heart, Ruler, Upload, Star } from "lucide-react";
+import { ChevronRight, ChevronLeft, Truck, Package, ShieldCheck, ChevronDown, ChevronUp, Loader2, Heart, Ruler, Upload, Star } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,12 @@ const colorNameToHex: Record<string, string> = {
   grape: "#6F2DA8",
 };
 
+interface VariationImage {
+  color: string;
+  images: string[];
+  attributes?: { name: string; option: string }[];
+}
+
 const ProductDetail = () => {
   const { id } = useParams();
   const { data: product, isLoading, error } = useWooCommerceProductById(id || "");
@@ -50,17 +56,20 @@ const ProductDetail = () => {
   const { isInWishlist, toggleWishlist } = useWishlist();
   const navigate = useNavigate();
 
-  // No default selection
+  // All state declarations at the top
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [showValidation, setShowValidation] = useState(false);
-
-  // Removed useEffect for default selections
-
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const [expandedSection, setExpandedSection] = useState<string | null>("description");
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
+  const [enhancedVariationImages, setEnhancedVariationImages] = useState<VariationImage[] | null>(null);
+
+  // Touch swipe state
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const minSwipeDistance = 50;
 
   // Fetch recommended products from same category
   const { data: recommendedData } = useWooCommerceProducts({
@@ -99,6 +108,115 @@ const ProductDetail = () => {
     setActiveImage(0);
   }, [selectedColor]);
 
+  // Fetch variation gallery images from Supabase edge function (uses authenticated WC API)
+  useEffect(() => {
+    if (!product?.id || product.type !== 'variable') return;
+
+    const fetchVariationGalleryImages = async () => {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+        if (!supabaseUrl || !supabaseKey) {
+          console.log('Supabase credentials not configured');
+          return;
+        }
+
+        console.log('Fetching variation gallery for product:', product.id);
+
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/woocommerce-variation-gallery?product_id=${product.id}`,
+          {
+            method: 'GET',
+            headers: {
+              'apikey': supabaseKey,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (!response.ok) {
+          console.log('Edge function failed, status:', response.status);
+          return;
+        }
+
+        const data = await response.json();
+        console.log('Variation gallery response:', data);
+
+        if (data.variationGallery && data.variationGallery.length > 0) {
+          const variationImagesResult: VariationImage[] = data.variationGallery.map((item: any) => ({
+            color: item.color,
+            images: item.images,
+          }));
+
+          console.log('Setting enhanced variation images:', variationImagesResult);
+          setEnhancedVariationImages(variationImagesResult);
+        }
+      } catch (e) {
+        console.error("Failed to fetch variation gallery images:", e);
+      }
+    };
+
+    fetchVariationGalleryImages();
+  }, [product?.id, product?.type]);
+
+  // Touch swipe handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleSwipe = (imagesLength: number) => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      // Swipe left - go to next image
+      setActiveImage((prev) => (prev + 1) % imagesLength);
+    } else if (isRightSwipe) {
+      // Swipe right - go to previous image
+      setActiveImage((prev) => (prev - 1 + imagesLength) % imagesLength);
+    }
+  };
+
+  // Get display images based on selected color
+  const getDisplayImages = (): string[] => {
+    if (!product) return ["/placeholder.svg"];
+
+    const sourceImages = enhancedVariationImages || product.variationImages;
+
+    if (selectedColor && sourceImages) {
+      // Try to find exact match with color AND size
+      if (selectedSize) {
+        const exactMatch = sourceImages.find((v: VariationImage) => {
+          const colorMatch = v.color.toLowerCase() === selectedColor.toLowerCase();
+          const sizeAttr = v.attributes?.find((a) => a.name.toLowerCase() === "size");
+          const sizeMatch = sizeAttr?.option.toLowerCase() === selectedSize.toLowerCase();
+          return colorMatch && sizeMatch;
+        });
+
+        if (exactMatch && exactMatch.images.length > 0) {
+          return exactMatch.images.filter(Boolean);
+        }
+      }
+
+      // Fallback to just color match
+      const variationMatch = sourceImages.find(
+        (v: VariationImage) => v.color.toLowerCase() === selectedColor.toLowerCase()
+      );
+      if (variationMatch && variationMatch.images.length > 0) {
+        return variationMatch.images.filter(Boolean);
+      }
+    }
+    return product.images?.length > 0 ? product.images.filter(Boolean) : ["/placeholder.svg"];
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -124,19 +242,6 @@ const ProductDetail = () => {
 
   const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
   const inWishlist = isInWishlist(product.id);
-
-  // Get display images based on selected color
-  const getDisplayImages = (): string[] => {
-    if (selectedColor && product.variationImages) {
-      const variationMatch = product.variationImages.find(
-        (v) => v.color.toLowerCase() === selectedColor.toLowerCase()
-      );
-      if (variationMatch && variationMatch.images.length > 0) {
-        return variationMatch.images;
-      }
-    }
-    return product.images?.length > 0 ? product.images : ["/placeholder.svg"];
-  };
 
   const displayImages = getDisplayImages();
 
@@ -203,11 +308,17 @@ const ProductDetail = () => {
           {/* Image Gallery */}
           <div className="space-y-4">
             {/* Main Image */}
-            <div className="aspect-[3/4] overflow-hidden bg-muted relative group">
+            <div
+              className="aspect-[3/4] overflow-hidden bg-muted relative group touch-pan-y"
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={() => handleSwipe(displayImages.length)}
+            >
               <img
                 src={currentActiveImage}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover pointer-events-none select-none"
+                draggable={false}
               />
 
               {/* Wishlist Icon - Top Right */}
@@ -228,26 +339,41 @@ const ProductDetail = () => {
                   -{product.discount}%
                 </span>
               )}
+
+              {/* Navigation Arrows - Desktop */}
+              {displayImages.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setActiveImage((prev) => (prev - 1 + displayImages.length) % displayImages.length)}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    onClick={() => setActiveImage((prev) => (prev + 1) % displayImages.length)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </>
+              )}
             </div>
 
-            {/* Thumbnails */}
+            {/* Navigation Dots */}
             {displayImages.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {displayImages.map((image, index) => (
+              <div className="flex gap-2 justify-center mt-2">
+                {displayImages.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setActiveImage(index)}
-                    className={`flex-shrink-0 w-16 h-20 border-2 transition-all overflow-hidden ${activeImage === index
-                      ? "border-foreground"
-                      : "border-transparent hover:border-muted-foreground"
+                    className={`h-2 rounded-full transition-all duration-300 ${activeImage === index
+                      ? "w-6 bg-foreground"
+                      : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
                       }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`${product.name} ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
+                    aria-label={`Go to image ${index + 1}`}
+                  />
                 ))}
               </div>
             )}
@@ -301,6 +427,7 @@ const ProductDetail = () => {
                         key={index}
                         onClick={() => {
                           setSelectedColor(isSelected ? null : colorName);
+                          setActiveImage(0);
                           if (showValidation) setShowValidation(false);
                         }}
                         className={`w-20 h-20 rounded-md border-2 transition-all overflow-hidden ${isSelected
@@ -346,6 +473,7 @@ const ProductDetail = () => {
                       key={size}
                       onClick={() => {
                         setSelectedSize(size);
+                        setActiveImage(0);
                         if (showValidation) setShowValidation(false);
                       }}
                       className={`min-w-[48px] h-12 px-3 border text-base font-bold transition-all ${selectedSize === size
@@ -479,40 +607,142 @@ const ProductDetail = () => {
                 )}
               </div>
 
-              {/* Reviews with Media Upload */}
-              <div className="border-b border-border">
-                <button
-                  onClick={() => toggleSection("reviews")}
-                  className="w-full flex items-center justify-between py-4 text-left"
-                >
-                  <span className="font-medium">Reviews</span>
-                  {expandedSection === "reviews" ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </button>
-                {expandedSection === "reviews" && (
-                  <div className="pb-4">
-                    <div className="flex flex-col gap-4">
-                      <div className="bg-muted/50 p-4 rounded-lg text-center">
-                        <p className="text-sm text-muted-foreground mb-3">Share your look with us!</p>
-                        <Button variant="outline" className="gap-2 w-full">
-                          <Upload className="w-4 h-4" /> Upload Image/Video
-                        </Button>
-                      </div>
-
-                      {/* Placeholder for existing reviews */}
-                      <div className="space-y-3">
-                        <p className="text-sm italic text-muted-foreground">No reviews yet. Be the first to review!</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
+
+        {/* Customer Reviews Section - Separate Section */}
+        <section className="mt-12 border-t border-border pt-10">
+          <h2 className="font-heading text-2xl font-semibold text-center mb-8">Customer Reviews</h2>
+
+          <div className="max-w-4xl mx-auto space-y-8">
+            {/* Rating Summary - Shows when reviews exist */}
+            <div className="flex flex-col md:flex-row gap-8 p-6 bg-muted/30 rounded-xl">
+              {/* Overall Rating */}
+              <div className="text-center md:border-r md:border-border md:pr-8 md:min-w-[180px]">
+                <div className="text-5xl font-bold">0.0</div>
+                <div className="flex justify-center gap-1 my-3">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className="w-6 h-6 text-muted-foreground"
+                    />
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground">No reviews yet</p>
+              </div>
+
+              {/* Rating Breakdown */}
+              <div className="flex-1 space-y-3">
+                {[5, 4, 3, 2, 1].map((rating) => (
+                  <div key={rating} className="flex items-center gap-3 text-sm">
+                    <span className="w-12 font-medium">{rating} Star</span>
+                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-yellow-400 rounded-full transition-all"
+                        style={{ width: "0%" }}
+                      />
+                    </div>
+                    <span className="w-8 text-muted-foreground text-right">0</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Write a Review Section */}
+            <div className="border border-border rounded-xl p-6">
+              <h3 className="text-lg font-semibold mb-5">Write a Review</h3>
+
+              {/* Star Rating Input */}
+              <div className="mb-5">
+                <p className="text-sm font-medium mb-2">Your Rating *</p>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button key={star} className="p-1 hover:scale-110 transition-transform">
+                      <Star className="w-8 h-8 text-muted-foreground hover:fill-yellow-400 hover:text-yellow-400 transition-colors" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Review Title */}
+              <div className="mb-5">
+                <p className="text-sm font-medium mb-2">Review Title</p>
+                <input
+                  type="text"
+                  placeholder="Give your review a title"
+                  className="w-full p-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                />
+              </div>
+
+              {/* Review Text */}
+              <div className="mb-5">
+                <p className="text-sm font-medium mb-2">Your Review *</p>
+                <textarea
+                  placeholder="Share your experience with this product..."
+                  className="w-full p-3 border border-border rounded-lg text-sm resize-none h-32 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                />
+              </div>
+
+              {/* Image/Video Upload */}
+              <div className="mb-5">
+                <p className="text-sm font-medium mb-2">Add Photos/Videos</p>
+                <div className="flex gap-3 flex-wrap">
+                  <label className="w-24 h-24 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-foreground hover:bg-muted/50 transition-all">
+                    <Upload className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground mt-1">Upload</span>
+                    <input type="file" accept="image/*,video/*" multiple className="hidden" />
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Upload up to 5 images or 1 video (max 10MB each)</p>
+              </div>
+
+              {/* Name & Email */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                <div>
+                  <p className="text-sm font-medium mb-2">Your Name *</p>
+                  <input
+                    type="text"
+                    placeholder="Enter your name"
+                    className="w-full p-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-2">Your Email *</p>
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    className="w-full p-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                  />
+                </div>
+              </div>
+
+              <Button className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 text-base font-semibold">
+                Submit Review
+              </Button>
+            </div>
+
+            {/* Customer Reviews List */}
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold">All Reviews (0)</h3>
+                <select className="px-3 py-2 border border-border rounded-lg text-sm focus:outline-none">
+                  <option>Most Recent</option>
+                  <option>Highest Rated</option>
+                  <option>Lowest Rated</option>
+                  <option>With Photos</option>
+                </select>
+              </div>
+
+              {/* Empty State */}
+              <div className="text-center py-12 border border-border rounded-xl bg-muted/20">
+                <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h4 className="font-medium text-lg mb-2">No Reviews Yet</h4>
+                <p className="text-sm text-muted-foreground mb-4">Be the first to review this product!</p>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Trust Badges */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 py-8 border-t border-b border-border">

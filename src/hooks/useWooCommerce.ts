@@ -123,6 +123,65 @@ export const useWooCommerceProduct = (slug: string) => {
   });
 };
 
+export interface PaymentGateway {
+  id: string;
+  title: string;
+  description: string;
+  enabled: boolean;
+  order: number;
+}
+
+export const useWooCommercePaymentGateways = () => {
+  return useQuery({
+    queryKey: ["woocommerce-payment-gateways"],
+    queryFn: async (): Promise<PaymentGateway[]> => {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/woocommerce-payment-gateways`,
+          {
+            method: "GET",
+            headers: {
+              "apikey": supabaseKey,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch payment gateways");
+        }
+
+        const data = await response.json();
+        return data.gateways || [];
+      } catch (error) {
+        console.error("Error fetching payment gateways:", error);
+        // Return default payment methods if API fails
+        return [
+          {
+            id: "cod",
+            title: "Cash on Delivery (COD)",
+            description: "Pay when you receive your order",
+            enabled: true,
+            order: 1,
+          },
+          {
+            id: "razorpay",
+            title: "Online Payment",
+            description: "UPI, Cards, Net Banking, Wallets",
+            enabled: true,
+            order: 2,
+          },
+        ];
+      }
+    },
+    staleTime: 1000 * 60 * 60, // Cache for 60 minutes
+    refetchOnWindowFocus: false,
+  });
+};
+
 export const useWooCommerceProductById = (id: string) => {
   return useQuery({
     queryKey: ["woocommerce-product-id", id],

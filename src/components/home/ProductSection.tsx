@@ -13,15 +13,16 @@ const ProductSection = ({ title, products, viewAllLink, emoji }: ProductSectionP
   return (
     <section className="py-8 lg:py-16 border-b border-border/40 last:border-0">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between mb-6 lg:mb-8">
-          <h2 className="font-heading text-xl lg:text-3xl font-semibold flex items-center gap-2">
+        <div className="flex flex-col items-center justify-center mb-6 lg:mb-8 relative">
+          <h2 className="font-heading text-xl lg:text-3xl font-semibold flex items-center gap-2 bg-black text-white px-6 py-2 rounded-sm z-10">
             {title} {emoji && <span>{emoji}</span>}
           </h2>
-          {/* Desktop View All Button */}
+
+          {/* Desktop View All Button - Positioned absolutely to the right */}
           {viewAllLink && (
             <Link
               to={viewAllLink}
-              className="hidden md:inline-flex items-center justify-center bg-[#800000] text-white px-6 py-2 text-sm font-medium uppercase tracking-wider rounded-none hover:bg-[#600000] transition-colors"
+              className="hidden md:inline-flex items-center justify-center bg-[#800000] text-white px-6 py-2 text-sm font-medium uppercase tracking-wider rounded-none hover:bg-[#600000] transition-colors absolute right-0"
             >
               View All
             </Link>
@@ -29,8 +30,8 @@ const ProductSection = ({ title, products, viewAllLink, emoji }: ProductSectionP
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+          {products.map((product, index) => (
+            <ProductCard key={`${product.id}-${index}`} product={product} />
           ))}
         </div>
 

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { X, Minus, Plus, ShoppingBag } from "lucide-react";
+import { X, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 
@@ -84,8 +84,9 @@ const CartDrawer = () => {
                       </div>
                       <button
                         onClick={() => removeFromCart(item.product.id)}
-                        className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                        className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
                       >
+                        <Trash2 className="h-3 w-3" />
                         Remove
                       </button>
                     </div>

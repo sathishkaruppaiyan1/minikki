@@ -81,7 +81,7 @@ const Cart = () => {
                           )}
                           <button
                             onClick={() => removeFromCart(item.product.id)}
-                            className="text-sm text-muted-foreground hover:text-destructive transition-colors mt-3 flex items-center gap-2 group"
+                            className="text-sm text-muted-foreground hover:text-destructive transition-colors mt-3 flex items-center gap-2 group border border-black rounded-none px-2 py-1"
                           >
                             <Trash2 className="h-4 w-4 group-hover:text-destructive transition-colors" />
                             <span>Remove</span>
@@ -197,12 +197,12 @@ const Cart = () => {
                   </svg>
                   <span>Free Shipping All Over India</span>
                 </div>
+
                 <div className="flex items-center gap-2 text-sm">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M9 22V12h6v10" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <span>15-20 Days Delivery</span>
+                  <span>Premium Quality</span>
                 </div>
               </div>
             </div>

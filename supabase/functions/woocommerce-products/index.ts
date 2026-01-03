@@ -126,12 +126,12 @@ serve(async (req) => {
       const mainImages = product.images?.map((img: any) => img.src) || [];
 
       // Initialize variation images array
-      let variationImages: { color: string; images: string[] }[] = [];
+      let variationImages: { color: string; images: string[]; attributes: any[]; id: number }[] = [];
       let allVariationImageUrls: string[] = [];
 
       // If product is variable, fetch variations
       console.log(`Product ${product.id} type: ${product.type}, variations count: ${product.variations?.length || 0}`);
-      
+
       if (product.type === 'variable') {
         const variations = await fetchVariations(product.id.toString());
         console.log(`Fetched ${variations.length} variations for product ${product.id}`);
@@ -148,6 +148,7 @@ serve(async (req) => {
 
           // Check multiple possible meta keys for additional variation images
           const possibleMetaKeys = [
+            '_woo_variation_gallery_images', // Primary key for WooCommerce variation gallery plugin
             '_wc_additional_variation_images',
             'woo_variation_gallery_images',
             'variation_image_gallery',
@@ -157,23 +158,45 @@ serve(async (req) => {
 
           let additionalImages: string[] = [];
 
+          console.log(`Variation ${variation.id} available meta keys:`, variation.meta_data?.map((m: any) => m.key));
+
           for (const metaKey of possibleMetaKeys) {
             const additionalImagesMeta = variation.meta_data?.find(
               (meta: any) => meta.key === metaKey
             );
 
             if (additionalImagesMeta?.value) {
-              console.log(`Found meta key ${metaKey} with value: ${additionalImagesMeta.value}`);
+              console.log(`Found meta key ${metaKey} with value:`, additionalImagesMeta.value);
 
-              // Handle both comma-separated string and array formats
+              // Handle multiple formats: JSON array, comma-separated string, single number, or array
               let imageIds: string[] = [];
-              if (typeof additionalImagesMeta.value === 'string') {
-                imageIds = additionalImagesMeta.value.split(',').filter((id: string) => id.trim());
-              } else if (Array.isArray(additionalImagesMeta.value)) {
-                imageIds = additionalImagesMeta.value.map((id: any) => id.toString());
+              const value = additionalImagesMeta.value;
+
+              if (typeof value === 'string') {
+                // Try parsing as JSON first (handles "[123, 456]" format)
+                try {
+                  const parsed = JSON.parse(value);
+                  if (Array.isArray(parsed)) {
+                    imageIds = parsed.map((id: any) => id.toString()).filter((id: string) => id.trim());
+                  } else if (typeof parsed === 'number') {
+                    imageIds = [parsed.toString()];
+                  }
+                } catch {
+                  // Not JSON, treat as comma-separated or single value
+                  if (value.includes(',')) {
+                    imageIds = value.split(',').map((id: string) => id.trim()).filter((id: string) => id);
+                  } else if (value.trim()) {
+                    imageIds = [value.trim()];
+                  }
+                }
+              } else if (Array.isArray(value)) {
+                imageIds = value.map((id: any) => id.toString()).filter((id: string) => id.trim());
+              } else if (typeof value === 'number') {
+                imageIds = [value.toString()];
               }
 
               if (imageIds.length > 0) {
+                console.log(`Extracted image IDs for variation ${variation.id}:`, imageIds);
                 const imagePromises = imageIds.map((id: string) => fetchMediaUrl(id.trim()));
                 const fetchedImages = await Promise.all(imagePromises);
                 additionalImages = fetchedImages.filter((url): url is string => url !== null);
@@ -196,6 +219,8 @@ serve(async (req) => {
             variationImages.push({
               color: colorName,
               images: variationImageList,
+              attributes: variation.attributes, // Pass all attributes
+              id: variation.id, // Pass variation ID
             });
           }
         }

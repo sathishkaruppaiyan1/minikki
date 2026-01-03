@@ -7,6 +7,12 @@ export interface ProductColor {
 export interface VariationImages {
   color: string;
   images: string[];
+  attributes?: {
+    id: number;
+    name: string;
+    option: string;
+  }[];
+  id?: number;
 }
 
 export interface Product {
