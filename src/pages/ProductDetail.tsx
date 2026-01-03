@@ -9,6 +9,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { toast } from "sonner";
 import type { Product } from "@/types/product";
+import { supabase } from "@/integrations/supabase/client";
 
 // Common color name to hex mapping
 const colorNameToHex: Record<string, string> = {
@@ -108,48 +109,31 @@ const ProductDetail = () => {
     setActiveImage(0);
   }, [selectedColor]);
 
-  // Fetch variation gallery images from Supabase edge function (uses authenticated WC API)
+  // Fetch variation gallery images from backend function
   useEffect(() => {
-    if (!product?.id || product.type !== 'variable') return;
+    if (!product?.id || product.type !== "variable") return;
 
     const fetchVariationGalleryImages = async () => {
       try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        console.log("Fetching variation gallery for product:", product.id);
 
-        if (!supabaseUrl || !supabaseKey) {
-          console.log('Supabase credentials not configured');
+        const { data, error } = await supabase.functions.invoke("woocommerce-variation-gallery", {
+          body: { product_id: product.id },
+        });
+
+        if (error) {
+          console.error("Variation gallery invoke error:", error);
           return;
         }
 
-        console.log('Fetching variation gallery for product:', product.id);
+        console.log("Variation gallery response:", data);
 
-        const response = await fetch(
-          `${supabaseUrl}/functions/v1/woocommerce-variation-gallery?product_id=${product.id}`,
-          {
-            method: 'GET',
-            headers: {
-              'apikey': supabaseKey,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        if (!response.ok) {
-          console.log('Edge function failed, status:', response.status);
-          return;
-        }
-
-        const data = await response.json();
-        console.log('Variation gallery response:', data);
-
-        if (data.variationGallery && data.variationGallery.length > 0) {
+        if (data?.variationGallery && Array.isArray(data.variationGallery) && data.variationGallery.length > 0) {
           const variationImagesResult: VariationImage[] = data.variationGallery.map((item: any) => ({
             color: item.color,
-            images: item.images,
+            images: Array.isArray(item.images) ? item.images : [],
           }));
 
-          console.log('Setting enhanced variation images:', variationImagesResult);
           setEnhancedVariationImages(variationImagesResult);
         }
       } catch (e) {
@@ -363,18 +347,43 @@ const ProductDetail = () => {
 
             {/* Navigation Dots */}
             {displayImages.length > 1 && (
-              <div className="flex gap-2 justify-center mt-2">
-                {displayImages.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setActiveImage(index)}
-                    className={`h-2 rounded-full transition-all duration-300 ${activeImage === index
-                      ? "w-6 bg-foreground"
-                      : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
-                      }`}
-                    aria-label={`Go to image ${index + 1}`}
-                  />
-                ))}
+              <div className="space-y-3">
+                <div className="flex gap-2 justify-center mt-2">
+                  {displayImages.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setActiveImage(index)}
+                      className={`h-2 rounded-full transition-all duration-300 ${activeImage === index
+                        ? "w-6 bg-foreground"
+                        : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                        }`}
+                      aria-label={`Go to image ${index + 1}`}
+                    />
+                  ))}
+                </div>
+
+                {/* Thumbnails (variation gallery) */}
+                <div className="flex gap-2 overflow-x-auto pb-1 justify-center">
+                  {displayImages.map((img, index) => (
+                    <button
+                      key={img + index}
+                      type="button"
+                      onClick={() => setActiveImage(index)}
+                      className={`shrink-0 h-16 w-12 rounded-md overflow-hidden border transition-colors ${activeImage === index
+                        ? "border-ring ring-2 ring-ring ring-offset-2 ring-offset-background"
+                        : "border-border hover:border-foreground"
+                        }`}
+                      aria-label={`Select thumbnail ${index + 1}`}
+                    >
+                      <img
+                        src={img}
+                        alt={`${product.name} thumbnail ${index + 1}`}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
