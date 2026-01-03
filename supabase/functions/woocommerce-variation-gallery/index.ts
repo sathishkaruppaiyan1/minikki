@@ -25,20 +25,25 @@ serve(async (req) => {
 
     const url = new URL(req.url);
 
+    // Try query params first (for GET requests)
     let productId = url.searchParams.get('product_id');
 
-    if (!productId && req.method !== 'GET') {
+    // If not in query params, try to get from body (for POST requests from supabase.functions.invoke)
+    if (!productId) {
       try {
         const body = await req.json();
-        productId = body?.product_id?.toString?.() ?? body?.product_id;
-      } catch {
-        // ignore
+        productId = body?.product_id ? String(body.product_id) : null;
+        console.log('Parsed product_id from body:', productId);
+      } catch (e) {
+        console.log('No JSON body or failed to parse:', e);
       }
     }
 
     if (!productId) {
       throw new Error('product_id is required');
     }
+
+    console.log('Processing product_id:', productId);
 
     // Fetch variations for the product using authenticated WC REST API
     const variationsUrl = `${storeUrl}/wp-json/wc/v3/products/${productId}/variations?per_page=100`;
