@@ -54,6 +54,7 @@ serve(async (req) => {
       if (!metaData || metaData.length === 0) return [];
 
       const possibleKeys = [
+        'wpcvi_images',
         '_woo_variation_gallery_images',
         'woo_variation_gallery_images',
         '_wc_additional_variation_images',
