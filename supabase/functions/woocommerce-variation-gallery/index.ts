@@ -24,7 +24,17 @@ serve(async (req) => {
     const authHeader = 'Basic ' + btoa(`${consumerKey}:${consumerSecret}`);
 
     const url = new URL(req.url);
-    const productId = url.searchParams.get('product_id');
+
+    let productId = url.searchParams.get('product_id');
+
+    if (!productId && req.method !== 'GET') {
+      try {
+        const body = await req.json();
+        productId = body?.product_id?.toString?.() ?? body?.product_id;
+      } catch {
+        // ignore
+      }
+    }
 
     if (!productId) {
       throw new Error('product_id is required');
