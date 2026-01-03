@@ -37,6 +37,7 @@ export interface Product {
   inStock?: boolean;
   discount?: number;
   sku?: string;
+  type?: 'simple' | 'variable' | 'grouped' | 'external';
 }
 
 export interface Category {

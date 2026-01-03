@@ -148,6 +148,7 @@ serve(async (req) => {
 
           // Check multiple possible meta keys for additional variation images
           const possibleMetaKeys = [
+            'wpcvi_images', // Primary key from the logs
             '_woo_variation_gallery_images', // Primary key for WooCommerce variation gallery plugin
             '_wc_additional_variation_images',
             'woo_variation_gallery_images',
