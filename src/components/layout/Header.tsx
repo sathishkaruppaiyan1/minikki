@@ -71,9 +71,9 @@ const Header = () => {
       <header className="bg-background z-50">
         <div className="container mx-auto px-4">
           {/* Mobile Header */}
-          <div className="flex lg:hidden items-center justify-between h-20">
+          <div className="flex lg:hidden items-center justify-between h-16">
             {/* Left - Burger & Wishlist */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 className="h-10 w-10 p-0"
@@ -94,13 +94,12 @@ const Header = () => {
               <img
                 src="/logo_new.png"
                 alt="Blacklovers"
-                className="h-24 w-auto"
+                className="h-14 w-auto"
               />
             </Link>
 
-            {/* Right - Cart & Account */}
             {/* Right - Account & Cart */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <Link to="/account">
                 <Button variant="ghost" className="h-10 w-10 p-0" style={{ height: '40px', width: '40px' }}>
                   <AdornUser />
@@ -118,13 +117,13 @@ const Header = () => {
           </div>
 
           {/* Desktop Header */}
-          <div className="hidden lg:flex items-center justify-between h-24">
+          <div className="hidden lg:flex items-center justify-between h-16">
             {/* Logo - Left aligned */}
             <Link to="/" className="flex-shrink-0">
               <img
                 src="/logo_new.png"
                 alt="Blacklovers"
-                className="h-18 w-auto"
+                className="h-14 w-auto"
               />
             </Link>
 
