@@ -55,7 +55,7 @@ const CategoryGrid = () => {
                   <div className="absolute inset-0 bg-foreground/10 group-hover:bg-foreground/0 transition-colors" />
                 </div>
                 <div className="pt-3 bg-white">
-                  <h3 className="text-center font-bold text-sm lg:text-base group-hover:text-primary transition-colors text-black">
+                  <h3 className="text-center font-bold text-base lg:text-lg group-hover:text-primary transition-colors text-black">
                     {category.name}
                   </h3>
                 </div>
