@@ -48,6 +48,7 @@ const Checkout = () => {
   const [formErrors, setFormErrors] = useState({
     phone: "",
     alternatePhone: "",
+    whatsapp: "",
   });
 
   // Set default payment method when gateways are loaded
@@ -70,7 +71,7 @@ const Checkout = () => {
     }));
 
     // Clear error when user starts typing
-    if (name === "phone" || name === "alternatePhone") {
+    if (name === "phone" || name === "alternatePhone" || name === "whatsapp") {
       setFormErrors((prev) => ({
         ...prev,
         [name]: "",
@@ -116,16 +117,30 @@ const Checkout = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     let hasError = false;
-    const newErrors = { phone: "", alternatePhone: "" };
+    const newErrors = { phone: "", alternatePhone: "", whatsapp: "" };
 
-    // Basic digit validation regex for 10-12 digits, though maxLength handles the upper bound in UI
+    // Basic digit validation regex for 10-12 digits
     const phoneRegex = /^\d{10,12}$/;
+    // WhatsApp validation: exactly 10 digits for Indian numbers
+    const whatsappRegex = /^\d{10}$/;
 
     if (formData.phone.length < 10) {
       newErrors.phone = "Please enter at least 10 digits for the phone number.";
       hasError = true;
     } else if (!phoneRegex.test(formData.phone)) {
       newErrors.phone = "Phone number contains invalid characters.";
+      hasError = true;
+    }
+
+    // WhatsApp validation
+    if (!formData.whatsapp) {
+      newErrors.whatsapp = "WhatsApp number is required.";
+      hasError = true;
+    } else if (formData.whatsapp.length !== 10) {
+      newErrors.whatsapp = "Please enter exactly 10 digits for WhatsApp number.";
+      hasError = true;
+    } else if (!whatsappRegex.test(formData.whatsapp)) {
+      newErrors.whatsapp = "WhatsApp number should contain only digits.";
       hasError = true;
     }
 
@@ -140,7 +155,6 @@ const Checkout = () => {
 
     if (hasError) {
       setFormErrors(newErrors);
-      // Optional: Toast for general awareness, but inline errors are better
       toast({
         variant: "destructive",
         title: "Validation Error",
@@ -159,13 +173,29 @@ const Checkout = () => {
     // Simulate order processing
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    toast({
-      title: "Order Placed Successfully!",
-      description: "Thank you for your order. You will receive a confirmation email shortly.",
-    });
+    // Generate order ID
+    const orderId = `BL${Date.now().toString().slice(-8)}`;
+    
+    // Prepare order details for thank you page
+    const orderDetails = {
+      orderId,
+      name: formData.name,
+      address: `${formData.houseNo}, ${formData.street}\n${formData.landmark ? formData.landmark + "\n" : ""}${formData.city}, ${formData.state} - ${formData.pincode}\n${formData.country}`,
+      phone: formData.phone,
+      whatsapp: formData.whatsapp,
+      email: formData.email,
+      items: items.map(item => ({
+        name: item.product.name,
+        quantity: item.quantity,
+        price: item.product.price,
+        size: item.size,
+        color: item.color,
+      })),
+      total: totalPrice * 1.18,
+    };
 
     clearCart();
-    navigate("/");
+    navigate("/thank-you", { state: orderDetails });
     setIsProcessing(false);
   };
 
@@ -379,9 +409,16 @@ const Checkout = () => {
                         onChange={handleInputChange}
                         className="mt-1 rounded-none"
                         required
-                        placeholder="For order updates and tracking"
+                        maxLength={10}
+                        placeholder="10 digit WhatsApp number"
                       />
-                      <p className="text-xs text-muted-foreground mt-1">To receive tracking and order details</p>
+                      {formErrors.whatsapp ? (
+                        <p className="text-sm text-red-500 mt-1 font-medium animate-pulse">
+                          {formErrors.whatsapp}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground mt-1">To receive tracking and order details</p>
+                      )}
                     </div>
 
                     {/* Alternate number */}
