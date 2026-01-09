@@ -175,7 +175,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
       {/* Product info */}
       <div className="mt-3 space-y-2 text-center">
         <Link to={`/product/${product.id}`}>
-          <h3 className="text-base font-medium font-sans hover:text-primary transition-colors line-clamp-1">
+          <h3 className="text-base font-extrabold font-sans hover:text-primary transition-colors line-clamp-1">
             {product.name}
           </h3>
         </Link>
@@ -225,7 +225,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
                     <img
                       src={variationImage}
                       alt={colorName}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover border-2 border-white"
                     />
                   ) : (
                     <div

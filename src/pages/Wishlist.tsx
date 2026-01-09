@@ -129,7 +129,7 @@ const Wishlist = () => {
                       {formatPrice(product.originalPrice)}
                     </span>
                   )}
-                  <span className="font-bold text-primary">{formatPrice(product.price)}</span>
+                  <span className="font-bold text-[#800000]">{formatPrice(product.price)}</span>
                 </div>
 
                 {/* Add to Cart Button */}

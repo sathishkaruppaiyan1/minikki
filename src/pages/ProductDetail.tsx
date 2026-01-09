@@ -314,7 +314,7 @@ const ProductDetail = () => {
               </button>
 
               {selectedColor && (
-                <span className="absolute top-4 left-4 bg-[#8B4B6B] text-white text-sm px-4 py-2 font-medium capitalize">
+                <span className="absolute top-4 left-4 bg-[#8B4B6B] text-white text-xs px-2 py-1 font-medium capitalize">
                   {selectedColor} Color
                 </span>
               )}
@@ -367,14 +367,14 @@ const ProductDetail = () => {
           </div>
 
           {/* Product Info */}
-          <div className="space-y-6">
+          <div className="space-y-2">
             {/* Title & Price */}
             <div>
-              <h1 className="font-heading text-2xl lg:text-3xl font-semibold text-foreground">
+              <h1 className="font-heading text-xl lg:text-2xl font-semibold text-foreground">
                 {product.name}
               </h1>
               <div className="flex items-center gap-3 mt-2">
-                <span className="text-2xl font-bold text-[#800000]">{formatPrice(product.price)}</span>
+                <span className="text-xl font-bold text-[#800000]">{formatPrice(product.price)}</span>
                 {product.originalPrice && product.originalPrice > product.price && (
                   <>
                     <span className="text-muted-foreground/60 line-through text-lg">
@@ -428,7 +428,7 @@ const ProductDetail = () => {
                           <img
                             src={variationImage}
                             alt={colorName}
-                            className="w-full h-full object-cover object-top"
+                            className="w-full h-full object-cover object-top border-2 border-white"
                           />
                         ) : (
                           <div

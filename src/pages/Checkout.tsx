@@ -45,6 +45,10 @@ const Checkout = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isFetchingPincode, setIsFetchingPincode] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [formErrors, setFormErrors] = useState({
+    phone: "",
+    alternatePhone: "",
+  });
 
   // Set default payment method when gateways are loaded
   useEffect(() => {
@@ -64,6 +68,14 @@ const Checkout = () => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+
+    // Clear error when user starts typing
+    if (name === "phone" || name === "alternatePhone") {
+      setFormErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
 
     if (name === "pincode" && value.length === 6) {
       fetchPincodeDetails(value);
@@ -103,6 +115,40 @@ const Checkout = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    let hasError = false;
+    const newErrors = { phone: "", alternatePhone: "" };
+
+    // Basic digit validation regex for 10-12 digits, though maxLength handles the upper bound in UI
+    const phoneRegex = /^\d{10,12}$/;
+
+    if (formData.phone.length < 10) {
+      newErrors.phone = "Please enter at least 10 digits for the phone number.";
+      hasError = true;
+    } else if (!phoneRegex.test(formData.phone)) {
+      newErrors.phone = "Phone number contains invalid characters.";
+      hasError = true;
+    }
+
+    // Since alternatePhone is required
+    if (formData.alternatePhone.length < 10) {
+      newErrors.alternatePhone = "Please enter at least 10 digits for the alternate phone number.";
+      hasError = true;
+    } else if (!phoneRegex.test(formData.alternatePhone)) {
+      newErrors.alternatePhone = "Alternate phone number contains invalid characters.";
+      hasError = true;
+    }
+
+    if (hasError) {
+      setFormErrors(newErrors);
+      // Optional: Toast for general awareness, but inline errors are better
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please correct the errors in the form.",
+      });
+      return;
+    }
+
     setShowConfirmDialog(true);
   };
 
@@ -301,8 +347,14 @@ const Checkout = () => {
                         onChange={handleInputChange}
                         className="mt-1 rounded-none"
                         required
-                        placeholder="10 digit mobile number"
+                        maxLength={12}
+                        placeholder="10-12 digit mobile number"
                       />
+                      {formErrors.phone && (
+                        <p className="text-sm text-red-500 mt-1 font-medium animate-pulse">
+                          {formErrors.phone}
+                        </p>
+                      )}
                     </div>
 
                     {/* WhatsApp number */}
@@ -342,8 +394,15 @@ const Checkout = () => {
                         value={formData.alternatePhone}
                         onChange={handleInputChange}
                         className="mt-1 rounded-none"
-                        placeholder="Optional"
+                        required
+                        maxLength={12}
+                        placeholder="10-12 digit number"
                       />
+                      {formErrors.alternatePhone && (
+                        <p className="text-sm text-red-500 mt-1 font-medium animate-pulse">
+                          {formErrors.alternatePhone}
+                        </p>
+                      )}
                     </div>
 
                     {/* Email ID */}
@@ -526,7 +585,10 @@ const Checkout = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowConfirmDialog(false)}>Edit</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => {
+              setShowConfirmDialog(false);
+              window.scrollTo(0, 0);
+            }}>Edit</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmOrder} className="bg-foreground text-background hover:bg-foreground/90">
               Yes, Place Order
             </AlertDialogAction>

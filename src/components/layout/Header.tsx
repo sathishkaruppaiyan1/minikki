@@ -124,7 +124,7 @@ const Header = () => {
               <img
                 src="/logo_new.png"
                 alt="Blacklovers"
-                className="h-20 w-auto"
+                className="h-18 w-auto"
               />
             </Link>
 
