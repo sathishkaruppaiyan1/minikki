@@ -477,7 +477,7 @@ const ProductDetail = () => {
             )}
 
             {/* Quantity Selector */}
-            <div className="flex items-center gap-4" style={{ paddingTop: '5px' }}>
+            <div className="flex items-center gap-4" style={{ paddingTop: '10px' }}>
               <span className="text-sm font-medium">Quantity</span>
               <div className="flex items-center border border-border bg-background">
                 <button
