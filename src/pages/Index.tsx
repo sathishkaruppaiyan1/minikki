@@ -12,7 +12,9 @@ import LoadingScreen from "@/components/ui/LoadingScreen";
 const Index = () => {
   const { data, isLoading, error } = useWooCommerceProducts({ perPage: 16 });
 
-  const products = data?.products || [];
+  const products = data?.products
+    ? [...data.products].sort((a, b) => parseInt(b.id) - parseInt(a.id))
+    : [];
 
   // Ensure we have 8 products for New Arrivals, duplicating if necessary
   const newArrivalsSource = products.slice(0, 8);

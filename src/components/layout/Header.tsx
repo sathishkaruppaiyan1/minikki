@@ -68,7 +68,7 @@ const Header = () => {
 
   return (
     <>
-      <header className="bg-background sticky top-0 z-50">
+      <header className="bg-background z-50">
         <div className="container mx-auto px-4">
           {/* Mobile Header */}
           <div className="flex lg:hidden items-center justify-between h-20">
@@ -94,7 +94,7 @@ const Header = () => {
               <img
                 src="/logo_new.png"
                 alt="Blacklovers"
-                className="h-28 w-auto"
+                className="h-24 w-auto"
               />
             </Link>
 

@@ -19,7 +19,7 @@ const Collection = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [gridView, setGridView] = useState<"grid" | "list">("grid");
   const [priceRange, setPriceRange] = useState({ min: 0, max: 50000 });
-  const [sortBy, setSortBy] = useState<SortOption>("default");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [inStockOnly, setInStockOnly] = useState(false);
   const [onSaleOnly, setOnSaleOnly] = useState(false);
 
@@ -82,7 +82,7 @@ const Collection = () => {
     setPriceRange({ min: 0, max: 50000 });
     setInStockOnly(false);
     setOnSaleOnly(false);
-    setSortBy("default");
+    setSortBy("newest");
   };
 
   const category = categories.find(c => c.slug === slug);
@@ -107,7 +107,7 @@ const Collection = () => {
   return (
     <Layout>
       {/* Category Header */}
-      <div className="bg-muted py-8 text-center">
+      <div className="bg-[#FFF9E5] py-8 text-center">
         <h1 className="font-heading text-3xl lg:text-4xl">
           {categoryTitle}
         </h1>
@@ -392,8 +392,8 @@ const Collection = () => {
               <LoadingScreen />
             ) : (
               <div className={`grid gap-4 lg:gap-6 ${gridView === "grid"
-                  ? "grid-cols-2 md:grid-cols-3"
-                  : "grid-cols-1"
+                ? "grid-cols-2 md:grid-cols-3"
+                : "grid-cols-1"
                 }`}>
                 {products.map((product) => (
                   <ProductCard key={product.id} product={product} />

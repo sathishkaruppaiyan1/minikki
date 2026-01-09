@@ -31,7 +31,7 @@ const CategoryGrid = () => {
   }
 
   return (
-    <section className="pb-12 lg:pb-16 bg-secondary">
+    <section className="pb-12 lg:pb-16 bg-[#FFF9E5]">
       <div className="container mx-auto px-4">
         <h2 className="font-heading text-2xl lg:text-3xl font-semibold text-center mb-8">
           Shop By Category

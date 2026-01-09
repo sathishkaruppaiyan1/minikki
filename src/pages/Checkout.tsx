@@ -513,7 +513,16 @@ const Checkout = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Details</AlertDialogTitle>
             <AlertDialogDescription className="text-base text-foreground font-medium">
-              We don't provide refund if user enter wrong address or number it's their own risk.
+              <p className="mb-4">
+                Kindly reconfirm your address and phone number before dispatch. If the parcel is returned due to incorrect or incomplete details, the customer will be responsible for the reshipping charges.
+              </p>
+              <div className="bg-muted p-4 rounded-md text-sm space-y-1 text-left">
+                <p className="font-bold">{formData.name}</p>
+                <p>{formData.houseNo}, {formData.street}</p>
+                {formData.landmark && <p>{formData.landmark}</p>}
+                <p>{formData.city}, {formData.state} - {formData.pincode}</p>
+                <p className="font-bold mt-2">Phone: {formData.phone}</p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

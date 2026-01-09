@@ -84,7 +84,7 @@ const CartDrawer = () => {
                       </div>
                       <button
                         onClick={() => removeFromCart(item.product.id)}
-                        className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+                        className="text-xs font-medium border border-border px-2 py-1 hover:bg-muted hover:text-destructive transition-colors flex items-center gap-1"
                       >
                         <Trash2 className="h-3 w-3" />
                         Remove

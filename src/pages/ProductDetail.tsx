@@ -347,14 +347,17 @@ const ProductDetail = () => {
 
             {/* Navigation Dots */}
             {displayImages.length > 1 && (
-              <div className="flex gap-2 justify-center mt-2">
+              <div className="flex gap-2 justify-center mt-4">
                 {displayImages.map((_, index) => (
                   <button
                     key={index}
-                    onClick={() => setActiveImage(index)}
-                    className={`h-2 rounded-full transition-all duration-300 ${activeImage === index
-                      ? "w-6 bg-foreground"
-                      : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                    onClick={() => {
+                      setActiveImage(index);
+                      setTouchStart(null); // Reset touch state on click
+                    }}
+                    className={`rounded-full transition-all duration-300 ${activeImage === index
+                      ? "w-2.5 h-2.5 bg-black ring-1 ring-offset-2 ring-black scale-110"
+                      : "w-2 h-2 bg-gray-300 hover:bg-gray-400"
                       }`}
                     aria-label={`Go to image ${index + 1}`}
                   />
@@ -383,7 +386,7 @@ const ProductDetail = () => {
                   </>
                 )}
               </div>
-              <p className="text-sm text-green-700 font-medium mt-1">Free Shipping</p>
+
             </div>
 
             {/* Color Selection */}
@@ -415,8 +418,8 @@ const ProductDetail = () => {
                           setActiveImage(0);
                           if (showValidation) setShowValidation(false);
                         }}
-                        className={`w-20 h-20 rounded-md border-2 transition-all overflow-hidden ${isSelected
-                          ? "border-black ring-0" // Black active border, no double ring
+                        className={`w-20 h-28 rounded-md border-2 transition-all overflow-hidden ${isSelected
+                          ? "border-[3px] border-black ring-0" // Bolder black active border
                           : "border-border hover:border-foreground"
                           }`}
                         title={colorName}
@@ -425,7 +428,7 @@ const ProductDetail = () => {
                           <img
                             src={variationImage}
                             alt={colorName}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover object-top"
                           />
                         ) : (
                           <div
@@ -463,7 +466,7 @@ const ProductDetail = () => {
                       }}
                       className={`min-w-[48px] h-12 px-3 border text-base font-bold transition-all ${selectedSize === size
                         ? "border-foreground bg-foreground text-background"
-                        : "border-border hover:border-foreground bg-background"
+                        : "border-black hover:bg-muted bg-background"
                         }`}
                     >
                       {size}
@@ -592,12 +595,35 @@ const ProductDetail = () => {
                 )}
               </div>
 
+              {/* Wash Care */}
+              <div className="border-b border-border">
+                <button
+                  onClick={() => toggleSection("washcare")}
+                  className="w-full flex items-center justify-between py-4 text-left"
+                >
+                  <span className="font-medium">Wash Care</span>
+                  {expandedSection === "washcare" ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </button>
+                {expandedSection === "washcare" && (
+                  <div className="pb-4 text-sm text-muted-foreground leading-relaxed space-y-2">
+                    <p>Machine wash cold with like colors.</p>
+                    <p>Do not bleach.</p>
+                    <p>Tumble dry low.</p>
+                    <p>Warm iron if needed.</p>
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         </div>
 
         {/* Customer Reviews Section - Separate Section */}
-        <section className="mt-12 border-t border-border pt-10">
+        <section className="border-t border-border pt-10">
           <h2 className="font-heading text-2xl font-semibold text-center mb-8">Customer Reviews</h2>
 
           <div className="max-w-4xl mx-auto space-y-8">
