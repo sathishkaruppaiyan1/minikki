@@ -62,13 +62,31 @@ serve(async (req) => {
       },
     });
 
+    const contentType = response.headers.get('content-type');
+    const responseText = await response.text();
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('WooCommerce API error:', response.status, errorText);
+      console.error('WooCommerce API error:', response.status, responseText);
       throw new Error(`WooCommerce API error: ${response.status}`);
     }
 
-    const responseData = await response.json();
+    // Sometimes WooCommerce/WordPress returns an HTML login/redirect page with 200 OK.
+    // In that case JSON.parse will fail with "Unexpected token '<'".
+    if (!contentType?.includes('application/json')) {
+      console.error('WooCommerce returned non-JSON response', {
+        status: response.status,
+        contentType,
+        url: response.url,
+        preview: responseText.slice(0, 200),
+      });
+      throw new Error(
+        `WooCommerce did not return JSON (content-type: ${contentType || 'unknown'}). ` +
+          `Check WOOCOMMERCE_STORE_URL (should be your public WordPress site, not an admin/login page) and API access. ` +
+          `Response preview: ${responseText.slice(0, 120)}`
+      );
+    }
+
+    const responseData = JSON.parse(responseText);
     const totalProducts = response.headers.get('X-WP-Total');
     const totalPages = response.headers.get('X-WP-TotalPages');
 

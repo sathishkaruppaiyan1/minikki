@@ -37,13 +37,28 @@ serve(async (req) => {
       },
     });
 
+    const contentType = response.headers.get('content-type');
+    const responseText = await response.text();
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('WooCommerce API error:', response.status, errorText);
+      console.error('WooCommerce API error:', response.status, responseText);
       throw new Error(`WooCommerce API error: ${response.status}`);
     }
 
-    const categories = await response.json();
+    if (!contentType?.includes('application/json')) {
+      console.error('WooCommerce returned non-JSON response', {
+        status: response.status,
+        contentType,
+        url: response.url,
+        preview: responseText.slice(0, 200),
+      });
+      throw new Error(
+        `WooCommerce did not return JSON (content-type: ${contentType || 'unknown'}). ` +
+          `Response preview: ${responseText.slice(0, 120)}`
+      );
+    }
+
+    const categories = JSON.parse(responseText);
 
     console.log(`Fetched ${categories.length} categories`);
 

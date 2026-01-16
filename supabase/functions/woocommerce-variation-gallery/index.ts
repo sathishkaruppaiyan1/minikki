@@ -60,11 +60,27 @@ serve(async (req) => {
       },
     });
 
+    const contentType = variationsResponse.headers.get('content-type');
+    const responseText = await variationsResponse.text();
+
     if (!variationsResponse.ok) {
       throw new Error(`Failed to fetch variations: ${variationsResponse.status}`);
     }
 
-    const variations = await variationsResponse.json();
+    if (!contentType?.includes('application/json')) {
+      console.error('WooCommerce returned non-JSON variations response', {
+        status: variationsResponse.status,
+        contentType,
+        url: variationsResponse.url,
+        preview: responseText.slice(0, 200),
+      });
+      throw new Error(
+        `WooCommerce did not return JSON for variations (content-type: ${contentType || 'unknown'}). ` +
+          `Response preview: ${responseText.slice(0, 120)}`
+      );
+    }
+
+    const variations = JSON.parse(responseText);
     console.log(`Found ${variations.length} variations`);
 
     // Helper to extract gallery image IDs from meta_data
