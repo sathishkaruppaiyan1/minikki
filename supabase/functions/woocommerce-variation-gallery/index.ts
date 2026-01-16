@@ -13,13 +13,16 @@ serve(async (req) => {
   }
 
   try {
-    const storeUrl = Deno.env.get('WOOCOMMERCE_STORE_URL');
+    const storeUrlRaw = Deno.env.get('WOOCOMMERCE_STORE_URL');
     const consumerKey = Deno.env.get('WOOCOMMERCE_CONSUMER_KEY');
     const consumerSecret = Deno.env.get('WOOCOMMERCE_CONSUMER_SECRET');
 
-    if (!storeUrl || !consumerKey || !consumerSecret) {
+    if (!storeUrlRaw || !consumerKey || !consumerSecret) {
       throw new Error('WooCommerce credentials not configured');
     }
+
+    // Remove trailing slash to prevent double slashes in URL
+    const storeUrl = storeUrlRaw.replace(/\/+$/, '');
 
     const authHeader = 'Basic ' + btoa(`${consumerKey}:${consumerSecret}`);
 
