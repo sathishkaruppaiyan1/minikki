@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ChevronRight, ChevronLeft, Truck, Package, ShieldCheck, ChevronDown, ChevronUp, Loader2, Heart, Ruler, Upload, Star } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
-import { useWooCommerceProductById, useWooCommerceProducts } from "@/hooks/useWooCommerce";
+import { useWooCommerceProductById, useWooCommerceProducts, useWooCommerceReviews, useSubmitWooCommerceReview, type CreateReviewData } from "@/hooks/useWooCommerce";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { toast } from "sonner";
@@ -66,6 +66,78 @@ const ProductDetail = () => {
   const [expandedSection, setExpandedSection] = useState<string | null>("description");
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [enhancedVariationImages, setEnhancedVariationImages] = useState<VariationImage[] | null>(null);
+
+  // Review State
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [reviewForm, setReviewForm] = useState({
+    name: "",
+    email: "",
+    title: "",
+    review: ""
+  });
+  const [reviewFiles, setReviewFiles] = useState<string[]>([]); // Base64 strings
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  const { data: reviews, isLoading: isLoadingReviews, refetch: refetchReviews } = useWooCommerceReviews(product?.id || "");
+  const submitReview = useSubmitWooCommerceReview();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      const base64Promises = filesArray.map(file => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      });
+
+      try {
+        const base64Files = await Promise.all(base64Promises);
+        setReviewFiles(prev => [...prev, ...base64Files].slice(0, 5)); // Limit to 5
+      } catch (error) {
+        console.error("Error converting files:", error);
+        toast.error("Error uploading images");
+      }
+    }
+  };
+
+  const handleReviewSubmit = async () => {
+    if (!rating) {
+      toast.error("Please select a rating");
+      return;
+    }
+    if (!reviewForm.name || !reviewForm.email || !reviewForm.review) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      const reviewData: CreateReviewData = {
+        product_id: typeof product?.id === 'string' ? parseInt(product.id) : product?.id || 0,
+        review: `<p>${reviewForm.review}</p>`, // WooCommerce expects HTML usually, or plain text
+        reviewer: reviewForm.name,
+        reviewer_email: reviewForm.email,
+        rating: rating,
+        images: reviewFiles
+      };
+
+      await submitReview(reviewData);
+      toast.success("Review submitted successfully!");
+      setReviewForm({ name: "", email: "", title: "", review: "" });
+      setRating(0);
+      setReviewFiles([]);
+      refetchReviews();
+    } catch (error) {
+      console.error("Review submission failed:", error);
+      toast.error("Failed to submit review. Please try again.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   // Touch swipe state
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -622,41 +694,33 @@ const ProductDetail = () => {
           </div>
         </div>
 
-        {/* Customer Reviews Section - Separate Section */}
+        {/* Customer Reviews Section */}
         <section className="border-t border-border pt-10">
           <h2 className="font-heading text-2xl font-semibold text-center mb-8">Customer Reviews</h2>
 
           <div className="max-w-4xl mx-auto space-y-8">
-            {/* Rating Summary - Shows when reviews exist */}
+            {/* Rating Summary */}
             <div className="flex flex-col md:flex-row gap-8 p-6 bg-muted/30 rounded-xl">
               {/* Overall Rating */}
               <div className="text-center md:border-r md:border-border md:pr-8 md:min-w-[180px]">
-                <div className="text-5xl font-bold">0.0</div>
+                <div className="text-5xl font-bold">{product.averageRating || "0.0"}</div>
                 <div className="flex justify-center gap-1 my-3">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       key={star}
-                      className="w-6 h-6 text-muted-foreground"
+                      className={`w-6 h-6 ${star <= Math.round(parseFloat(product.averageRating + "") || 0) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
                     />
                   ))}
                 </div>
-                <p className="text-sm text-muted-foreground">No reviews yet</p>
+                <p className="text-sm text-muted-foreground">{product.ratingCount || 0} reviews</p>
               </div>
 
-              {/* Rating Breakdown */}
+              {/* Rating Breakdown - Placeholder Logic (WC API doesn't always return breakdown) */}
               <div className="flex-1 space-y-3">
-                {[5, 4, 3, 2, 1].map((rating) => (
-                  <div key={rating} className="flex items-center gap-3 text-sm">
-                    <span className="w-12 font-medium">{rating} Star</span>
-                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-yellow-400 rounded-full transition-all"
-                        style={{ width: "0%" }}
-                      />
-                    </div>
-                    <span className="w-8 text-muted-foreground text-right">0</span>
-                  </div>
-                ))}
+                {/*  If we had breakdown data, we'd map it here. For now static or hidden if no data */}
+                <div className="text-sm text-muted-foreground text-center italic">
+                  Rating breakdown available for verified purchases.
+                </div>
               </div>
             </div>
 
@@ -667,10 +731,20 @@ const ProductDetail = () => {
               {/* Star Rating Input */}
               <div className="mb-5">
                 <p className="text-sm font-medium mb-2">Your Rating *</p>
-                <div className="flex gap-1">
+                <div className="flex gap-1" onMouseLeave={() => setHoverRating(0)}>
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <button key={star} className="p-1 hover:scale-110 transition-transform">
-                      <Star className="w-8 h-8 text-muted-foreground hover:fill-yellow-400 hover:text-yellow-400 transition-colors" />
+                    <button
+                      key={star}
+                      className="p-1 transition-transform hover:scale-110"
+                      onMouseEnter={() => setHoverRating(star)}
+                      onClick={() => setRating(star)}
+                    >
+                      <Star
+                        className={`w-8 h-8 transition-colors ${star <= (hoverRating || rating)
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-muted-foreground"
+                          }`}
+                      />
                     </button>
                   ))}
                 </div>
@@ -682,6 +756,8 @@ const ProductDetail = () => {
                 <input
                   type="text"
                   placeholder="Give your review a title"
+                  value={reviewForm.title}
+                  onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })}
                   className="w-full p-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
                 />
               </div>
@@ -691,6 +767,8 @@ const ProductDetail = () => {
                 <p className="text-sm font-medium mb-2">Your Review *</p>
                 <textarea
                   placeholder="Share your experience with this product..."
+                  value={reviewForm.review}
+                  onChange={(e) => setReviewForm({ ...reviewForm, review: e.target.value })}
                   className="w-full p-3 border border-border rounded-lg text-sm resize-none h-32 focus:outline-none focus:ring-2 focus:ring-foreground/20"
                 />
               </div>
@@ -699,13 +777,32 @@ const ProductDetail = () => {
               <div className="mb-5">
                 <p className="text-sm font-medium mb-2">Add Photos/Videos</p>
                 <div className="flex gap-3 flex-wrap">
-                  <label className="w-24 h-24 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-foreground hover:bg-muted/50 transition-all">
-                    <Upload className="w-6 h-6 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground mt-1">Upload</span>
-                    <input type="file" accept="image/*,video/*" multiple className="hidden" />
-                  </label>
+                  {reviewFiles.map((file, idx) => (
+                    <div key={idx} className="relative w-24 h-24 border border-border rounded-xl overflow-hidden">
+                      <img src={file} alt="preview" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setReviewFiles(files => files.filter((_, i) => i !== idx))}
+                        className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5"
+                      >
+                        <ChevronDown className="w-4 h-4 rotate-45" /> {/* Close icon substitute */}
+                      </button>
+                    </div>
+                  ))}
+                  {reviewFiles.length < 5 && (
+                    <label className="w-24 h-24 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-foreground hover:bg-muted/50 transition-all">
+                      <Upload className="w-6 h-6 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground mt-1">Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleFileChange}
+                      />
+                    </label>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">Upload up to 5 images or 1 video (max 10MB each)</p>
+                <p className="text-xs text-muted-foreground mt-2">Upload up to 5 images (max 10MB each)</p>
               </div>
 
               {/* Name & Email */}
@@ -715,6 +812,8 @@ const ProductDetail = () => {
                   <input
                     type="text"
                     placeholder="Enter your name"
+                    value={reviewForm.name}
+                    onChange={(e) => setReviewForm({ ...reviewForm, name: e.target.value })}
                     className="w-full p-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
                   />
                 </div>
@@ -723,12 +822,19 @@ const ProductDetail = () => {
                   <input
                     type="email"
                     placeholder="Enter your email"
+                    value={reviewForm.email}
+                    onChange={(e) => setReviewForm({ ...reviewForm, email: e.target.value })}
                     className="w-full p-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
                   />
                 </div>
               </div>
 
-              <Button className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 text-base font-semibold">
+              <Button
+                onClick={handleReviewSubmit}
+                disabled={isSubmittingReview}
+                className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 text-base font-semibold"
+              >
+                {isSubmittingReview ? <Loader2 className="animate-spin mr-2" /> : null}
                 Submit Review
               </Button>
             </div>
@@ -736,21 +842,38 @@ const ProductDetail = () => {
             {/* Customer Reviews List */}
             <div>
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold">All Reviews (0)</h3>
-                <select className="px-3 py-2 border border-border rounded-lg text-sm focus:outline-none">
-                  <option>Most Recent</option>
-                  <option>Highest Rated</option>
-                  <option>Lowest Rated</option>
-                  <option>With Photos</option>
-                </select>
+                <h3 className="text-lg font-semibold">All Reviews ({reviews?.length || 0})</h3>
               </div>
 
-              {/* Empty State */}
-              <div className="text-center py-12 border border-border rounded-xl bg-muted/20">
-                <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h4 className="font-medium text-lg mb-2">No Reviews Yet</h4>
-                <p className="text-sm text-muted-foreground mb-4">Be the first to review this product!</p>
-              </div>
+              {isLoadingReviews ? (
+                <div className="text-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+                </div>
+              ) : reviews && reviews.length > 0 ? (
+                <div className="space-y-6">
+                  {reviews.map((review: any) => (
+                    <div key={review.id} className="border-b border-border pb-6">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <Star key={star} className={`w-4 h-4 ${star <= review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
+                          ))}
+                        </div>
+                        <span className="font-semibold">{review.reviewer}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(review.date_created).toLocaleDateString()}</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: review.review }} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Empty State */
+                <div className="text-center py-12 border border-border rounded-xl bg-muted/20">
+                  <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h4 className="font-medium text-lg mb-2">No Reviews Yet</h4>
+                  <p className="text-sm text-muted-foreground mb-4">Be the first to review this product!</p>
+                </div>
+              )}
             </div>
           </div>
         </section>
