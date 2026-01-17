@@ -73,19 +73,23 @@ serve(async (req) => {
 
             console.log(`Submitting review for product ${product_id} by ${reviewer}`);
 
-            // Handle Image Uploads (Append to review content as HTML for now)
-            // Note: Proper WC image reviews usually need a plugin or specific meta handling.
-            // We will append base64 images as <img> tags to the review content so they appear.
-            // Ideally, these should be uploaded to WP Media library first, but that's complex via basic API.
+            // WooCommerce has a strict column length limit for reviews
+            // We cannot embed base64 images directly in the review content
+            // Images should be handled separately via WordPress Media Library
+            // For now, we'll just use the text review and ignore images to prevent the length error
+            
+            // Truncate review content if too long (WC typically allows ~65535 chars but safer to limit)
+            const MAX_REVIEW_LENGTH = 5000;
             let finalReviewContent = review;
+            
+            if (finalReviewContent.length > MAX_REVIEW_LENGTH) {
+                finalReviewContent = finalReviewContent.substring(0, MAX_REVIEW_LENGTH) + '...';
+                console.log('Review content truncated to', MAX_REVIEW_LENGTH, 'characters');
+            }
 
+            // Log if images were provided but we're not processing them
             if (images && Array.isArray(images) && images.length > 0) {
-                finalReviewContent += "<br/><div class='customer-images'>";
-                images.forEach(img => {
-                    // img is base64 string
-                    finalReviewContent += `<img src="${img}" style="max-width: 100px; height: auto; margin: 5px;" />`;
-                });
-                finalReviewContent += "</div>";
+                console.log(`Note: ${images.length} image(s) provided but not embedded (WC content length limit). Consider WordPress Media Library integration for image reviews.`);
             }
 
             const reviewData = {
@@ -94,7 +98,7 @@ serve(async (req) => {
                 reviewer,
                 reviewer_email,
                 rating,
-                verified: false // Set to true if we can verify purchase, but for guest review safe to default false or omit
+                verified: false
             };
 
             const apiUrl = `${storeUrl}/wp-json/wc/v3/products/reviews`;
