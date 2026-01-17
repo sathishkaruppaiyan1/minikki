@@ -38,6 +38,8 @@ export interface Product {
   discount?: number;
   sku?: string;
   type?: 'simple' | 'variable' | 'grouped' | 'external';
+  averageRating?: string;
+  ratingCount?: number;
 }
 
 export interface Category {
