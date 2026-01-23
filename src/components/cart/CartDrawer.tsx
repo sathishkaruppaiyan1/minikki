@@ -51,7 +51,7 @@ const CartDrawer = () => {
                 <div key={`${item.product.id}-${item.size}`} className="flex gap-4 pb-4 border-b border-border">
                   <div className="w-20 h-24 bg-muted flex-shrink-0 overflow-hidden">
                     <img
-                      src={item.product.images[0] || "/placeholder.svg"}
+                      src={item.image || item.product.images[0] || "/placeholder.svg"}
                       alt={item.product.name}
                       className="w-full h-full object-cover"
                     />
@@ -69,21 +69,21 @@ const CartDrawer = () => {
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center border border-border">
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.size, item.color)}
                           className="w-8 h-8 flex items-center justify-center hover:bg-muted transition-colors"
                         >
                           <Minus className="h-3 w-3" />
                         </button>
                         <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.size, item.color)}
                           className="w-8 h-8 flex items-center justify-center hover:bg-muted transition-colors"
                         >
                           <Plus className="h-3 w-3" />
                         </button>
                       </div>
                       <button
-                        onClick={() => removeFromCart(item.product.id)}
+                        onClick={() => removeFromCart(item.product.id, item.size, item.color)}
                         className="text-xs font-medium border border-border px-2 py-1 hover:bg-muted hover:text-destructive transition-colors flex items-center gap-1"
                       >
                         <Trash2 className="h-3 w-3" />

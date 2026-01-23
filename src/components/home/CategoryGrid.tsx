@@ -3,8 +3,12 @@ import { useWooCommerceCategories } from "@/hooks/useWooCommerce";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const CategoryGrid = () => {
-  const { data, isLoading } = useWooCommerceCategories();
+  const { data, isLoading, error } = useWooCommerceCategories();
   const categories = data?.categories || [];
+
+  if (error) {
+    console.error("CategoryGrid error:", error);
+  }
 
   if (isLoading) {
     return (
@@ -50,7 +54,15 @@ const CategoryGrid = () => {
                   <img
                     src={category.image}
                     alt={category.name}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (target.src !== "/placeholder.svg") {
+                        target.src = "/placeholder.svg";
+                      }
+                    }}
                   />
                   <div className="absolute inset-0 bg-foreground/10 group-hover:bg-foreground/0 transition-colors" />
                 </div>

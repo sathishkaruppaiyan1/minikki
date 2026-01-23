@@ -3,7 +3,15 @@
     "allow": [
       "Bash(npm run dev:*)",
       "Bash(cat:*)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(timeout:*)",
+      "Bash(npx supabase functions deploy:*)",
+      "Bash(npx supabase:*)",
+      "Bash(node test-variation.js:*)",
+      "Bash(del \"C:\\\\Users\\\\sathi\\\\Music\\\\pixel-perfect-shop-1\\\\test-variation.js\")",
+      "Bash(powershell -Command \"$env:VITE_SUPABASE_URL = \\(Get-Content .env | Select-String ''VITE_SUPABASE_URL'' | ForEach-Object { $_Line.Split\\(''=''\\)[1] }\\); Write-Host $env:VITE_SUPABASE_URL\")",
+      "Bash(powershell -Command \"$start = Get-Date; $response = Invoke-WebRequest -Uri ''https://irsipvqjpuuesbwoygsg.supabase.co/functions/v1/woocommerce-products?per_page=8&skip_variations=true'' -Headers @{''apikey''=''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlyc2lwdnFqcHV1ZXNid295Z3NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2NDA2ODgsImV4cCI6MjA4NDIxNjY4OH0.PQEGYLcbyRssfkLO1dqmngNsBO284kVSWEbNNgCP5ho''}; $end = Get-Date; $duration = \\($end - $start\\).TotalSeconds; Write-Host ''Products API \\(skip variations\\): '' $duration '' seconds''; Write-Host ''Status:'' $response.StatusCode\")",
+      "Bash(curl:*)"
     ]
   }
 }

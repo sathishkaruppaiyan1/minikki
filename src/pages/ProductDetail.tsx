@@ -4,12 +4,11 @@ import { ChevronRight, ChevronLeft, Truck, Package, ShieldCheck, ChevronDown, Ch
 import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
-import { useWooCommerceProductById, useWooCommerceProducts, useWooCommerceReviews, useSubmitWooCommerceReview, type CreateReviewData } from "@/hooks/useWooCommerce";
+import { useWooCommerceProductById, useWooCommerceProductGallery, useWooCommerceProducts, useWooCommerceReviews, useSubmitWooCommerceReview, type CreateReviewData } from "@/hooks/useWooCommerce";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { toast } from "sonner";
 import type { Product } from "@/types/product";
-import { supabase } from "@/integrations/supabase/client";
 
 // Common color name to hex mapping
 const colorNameToHex: Record<string, string> = {
@@ -52,7 +51,11 @@ interface VariationImage {
 
 const ProductDetail = () => {
   const { id } = useParams();
+  // Progressive loading: Fast initial load with basic variation images
   const { data: product, isLoading, error } = useWooCommerceProductById(id || "");
+  // Background load: Full gallery images (only for variable products)
+  const { data: productWithGallery } = useWooCommerceProductGallery(id || "", product?.type);
+
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const navigate = useNavigate();
@@ -144,10 +147,12 @@ const ProductDetail = () => {
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const minSwipeDistance = 50;
 
-  // Fetch recommended products from same category
+  // Fetch recommended products from same category - skip variations for faster loading
   const { data: recommendedData } = useWooCommerceProducts({
     category: product?.categoryId,
-    perPage: 4,
+    perPage: 5, // Fetch 5 to have enough after filtering out current product
+    skipVariations: true,
+    enabled: !!product?.categoryId, // Only fetch when we have the category
   });
 
   const recommendedProducts = recommendedData?.products?.filter(
@@ -181,40 +186,21 @@ const ProductDetail = () => {
     setActiveImage(0);
   }, [selectedColor]);
 
-  // Fetch variation gallery images from backend function
+  // Progressive loading for variation images:
+  // 1. First: Use basic variation images from fast load (1 image per color)
+  // 2. Then: Upgrade to full gallery images when background load completes
   useEffect(() => {
-    if (!product?.id || product.type !== "variable") return;
-
-    const fetchVariationGalleryImages = async () => {
-      try {
-        console.log("Fetching variation gallery for product:", product.id);
-
-        const { data, error } = await supabase.functions.invoke("woocommerce-variation-gallery", {
-          body: { product_id: product.id },
-        });
-
-        if (error) {
-          console.error("Variation gallery invoke error:", error);
-          return;
-        }
-
-        console.log("Variation gallery response:", data);
-
-        if (data?.variationGallery && Array.isArray(data.variationGallery) && data.variationGallery.length > 0) {
-          const variationImagesResult: VariationImage[] = data.variationGallery.map((item: any) => ({
-            color: item.color,
-            images: Array.isArray(item.images) ? item.images : [],
-          }));
-
-          setEnhancedVariationImages(variationImagesResult);
-        }
-      } catch (e) {
-        console.error("Failed to fetch variation gallery images:", e);
-      }
-    };
-
-    fetchVariationGalleryImages();
-  }, [product?.id, product?.type]);
+    // If we have full gallery data, use that (has multiple images per color)
+    if (productWithGallery?.variationImages && productWithGallery.variationImages.length > 0) {
+      setEnhancedVariationImages(productWithGallery.variationImages);
+    }
+    // Otherwise use basic variation images from fast load
+    else if (product?.variationImages && product.variationImages.length > 0) {
+      setEnhancedVariationImages(product.variationImages);
+    } else {
+      setEnhancedVariationImages(null);
+    }
+  }, [product?.variationImages, productWithGallery?.variationImages]);
 
   // Touch swipe handlers
   const onTouchStart = (e: React.TouchEvent) => {
@@ -245,39 +231,86 @@ const ProductDetail = () => {
   const getDisplayImages = (): string[] => {
     if (!product) return ["/placeholder.svg"];
 
-    const sourceImages = enhancedVariationImages || product.variationImages;
+    // Use enhanced variation images if available and not empty, otherwise fallback to product variation images
+    const sourceImages = (enhancedVariationImages && enhancedVariationImages.length > 0) 
+      ? enhancedVariationImages 
+      : (product.variationImages && product.variationImages.length > 0 ? product.variationImages : null);
 
-    if (selectedColor && sourceImages) {
+    if (selectedColor && sourceImages && sourceImages.length > 0) {
+      // Normalize color name for matching (trim and lowercase)
+      const normalizedSelectedColor = selectedColor.trim().toLowerCase();
+
       // Try to find exact match with color AND size
       if (selectedSize) {
+        const normalizedSelectedSize = selectedSize.trim().toLowerCase();
         const exactMatch = sourceImages.find((v: VariationImage) => {
-          const colorMatch = v.color.toLowerCase() === selectedColor.toLowerCase();
-          const sizeAttr = v.attributes?.find((a) => a.name.toLowerCase() === "size");
-          const sizeMatch = sizeAttr?.option.toLowerCase() === selectedSize.toLowerCase();
+          const normalizedColor = (v.color || '').trim().toLowerCase();
+          const colorMatch = normalizedColor === normalizedSelectedColor;
+          const sizeAttr = v.attributes?.find((a) => a.name?.toLowerCase() === "size");
+          const sizeMatch = sizeAttr?.option?.trim().toLowerCase() === normalizedSelectedSize;
           return colorMatch && sizeMatch;
         });
 
-        if (exactMatch && exactMatch.images.length > 0) {
-          return exactMatch.images.filter(Boolean);
+        if (exactMatch && exactMatch.images && Array.isArray(exactMatch.images) && exactMatch.images.length > 0) {
+          const filtered = exactMatch.images.filter((url: any) => url && typeof url === 'string' && url.trim());
+          if (filtered.length > 0) {
+            return filtered;
+          }
         }
       }
 
-      // Fallback to just color match
-      const variationMatch = sourceImages.find(
-        (v: VariationImage) => v.color.toLowerCase() === selectedColor.toLowerCase()
-      );
-      if (variationMatch && variationMatch.images.length > 0) {
-        return variationMatch.images.filter(Boolean);
+      // Fallback to just color match (case-insensitive, trimmed)
+      const variationMatch = sourceImages.find((v: VariationImage) => {
+        const normalizedColor = (v.color || '').trim().toLowerCase();
+        return normalizedColor === normalizedSelectedColor;
+      });
+      
+      if (variationMatch && variationMatch.images && Array.isArray(variationMatch.images) && variationMatch.images.length > 0) {
+        const filtered = variationMatch.images.filter((url: any) => url && typeof url === 'string' && url.trim());
+        if (filtered.length > 0) {
+          return filtered;
+        }
       }
     }
-    return product.images?.length > 0 ? product.images.filter(Boolean) : ["/placeholder.svg"];
+    
+    // Final fallback to product images
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      const filtered = product.images.filter((url: any) => url && typeof url === 'string' && url.trim());
+      if (filtered.length > 0) {
+        return filtered;
+      }
+    }
+    
+    return ["/placeholder.svg"];
   };
 
   if (isLoading) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-16 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid lg:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <div className="aspect-[3/4] bg-muted animate-pulse rounded-lg" />
+              <div className="flex gap-2 justify-center">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="w-2 h-2 bg-muted rounded-full animate-pulse" />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-6">
+              <div className="h-8 w-3/4 bg-muted animate-pulse rounded" />
+              <div className="h-6 w-1/4 bg-muted animate-pulse rounded" />
+              <div className="space-y-2">
+                <div className="h-4 w-full bg-muted animate-pulse rounded" />
+                <div className="h-4 w-full bg-muted animate-pulse rounded" />
+                <div className="h-4 w-2/3 bg-muted animate-pulse rounded" />
+              </div>
+              <div className="grid grid-cols-2 gap-4 pt-4">
+                <div className="h-12 bg-muted animate-pulse rounded" />
+                <div className="h-12 bg-muted animate-pulse rounded" />
+              </div>
+            </div>
+          </div>
         </div>
       </Layout>
     );
@@ -373,8 +406,17 @@ const ProductDetail = () => {
               <img
                 src={currentActiveImage}
                 alt={product.name}
+                loading="eager"
+                decoding="async"
                 className="w-full h-full object-cover pointer-events-none select-none"
                 draggable={false}
+                onError={(e) => {
+                  // Fallback to placeholder if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  if (target.src !== "/placeholder.svg") {
+                    target.src = "/placeholder.svg";
+                  }
+                }}
               />
 
               {/* Wishlist Icon - Top Right */}
@@ -476,9 +518,12 @@ const ProductDetail = () => {
                     const colorHex = typeof color === "string" ? getColorHex(color) : color.hex;
                     const isSelected = selectedColor?.toLowerCase() === colorName.toLowerCase();
 
-                    // Get variation image for this color
-                    const variationForColor = product.variationImages?.find(
-                      (v) => v.color.toLowerCase() === colorName.toLowerCase()
+                    // Get variation image for this color (check enhanced first, then fallback)
+                    const sourceVariations = (enhancedVariationImages && enhancedVariationImages.length > 0)
+                      ? enhancedVariationImages
+                      : product.variationImages;
+                    const variationForColor = sourceVariations?.find(
+                      (v) => (v.color || '').trim().toLowerCase() === colorName.trim().toLowerCase()
                     );
                     const variationImage = variationForColor?.images?.[0];
 
@@ -700,29 +745,58 @@ const ProductDetail = () => {
 
           <div className="max-w-4xl mx-auto space-y-8">
             {/* Rating Summary */}
-            <div className="flex flex-col md:flex-row gap-8 p-6 bg-muted/30 rounded-xl">
-              {/* Overall Rating */}
-              <div className="text-center md:border-r md:border-border md:pr-8 md:min-w-[180px]">
-                <div className="text-5xl font-bold">{product.averageRating || "0.0"}</div>
-                <div className="flex justify-center gap-1 my-3">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`w-6 h-6 ${star <= Math.round(parseFloat(product.averageRating + "") || 0) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
-                    />
-                  ))}
-                </div>
-                <p className="text-sm text-muted-foreground">{product.ratingCount || 0} reviews</p>
-              </div>
+            {(() => {
+              // Calculate exact average rating and count from reviews
+              const approvedReviews = reviews?.filter((r: any) => r.status === 'approved') || [];
+              const reviewCount = approvedReviews.length;
+              const totalRating = approvedReviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0);
+              const averageRating = reviewCount > 0 ? (totalRating / reviewCount).toFixed(1) : "0.0";
+              const roundedAverage = Math.round(parseFloat(averageRating));
 
-              {/* Rating Breakdown - Placeholder Logic (WC API doesn't always return breakdown) */}
-              <div className="flex-1 space-y-3">
-                {/*  If we had breakdown data, we'd map it here. For now static or hidden if no data */}
-                <div className="text-sm text-muted-foreground text-center italic">
-                  Rating breakdown available for verified purchases.
+              // Calculate rating breakdown
+              const ratingBreakdown = [5, 4, 3, 2, 1].map(rating => {
+                const count = approvedReviews.filter((r: any) => r.rating === rating).length;
+                const percentage = reviewCount > 0 ? (count / reviewCount) * 100 : 0;
+                return { rating, count, percentage };
+              });
+
+              return (
+                <div className="flex flex-col md:flex-row gap-8 p-6 bg-muted/30 rounded-xl">
+                  {/* Overall Rating */}
+                  <div className="text-center md:border-r md:border-border md:pr-8 md:min-w-[180px]">
+                    <div className="text-5xl font-bold">{averageRating}</div>
+                    <div className="flex justify-center gap-1 my-3">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-6 h-6 ${star <= roundedAverage ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{reviewCount} {reviewCount === 1 ? 'review' : 'reviews'}</p>
+                  </div>
+
+                  {/* Rating Breakdown */}
+                  <div className="flex-1 space-y-3">
+                    {ratingBreakdown.map(({ rating, count, percentage }) => (
+                      <div key={rating} className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 min-w-[80px]">
+                          <span className="text-sm font-medium w-4">{rating}</span>
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                        </div>
+                        <div className="flex-1 bg-background rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-yellow-400 h-full transition-all"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-muted-foreground min-w-[40px] text-right">{count}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Write a Review Section */}
             <div className="border border-border rounded-xl p-6">
@@ -777,24 +851,36 @@ const ProductDetail = () => {
               <div className="mb-5">
                 <p className="text-sm font-medium mb-2">Add Photos/Videos</p>
                 <div className="flex gap-3 flex-wrap">
-                  {reviewFiles.map((file, idx) => (
-                    <div key={idx} className="relative w-24 h-24 border border-border rounded-xl overflow-hidden">
-                      <img src={file} alt="preview" className="w-full h-full object-cover" />
-                      <button
-                        onClick={() => setReviewFiles(files => files.filter((_, i) => i !== idx))}
-                        className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5"
-                      >
-                        <ChevronDown className="w-4 h-4 rotate-45" /> {/* Close icon substitute */}
-                      </button>
-                    </div>
-                  ))}
+                  {reviewFiles.map((file, idx) => {
+                    const isVideo = file.startsWith('data:video/');
+                    return (
+                      <div key={idx} className="relative w-24 h-24 border border-border rounded-xl overflow-hidden">
+                        {isVideo ? (
+                          <video src={file} className="w-full h-full object-cover" muted />
+                        ) : (
+                          <img src={file} alt="preview" className="w-full h-full object-cover" />
+                        )}
+                        <button
+                          onClick={() => setReviewFiles(files => files.filter((_, i) => i !== idx))}
+                          className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5"
+                        >
+                          <ChevronDown className="w-4 h-4 rotate-45" />
+                        </button>
+                        {isVideo && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <span className="text-white text-xs font-medium">VIDEO</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   {reviewFiles.length < 5 && (
                     <label className="w-24 h-24 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-foreground hover:bg-muted/50 transition-all">
                       <Upload className="w-6 h-6 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground mt-1">Upload</span>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,video/*"
                         multiple
                         className="hidden"
                         onChange={handleFileChange}
@@ -802,7 +888,7 @@ const ProductDetail = () => {
                     </label>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">Upload up to 5 images (max 10MB each)</p>
+                <p className="text-xs text-muted-foreground mt-2">Upload up to 5 images or videos (max 10MB each)</p>
               </div>
 
               {/* Name & Email */}
@@ -863,6 +949,37 @@ const ProductDetail = () => {
                         <span className="text-xs text-muted-foreground">{new Date(review.date_created).toLocaleDateString()}</span>
                       </div>
                       <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: review.review }} />
+
+                      {/* Display review media (images/videos) */}
+                      {review.media && review.media.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {review.media.map((mediaUrl: string, idx: number) => {
+                            const isVideo = mediaUrl.match(/\.(mp4|webm|ogg|mov)$/i);
+                            return isVideo ? (
+                              <video
+                                key={idx}
+                                src={mediaUrl}
+                                controls
+                                className="w-32 h-32 object-cover rounded-lg border border-border"
+                              />
+                            ) : (
+                              <a
+                                key={idx}
+                                href={mediaUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block"
+                              >
+                                <img
+                                  src={mediaUrl}
+                                  alt={`Review image ${idx + 1}`}
+                                  className="w-24 h-24 object-cover rounded-lg border border-border hover:opacity-90 transition-opacity"
+                                />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

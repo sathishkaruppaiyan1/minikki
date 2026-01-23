@@ -62,7 +62,7 @@ const Cart = () => {
                       <div className="flex gap-4">
                         <div className="w-24 h-32 bg-muted flex-shrink-0 overflow-hidden">
                           <img
-                            src={item.product.images[0] || "/placeholder.svg"}
+                            src={item.image || item.product.images[0] || "/placeholder.svg"}
                             alt={item.product.name}
                             className="w-full h-full object-cover"
                           />
@@ -80,7 +80,7 @@ const Cart = () => {
                             </p>
                           )}
                           <button
-                            onClick={() => removeFromCart(item.product.id)}
+                            onClick={() => removeFromCart(item.product.id, item.size, item.color)}
                             className="text-sm text-muted-foreground hover:text-destructive transition-colors mt-3 flex items-center gap-2 group border border-black rounded-none px-2 py-1"
                           >
                             <Trash2 className="h-4 w-4 group-hover:text-destructive transition-colors" />
@@ -100,14 +100,14 @@ const Cart = () => {
                     <div className="col-span-4 md:col-span-2 flex justify-center">
                       <div className="flex items-center border border-border">
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.size, item.color)}
                           className="w-8 h-8 flex items-center justify-center hover:bg-muted transition-colors"
                         >
                           <Minus className="h-3 w-3" />
                         </button>
                         <span className="w-10 text-center font-bold text-sm">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.size, item.color)}
                           className="w-8 h-8 flex items-center justify-center hover:bg-muted transition-colors"
                         >
                           <Plus className="h-3 w-3" />

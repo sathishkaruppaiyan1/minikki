@@ -22,7 +22,7 @@ import { SearchProvider } from "./contexts/SearchContext";
 import CartDrawer from "./components/cart/CartDrawer";
 import QuickViewModal from "./components/product/QuickViewModal";
 import SearchModal from "./components/search/SearchModal";
-import LoadingScreen from "./components/ui/LoadingScreen";
+import RouteLoading from "./components/ui/RouteLoading";
 
 // Lazy load pages
 const Index = lazy(() => import("./pages/Index"));
@@ -33,6 +33,7 @@ const Wishlist = lazy(() => import("./pages/Wishlist"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const ThankYou = lazy(() => import("./pages/ThankYou"));
 const Account = lazy(() => import("./pages/Account"));
+const WordPressPage = lazy(() => import("./pages/WordPressPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -48,7 +49,7 @@ const App = () => (
               <Sonner />
               <BrowserRouter>
                 <ScrollToTop />
-                <Suspense fallback={<LoadingScreen />}>
+                <Suspense fallback={<RouteLoading />}>
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/collections/:slug" element={<Collection />} />
@@ -58,6 +59,14 @@ const App = () => (
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/thank-you" element={<ThankYou />} />
                     <Route path="/account" element={<Account />} />
+                    {/* WordPress Pages - uses :slug param */}
+                    <Route path="/page/:slug" element={<WordPressPage />} />
+                    {/* Shortcut routes for common pages */}
+                    <Route path="/about" element={<WordPressPage />} />
+                    <Route path="/terms" element={<WordPressPage />} />
+                    <Route path="/shipping" element={<WordPressPage />} />
+                    <Route path="/privacy" element={<WordPressPage />} />
+                    <Route path="/refund" element={<WordPressPage />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

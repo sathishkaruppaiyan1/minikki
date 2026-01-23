@@ -24,13 +24,23 @@ const Collection = () => {
   const [onSaleOnly, setOnSaleOnly] = useState(false);
 
   const { data: categoriesData, isLoading: categoriesLoading } = useWooCommerceCategories();
+  const categories = categoriesData?.categories || [];
+
+  // Find the category ID from slug - WooCommerce API requires ID, not slug
+  const currentCategory = categories.find(c => c.slug === slug);
+  const categoryId = currentCategory?.id?.toString();
+
+  // Skip variations for collection list view - only load when viewing product detail
+  // Wait for categories to load before fetching products if we need a category filter
+  const shouldFetchProducts = slug === "all" || !!categoryId || !categoriesLoading;
   const { data: productsData, isLoading: productsLoading } = useWooCommerceProducts({
-    category: slug === "all" ? undefined : slug,
+    category: slug === "all" ? undefined : categoryId,
     search: searchQuery,
     perPage: 50,
+    skipVariations: true, // Skip variations for faster list loading
+    enabled: shouldFetchProducts,
   });
 
-  const categories = categoriesData?.categories || [];
   const rawProducts = productsData?.products || [];
   const isLoading = categoriesLoading || productsLoading;
 
@@ -85,10 +95,9 @@ const Collection = () => {
     setSortBy("newest");
   };
 
-  const category = categories.find(c => c.slug === slug);
   const categoryTitle = searchQuery
     ? `Search results for "${searchQuery}"`
-    : category?.name || (slug === "all" ? "All Products" : slug);
+    : currentCategory?.name || (slug === "all" ? "All Products" : slug);
 
   const hasActiveFilters = inStockOnly || onSaleOnly || priceRange.min > 0 || priceRange.max < 50000;
 

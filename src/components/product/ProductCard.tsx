@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, memo } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Product, ProductColor } from "@/types/product";
@@ -75,7 +75,7 @@ const getColorName = (color: ProductColor | string): string => {
   return color;
 };
 
-const ProductCard = ({ product }: ProductCardProps) => {
+const ProductCard = memo(({ product }: ProductCardProps) => {
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
@@ -86,8 +86,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
   const inWishlist = isInWishlist(product.id);
 
-  // Get current display image based on selected color
-  const getCurrentImage = (): string => {
+  // Memoize current image to prevent recalculation
+  const currentImage = useMemo(() => {
     if (selectedColor && product.variationImages) {
       const variationMatch = product.variationImages.find(
         (v) => v.color.toLowerCase() === selectedColor.toLowerCase()
@@ -97,7 +97,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
       }
     }
     return product.images[0] || "/placeholder.svg";
-  };
+  }, [selectedColor, product.variationImages, product.images]);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -118,9 +118,18 @@ const ProductCard = ({ product }: ProductCardProps) => {
       <div className="relative overflow-hidden bg-muted aspect-[1/1.5]">
         <Link to={`/product/${product.id}`}>
           <img
-            src={getCurrentImage()}
+            src={currentImage}
             alt={product.name}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={(e) => {
+              // Fallback to placeholder if image fails to load
+              const target = e.target as HTMLImageElement;
+              if (target.src !== "/placeholder.svg") {
+                target.src = "/placeholder.svg";
+              }
+            }}
           />
         </Link>
 
@@ -195,7 +204,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
         </div>
 
         {/* Color swatches with variation images */}
-        {product.colors && product.colors.length > 1 && (
+        {product.colors && product.colors.length > 0 && (
           <div className="flex justify-center gap-2 w-full">
             {product.colors.slice(0, 4).map((color, index) => {
               const colorName = getColorName(color);
@@ -225,6 +234,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
                     <img
                       src={variationImage}
                       alt={colorName}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover border-2 border-white"
                     />
                   ) : (
@@ -246,6 +257,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
       </div>
     </div>
   );
-};
+});
+
+ProductCard.displayName = "ProductCard";
 
 export default ProductCard;

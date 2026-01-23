@@ -1,5 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useSearch } from "@/contexts/SearchContext";
+import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 
 // Adorn Icons - Thin line style SVGs
 const AdornHome = () => (
@@ -39,13 +41,15 @@ const AdornCart = () => (
 const MobileNav = () => {
   const location = useLocation();
   const { openSearch } = useSearch();
+  const { totalItems: cartItems } = useCart();
+  const { totalItems: wishlistItems } = useWishlist();
 
   const navItems = [
     { icon: AdornHome, label: "Home", href: "/" },
     { icon: AdornUser, label: "Account", href: "/account" },
     { icon: AdornSearch, label: "Search", action: openSearch },
-    { icon: AdornHeart, label: "Wishlist", href: "/wishlist" },
-    { icon: AdornCart, label: "Cart", href: "/cart" },
+    { icon: AdornHeart, label: "Wishlist", href: "/wishlist", count: wishlistItems },
+    { icon: AdornCart, label: "Cart", href: "/cart", count: cartItems },
   ];
 
   return (
@@ -60,9 +64,11 @@ const MobileNav = () => {
               <button
                 key={item.label}
                 onClick={item.action}
-                className="flex flex-col items-center gap-1.5 px-3 py-1 transition-colors text-muted-foreground hover:text-foreground"
+                className="flex flex-col items-center gap-1 px-3 py-1 transition-colors text-muted-foreground hover:text-foreground"
               >
-                <Icon />
+                <div className="relative -mt-0.5">
+                  <Icon />
+                </div>
                 <span className="text-[11px] font-bold uppercase tracking-wide">{item.label}</span>
               </button>
             );
@@ -72,10 +78,17 @@ const MobileNav = () => {
             <Link
               key={item.label}
               to={item.href!}
-              className={`flex flex-col items-center gap-1.5 px-3 py-1 transition-colors ${isActive ? "text-[#800000]" : "text-muted-foreground hover:text-foreground"
+              className={`flex flex-col items-center gap-1 px-3 py-1 transition-colors relative ${isActive ? "text-[#800000]" : "text-muted-foreground hover:text-foreground"
                 }`}
             >
-              <Icon />
+              <div className="relative -mt-0.5">
+                <Icon />
+                {item.count !== undefined && item.count > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#800000] text-white text-[10px] flex items-center justify-center font-bold">
+                    {item.count}
+                  </span>
+                )}
+              </div>
               <span className="text-[11px] font-bold uppercase tracking-wide">{item.label}</span>
             </Link>
           );

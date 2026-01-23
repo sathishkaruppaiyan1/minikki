@@ -6,13 +6,14 @@ interface CartItem {
   quantity: number;
   size?: string;
   color?: string;
+  image?: string;
 }
 
 interface CartContextType {
   items: CartItem[];
   addToCart: (product: Product, quantity?: number, size?: string, color?: string) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  removeFromCart: (productId: string, size?: string, color?: string) => void;
+  updateQuantity: (productId: string, quantity: number, size?: string, color?: string) => void;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
@@ -34,6 +35,26 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   }, [items]);
 
   const addToCart = (product: Product, quantity = 1, size?: string, color?: string) => {
+    let image = product.images[0];
+
+    // Try to resolve variation image
+    if (color) {
+      // Check variationImages first as it's more specific usually
+      if (product.variationImages) {
+        const variation = product.variationImages.find(v => v.color === color);
+        if (variation?.images?.[0]) {
+          image = variation.images[0];
+        }
+      }
+      // Fallback to colors array if it has image info
+      else if (Array.isArray(product.colors) && typeof product.colors[0] === 'object') {
+        const colorObj = (product.colors as any[]).find(c => c.name === color);
+        if (colorObj?.image) {
+          image = colorObj.image;
+        }
+      }
+    }
+
     setItems((prev) => {
       const existingIndex = prev.findIndex(
         (item) => item.product.id === product.id && item.size === size && item.color === color
@@ -42,26 +63,35 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       if (existingIndex > -1) {
         const updated = [...prev];
         updated[existingIndex].quantity += quantity;
+        // Update image just in case it changed (though unlikely for same variation)
+        if (image) updated[existingIndex].image = image;
         return updated;
       }
 
-      return [...prev, { product, quantity, size, color }];
+      return [...prev, { product, quantity, size, color, image }];
     });
     setIsOpen(true);
   };
 
-  const removeFromCart = (productId: string) => {
-    setItems((prev) => prev.filter((item) => item.product.id !== productId));
+  const removeFromCart = (productId: string, size?: string, color?: string) => {
+    setItems((prev) =>
+      prev.filter(
+        (item) =>
+          !(item.product.id === productId && item.size === size && item.color === color)
+      )
+    );
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = (productId: string, quantity: number, size?: string, color?: string) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(productId, size, color);
       return;
     }
     setItems((prev) =>
       prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
+        item.product.id === productId && item.size === size && item.color === color
+          ? { ...item, quantity }
+          : item
       )
     );
   };
