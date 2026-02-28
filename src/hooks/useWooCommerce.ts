@@ -18,8 +18,10 @@ interface ProductsParams {
   perPage?: number;
   page?: number;
   search?: string;
+  tag?: string; // Filter by product tag (ID or slug)
   skipVariations?: boolean; // Skip variation processing for faster list views
   enabled?: boolean; // Whether to enable the query
+  status?: string; // Filter by product status (publish, draft, etc.)
 }
 
 export interface Review {
@@ -83,10 +85,10 @@ export interface CreateOrderData {
 }
 
 export const useWooCommerceProducts = (params: ProductsParams = {}) => {
-  const { category, perPage = 20, page = 1, search, skipVariations = false, enabled = true } = params;
+  const { category, perPage = 20, page = 1, search, tag, skipVariations = false, enabled = true, status = 'publish' } = params;
 
   return useQuery({
-    queryKey: ["woocommerce-products", category, perPage, page, search, skipVariations],
+    queryKey: ["woocommerce-products", category, perPage, page, search, tag, skipVariations, status],
     enabled,
     queryFn: async (): Promise<ProductsResponse> => {
       const queryParams = new URLSearchParams();
@@ -94,7 +96,9 @@ export const useWooCommerceProducts = (params: ProductsParams = {}) => {
       queryParams.set("per_page", perPage.toString());
       queryParams.set("page", page.toString());
       if (search) queryParams.set("search", search);
+      if (tag) queryParams.set("tag", tag);
       if (skipVariations) queryParams.set("skip_variations", "true"); // Skip variations for faster loading
+      if (status) queryParams.set("status", status);
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -120,25 +124,20 @@ export const useWooCommerceProducts = (params: ProductsParams = {}) => {
       const jsonData = await response.json();
       return jsonData;
     },
-    staleTime: 1000 * 60 * 30, // Cache for 30 minutes
-    refetchOnWindowFocus: false,
-    // Enable parallel queries and better caching
-    gcTime: 1000 * 60 * 60, // Keep in cache for 1 hour (formerly cacheTime)
-    // Prefetch and cache aggressively for better performance
-    refetchOnMount: false, // Use cached data if available
-    // Show data immediately when available - don't wait for full fetch
-    placeholderData: (previousData) => previousData,
-    // Return data immediately, don't wait for background refetch
+    staleTime: 10_000, // 10 seconds - matches edge function cache TTL, prevents refetch on every mount
+    refetchOnWindowFocus: true, // Refresh when user returns
+    gcTime: 1000 * 60 * 2, // Keep in cache for 2 min
+    refetchOnMount: true, // Skips refetch if data is fresh (within staleTime)
     notifyOnChangeProps: ['data', 'error'],
   });
 };
 
 // Infinite scroll hook for progressive loading
 export const useWooCommerceProductsInfinite = (params: Omit<ProductsParams, 'page'> = {}) => {
-  const { category, perPage = 12, search, skipVariations = false } = params;
+  const { category, perPage = 24, search, skipVariations = false, status = 'publish' } = params;
 
   return useInfiniteQuery({
-    queryKey: ["woocommerce-products-infinite", category, perPage, search, skipVariations],
+    queryKey: ["woocommerce-products-infinite", category, perPage, search, skipVariations, status],
     queryFn: async ({ pageParam = 1 }): Promise<ProductsResponse> => {
       const queryParams = new URLSearchParams();
       if (category && category !== "all") queryParams.set("category", category);
@@ -146,6 +145,7 @@ export const useWooCommerceProductsInfinite = (params: Omit<ProductsParams, 'pag
       queryParams.set("page", pageParam.toString());
       if (search) queryParams.set("search", search);
       if (skipVariations) queryParams.set("skip_variations", "true");
+      if (status) queryParams.set("status", status);
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -178,10 +178,10 @@ export const useWooCommerceProductsInfinite = (params: Omit<ProductsParams, 'pag
       return undefined; // No more pages
     },
     initialPageParam: 1,
-    staleTime: 1000 * 60 * 30,
-    refetchOnWindowFocus: false,
-    gcTime: 1000 * 60 * 60,
-    refetchOnMount: false,
+    staleTime: 10_000, // 10 seconds - matches edge function cache TTL
+    refetchOnWindowFocus: true, // Refresh when user returns
+    gcTime: 1000 * 60 * 2, // Keep in cache for 2 min
+    refetchOnMount: true, // Skips refetch if data is fresh (within staleTime)
   });
 };
 
@@ -227,7 +227,7 @@ export const useWooCommerceProduct = (slug: string) => {
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
       const response = await fetch(
-        `${supabaseUrl}/functions/v1/woocommerce-products?search=${encodeURIComponent(slug)}&per_page=1`,
+        `${supabaseUrl}/functions/v1/woocommerce-products?search=${encodeURIComponent(slug)}&per_page=1&status=publish`,
         {
           method: "GET",
           headers: {
@@ -263,47 +263,31 @@ export const useWooCommercePaymentGateways = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-      try {
-        const response = await fetch(
-          `${supabaseUrl}/functions/v1/woocommerce-payment-gateways`,
-          {
-            method: "GET",
-            headers: {
-              "apikey": supabaseKey,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch payment gateways");
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/woocommerce-payment-gateways`,
+        {
+          method: "GET",
+          headers: {
+            "apikey": supabaseKey,
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+          },
         }
+      );
 
-        const data = await response.json();
-        return data.gateways || [];
-      } catch (error) {
-        console.error("Error fetching payment gateways:", error);
-        // Return default payment methods if API fails
-        return [
-          {
-            id: "cod",
-            title: "Cash on Delivery (COD)",
-            description: "Pay when you receive your order",
-            enabled: true,
-            order: 1,
-          },
-          {
-            id: "razorpay",
-            title: "Online Payment",
-            description: "UPI, Cards, Net Banking, Wallets",
-            enabled: true,
-            order: 2,
-          },
-        ];
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Payment gateways fetch error:", response.status, errorText);
+        throw new Error(`Failed to fetch payment gateways: ${response.status}`);
       }
+
+      const data = await response.json();
+      console.log("Payment gateways response:", data);
+      return data.gateways || [];
     },
-    staleTime: 1000 * 60 * 60, // Cache for 60 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 0, // Always fetch fresh
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -317,7 +301,7 @@ export const useWooCommerceProductById = (id: string) => {
 
       // Use skip_variations=true for fast initial load (gets basic variation images)
       const response = await fetch(
-        `${supabaseUrl}/functions/v1/woocommerce-products?id=${id}&skip_variations=true`,
+        `${supabaseUrl}/functions/v1/woocommerce-products?id=${id}&skip_variations=true&status=publish`,
         {
           method: "GET",
           headers: {
@@ -325,6 +309,7 @@ export const useWooCommerceProductById = (id: string) => {
             "Authorization": `Bearer ${supabaseKey}`,
             "Content-Type": "application/json",
           },
+          cache: "no-store", // Bypass browser HTTP cache for real-time stock
         }
       );
 
@@ -335,14 +320,25 @@ export const useWooCommerceProductById = (id: string) => {
       }
 
       const data = await response.json();
-      return data.products?.[0] || null;
+      const product = data.products?.[0] || null;
+
+      // Debug: Log dispatch time in frontend
+      if (product) {
+        console.log("Frontend received product:", {
+          id: product.id,
+          name: product.name,
+          dispatchTime: product.dispatchTime,
+          hasDispatchTime: !!product.dispatchTime
+        });
+      }
+
+      return product;
     },
     enabled: !!id,
-    staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 30,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    placeholderData: (previousData) => previousData,
+    staleTime: 0, // Always stale - refetch for fresh stock data
+    gcTime: 1000 * 60 * 2, // Keep in cache 2 min
+    refetchOnWindowFocus: true, // Refresh when user returns
+    refetchOnMount: 'always', // Always refetch on mount for fresh stock
   });
 };
 
@@ -356,7 +352,7 @@ export const useWooCommerceProductGallery = (id: string, productType?: string) =
 
       // Full load with all variation gallery images
       const response = await fetch(
-        `${supabaseUrl}/functions/v1/woocommerce-products?id=${id}`,
+        `${supabaseUrl}/functions/v1/woocommerce-products?id=${id}&status=publish`,
         {
           method: "GET",
           headers: {
@@ -364,6 +360,7 @@ export const useWooCommerceProductGallery = (id: string, productType?: string) =
             "Authorization": `Bearer ${supabaseKey}`,
             "Content-Type": "application/json",
           },
+          cache: "no-store", // Bypass browser HTTP cache for real-time stock
         }
       );
 
@@ -378,10 +375,10 @@ export const useWooCommerceProductGallery = (id: string, productType?: string) =
     },
     // Only fetch gallery for variable products
     enabled: !!id && productType === 'variable',
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 60,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 0, // Always stale - refetch for fresh stock data
+    gcTime: 1000 * 60 * 2, // Keep in cache 2 min
+    refetchOnWindowFocus: true, // Refresh when user returns
+    refetchOnMount: 'always', // Always refetch for fresh stock
   });
 };
 
@@ -424,6 +421,11 @@ export const useWooCommerceReviews = (productId: string | number) => {
       }
     },
     enabled: !!productId,
+    staleTime: 0, // Always refetch for fresh reviews
+    gcTime: 1000 * 60 * 5, // Keep in cache 5 min
+    refetchOnWindowFocus: true, // Refresh when user returns
+    refetchOnMount: true, // Always refetch for latest approved reviews
+    placeholderData: (previousData) => previousData,
   });
 };
 
@@ -487,6 +489,83 @@ export const useCreateOrder = () => {
   };
 };
 
+// Orders
+export interface WooCommerceOrder {
+  id: number;
+  status: string;
+  date_created: string;
+  date_modified: string;
+  total: string;
+  currency: string;
+  payment_method_title: string;
+  billing: {
+    first_name: string;
+    last_name: string;
+    address_1: string;
+    address_2?: string;
+    city: string;
+    state: string;
+    postcode: string;
+    country: string;
+    email: string;
+    phone: string;
+  };
+  shipping: {
+    first_name: string;
+    last_name: string;
+    address_1: string;
+    address_2?: string;
+    city: string;
+    state: string;
+    postcode: string;
+    country: string;
+  };
+  line_items: Array<{
+    id: number;
+    name: string;
+    product_id: number;
+    quantity: number;
+    total: string;
+    meta_data?: Array<{ key: string; value: string }>;
+  }>;
+}
+
+export const useUserOrders = (email?: string, phone?: string) => {
+  return useQuery({
+    queryKey: ["user-orders", email, phone],
+    enabled: !!(email || phone),
+    queryFn: async (): Promise<WooCommerceOrder[]> => {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const params = new URLSearchParams();
+      if (email) params.set("email", email);
+      if (phone) params.set("phone", phone);
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/woocommerce-orders?${params.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            "apikey": supabaseKey,
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to fetch orders:", response.status, errorText);
+        throw new Error(`Failed to fetch orders: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.orders || [];
+    },
+  });
+};
+
 // WordPress Pages
 export interface WordPressPage {
   id: number;
@@ -528,10 +607,11 @@ export const useWordPressPage = (slug: string) => {
       return data.pages?.[0] || null;
     },
     enabled: !!slug,
-    staleTime: 1000 * 60 * 60, // Cache for 1 hour
-    gcTime: 1000 * 60 * 60 * 24, // Keep in cache for 24 hours
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 0, // Always refetch for fresh content
+    gcTime: 1000 * 60 * 5, // Keep in cache 5 min
+    refetchOnWindowFocus: true, // Refresh when user returns
+    refetchOnMount: true, // Always refetch on mount for latest content
+    placeholderData: (previousData) => previousData,
   });
 };
 
@@ -563,9 +643,139 @@ export const useWordPressPages = () => {
       const data = await response.json();
       return data.pages || [];
     },
-    staleTime: 1000 * 60 * 60,
-    gcTime: 1000 * 60 * 60 * 24,
+    staleTime: 0, // Always refetch for fresh content
+    gcTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    placeholderData: (previousData) => previousData,
+  });
+};
+
+const transformWpItem = (item: { id: number; title?: { rendered?: string }; slug?: string; content?: { rendered?: string }; excerpt?: { rendered?: string }; date?: string; modified?: string; featured_media?: number }): WordPressPage => ({
+  id: item.id,
+  title: item.title?.rendered || "",
+  slug: item.slug || "",
+  content: item.content?.rendered || "",
+  excerpt: item.excerpt?.rendered || "",
+  date: item.date || "",
+  modified: item.modified || "",
+  featuredImage: item.featured_media != null ? String(item.featured_media) : null,
+});
+
+/** Fetch from WordPress REST API directly: try pages then posts for each slug. */
+async function fetchPageFromWordPressDirect(baseUrl: string, slugs: string[]): Promise<WordPressPage | null> {
+  const url = baseUrl.replace(/\/+$/, "");
+  for (const s of slugs) {
+    const slug = s.trim();
+    if (!slug) continue;
+    for (const type of ["pages", "posts"] as const) {
+      try {
+        const res = await fetch(`${url}/wp-json/wp/v2/${type}?slug=${encodeURIComponent(slug)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!res.ok) continue;
+        const data = await res.json();
+        const item = Array.isArray(data) && data.length > 0 ? data[0] : null;
+        if (item) return transformWpItem(item);
+      } catch {
+        continue;
+      }
+    }
+  }
+  return null;
+}
+
+/** Fetch a single page by trying multiple slugs in order. Tries pages first, then posts.
+ * Uses VITE_WORDPRESS_URL to fetch directly from WordPress when set; falls back to Supabase function on error or when unset. */
+export const useWordPressPageBySlugs = (slugs: string[]) => {
+  const slugsKey = slugs.join(",");
+  const wpUrl = import.meta.env.VITE_WORDPRESS_URL as string | undefined;
+  return useQuery({
+    queryKey: ["wordpress-page-by-slugs", slugsKey, wpUrl || "supabase"],
+    queryFn: async (): Promise<WordPressPage | null> => {
+      if (!slugs.length) return null;
+
+      if (wpUrl) {
+        try {
+          const page = await fetchPageFromWordPressDirect(wpUrl, slugs);
+          if (page) return page;
+        } catch (e) {
+          console.warn("Direct WordPress fetch failed, falling back to Supabase:", e);
+        }
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/woocommerce-pages?slugs=${encodeURIComponent(slugsKey)}`,
+        {
+          method: "GET",
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        const t = await response.text();
+        console.error("Page-by-slugs fetch error:", response.status, t);
+        throw new Error(`Failed to fetch page: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.pages?.[0] || null;
+    },
+    enabled: slugs.length > 0,
+    staleTime: 0, // Always refetch for fresh content
+    gcTime: 1000 * 60 * 5, // Keep in cache 5 min
+    refetchOnWindowFocus: true, // Refresh when user returns
+    refetchOnMount: true, // Always refetch on mount for latest content
+    placeholderData: (previousData) => previousData,
+  });
+};
+
+// Home Banners
+export interface HomeBanner {
+  id: number;
+  image_url: string;
+  mobile_image_url: string | null;
+  redirect_link: string;
+  alt_text: string;
+  is_active: boolean;
+  display_order: number;
+}
+
+export const useHomeBanners = () => {
+  return useQuery({
+    queryKey: ["home-banners"],
+    queryFn: async (): Promise<HomeBanner[]> => {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/home-banners`,
+        {
+          method: "GET",
+          headers: {
+            "apikey": supabaseKey,
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Banners fetch error:", response.status);
+        return [];
+      }
+
+      const data = await response.json();
+      return data.banners || [];
+    },
+    staleTime: 0, // Always refetch for fresh banner data
+    gcTime: 1000 * 60 * 60, // 1 hour
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
   });
 };

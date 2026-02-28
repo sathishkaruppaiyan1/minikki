@@ -64,6 +64,36 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
+### Deploy `dist` to your own server (Apache, Nginx, etc.)
+
+1. Build: `npm run build` → output in `dist/`
+2. Upload the **entire `dist`** folder (or its contents) to your server’s document root.
+
+**Fix 404 on refresh** (e.g. opening or refreshing `/about-us`, `/product/123`): the server must serve `index.html` for those paths so the SPA can handle routing.
+
+- **CloudPanel (VPS)**  
+  1. Upload the **contents** of `dist/` (e.g. `index.html`, `assets/`, `logo.webp`, …) into the site’s document root (e.g. `…/htdocs/yourdomain.com/public`).  
+  2. In CloudPanel: **Sites** → your site → **Vhost**.  
+  3. In the Nginx config, find the `location / { ... }` block.  
+  4. Inside it, add or replace with: `try_files $uri $uri/ /index.html;`  
+  5. **Save**. CloudPanel will check the config and reload Nginx.  
+  See: `deploy/cloudpanel-spa.conf`
+
+- **Apache** (cPanel, shared hosting): `dist` already includes `public/.htaccess` → `dist/.htaccess`. Ensure `mod_rewrite` is enabled.
+
+- **Nginx** (manual): in your `server { }` block, add:
+  ```nginx
+  location / {
+    root /path/to/your/dist;
+    try_files $uri $uri/ /index.html;
+  }
+  ```
+  Example: `deploy/nginx-spa.conf`
+
+- **Netlify**: `public/_redirects` is copied to `dist`. Set Publish directory to `dist`.
+
+- **Vercel**: `vercel.json` in the project root configures rewrites.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!

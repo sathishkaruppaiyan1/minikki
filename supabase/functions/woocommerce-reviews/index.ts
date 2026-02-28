@@ -7,16 +7,17 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Initialize Supabase client
+// Initialize Supabase client (service role for storage & DB writes)
 const getSupabaseClient = () => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || Deno.env.get('VITE_SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseServiceKey) {
-        console.warn('Supabase credentials missing in getSupabaseClient');
+        console.error('Supabase credentials missing');
+        throw new Error('Supabase credentials not configured');
     }
 
-    return createClient(supabaseUrl || '', supabaseServiceKey || '');
+    return createClient(supabaseUrl, supabaseServiceKey);
 };
 
 serve(async (req) => {
@@ -35,16 +36,14 @@ serve(async (req) => {
             throw new Error('WooCommerce credentials not configured');
         }
 
-        // Remove trailing slash
         const storeUrl = storeUrlRaw.replace(/\/+$/, '');
         const authHeader = 'Basic ' + btoa(`${consumerKey}:${consumerSecret}`);
         const url = new URL(req.url);
 
-        // GET Request: Fetch Reviews
+        // ─── GET: Fetch Reviews ───
         if (req.method === 'GET') {
             const productId = url.searchParams.get('product_id');
-            // Fetch all reviews (WooCommerce returns approved by default for public API)
-            let apiUrl = `${storeUrl}/wp-json/wc/v3/products/reviews?per_page=50`;
+            let apiUrl = `${storeUrl}/wp-json/wc/v3/products/reviews?per_page=50&status=approved`;
 
             if (productId) {
                 apiUrl += `&product=${productId}`;
@@ -67,13 +66,12 @@ serve(async (req) => {
             }
 
             const reviews = await response.json();
-            console.log(`Fetched ${reviews.length} reviews from WooCommerce`);
+            console.log(`Fetched ${reviews.length} reviews`);
 
-            // Filter to only show approved reviews
+            // Double-check status filter
             const approvedReviews = reviews.filter((r: any) => r.status === 'approved');
-            console.log(`${approvedReviews.length} approved reviews`);
 
-            // Try to fetch media from Supabase (don't fail if table doesn't exist)
+            // Fetch media from Supabase review_media table
             let mediaMap: Record<number, string[]> = {};
 
             try {
@@ -87,7 +85,7 @@ serve(async (req) => {
                         .in('review_id', reviewIds);
 
                     if (mediaError) {
-                        console.warn('Could not fetch review media (table may not exist):', mediaError.message);
+                        console.warn('Could not fetch review media:', mediaError.message);
                     } else if (mediaData) {
                         mediaData.forEach((item: any) => {
                             mediaMap[item.review_id] = item.media_urls || [];
@@ -97,24 +95,21 @@ serve(async (req) => {
                 }
             } catch (mediaErr) {
                 console.warn('Error fetching review media:', mediaErr);
-                // Continue without media
             }
 
             // Attach media to reviews
             const reviewsWithMedia = approvedReviews.map((review: any) => ({
                 ...review,
-                media: mediaMap[review.id] || []
+                media: mediaMap[review.id] || [],
             }));
 
             return new Response(
                 JSON.stringify({ reviews: reviewsWithMedia }),
-                {
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                }
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
-        // POST Request: Submit Review
+        // ─── POST: Submit Review ───
         if (req.method === 'POST') {
             const body = await req.json();
             const { product_id, review, reviewer, reviewer_email, rating, images } = body;
@@ -125,16 +120,14 @@ serve(async (req) => {
 
             console.log(`Submitting review for product ${product_id} by ${reviewer}`);
 
-            // Truncate review content if too long
+            // Truncate review if too long
             const MAX_REVIEW_LENGTH = 5000;
             let finalReviewContent = review;
-
             if (finalReviewContent.length > MAX_REVIEW_LENGTH) {
                 finalReviewContent = finalReviewContent.substring(0, MAX_REVIEW_LENGTH) + '...';
-                console.log('Review content truncated to', MAX_REVIEW_LENGTH, 'characters');
             }
 
-            // Submit review to WooCommerce with status "hold" (unapproved)
+            // Submit review to WooCommerce
             const reviewData = {
                 product_id,
                 review: finalReviewContent,
@@ -142,44 +135,47 @@ serve(async (req) => {
                 reviewer_email,
                 rating,
                 verified: false,
-                status: "hold" // Review requires admin approval
+                status: "hold",
             };
 
-            const apiUrl = `${storeUrl}/wp-json/wc/v3/products/reviews`;
-
-            const response = await fetch(apiUrl, {
+            const wcResponse = await fetch(`${storeUrl}/wp-json/wc/v3/products/reviews`, {
                 method: 'POST',
                 headers: {
                     'Authorization': authHeader,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(reviewData)
+                body: JSON.stringify(reviewData),
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('WooCommerce API error:', response.status, errorText);
-                throw new Error(`WooCommerce API error: ${response.status} - ${errorText}`);
+            if (!wcResponse.ok) {
+                const errorText = await wcResponse.text();
+                console.error('WooCommerce review error:', wcResponse.status, errorText);
+                throw new Error(`WooCommerce API error: ${wcResponse.status} - ${errorText}`);
             }
 
-            const newReview = await response.json();
+            const newReview = await wcResponse.json();
             const reviewId = newReview.id;
+            console.log(`Review created with ID: ${reviewId}`);
 
-            // Upload images/videos to WordPress Media Library
-            console.log(`Processing ${images?.length || 0} images for review ${reviewId}`);
+            // Upload images to Supabase Storage
             let uploadWarning = null;
             const uploadedMedia: string[] = [];
 
             if (images && Array.isArray(images) && images.length > 0) {
+                console.log(`Processing ${images.length} images for review ${reviewId}`);
+
                 try {
+                    const supabase = getSupabaseClient();
+                    const supabaseUrl = Deno.env.get('SUPABASE_URL') || Deno.env.get('VITE_SUPABASE_URL');
+
                     for (let i = 0; i < images.length; i++) {
                         const base64Data = images[i];
-                        console.log(`Processing image ${i + 1}, data length: ${base64Data?.length || 0}`);
+                        if (!base64Data) continue;
 
-                        // Extract mime type and data from base64 string
+                        // Extract mime type and data
                         const matches = base64Data.match(/^data:([^;]+);base64,(.+)$/);
                         if (!matches) {
-                            console.error(`Invalid base64 format for image ${i}. Starts with:`, base64Data?.substring(0, 50));
+                            console.error(`Invalid base64 format for image ${i}`);
                             continue;
                         }
 
@@ -188,105 +184,73 @@ serve(async (req) => {
                         const isVideo = mimeType.startsWith('video/');
                         const extension = mimeType.split('/')[1]?.replace('+xml', '') || (isVideo ? 'mp4' : 'jpg');
 
-                        console.log(`Image ${i + 1}: mimeType=${mimeType}, extension=${extension}`);
-
-                        // Convert base64 to Uint8Array
+                        // Convert base64 to binary
                         const binaryString = atob(base64Content);
                         const bytes = new Uint8Array(binaryString.length);
                         for (let j = 0; j < binaryString.length; j++) {
                             bytes[j] = binaryString.charCodeAt(j);
                         }
 
-                        console.log(`Image ${i + 1}: converted to ${bytes.length} bytes`);
+                        // Upload to Supabase Storage
+                        const filePath = `reviews/${product_id}/${reviewId}-${Date.now()}-${i}.${extension}`;
+                        console.log(`Uploading to Supabase Storage: ${filePath} (${bytes.length} bytes)`);
 
-                        // Generate unique filename
-                        const fileName = `review-${reviewId}-${Date.now()}-${i}.${extension}`;
+                        const { data: uploadData, error: uploadError } = await supabase.storage
+                            .from('review-media')
+                            .upload(filePath, bytes, {
+                                contentType: mimeType,
+                                upsert: false,
+                            });
 
-                        // Upload to WordPress Media Library
-                        const mediaApiUrl = `${storeUrl}/wp-json/wp/v2/media`;
-                        console.log(`Uploading to WordPress: ${mediaApiUrl}`);
-
-                        // Create FormData for multipart upload
-                        const formData = new FormData();
-                        const blob = new Blob([bytes], { type: mimeType });
-                        formData.append('file', blob, fileName);
-                        formData.append('title', `Review Image ${i + 1} for Product ${product_id}`);
-                        formData.append('description', `Review image uploaded by ${reviewer}`);
-
-                        const mediaResponse = await fetch(mediaApiUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': authHeader,
-                            },
-                            body: formData
-                        });
-
-                        if (!mediaResponse.ok) {
-                            const errorText = await mediaResponse.text();
-                            console.error(`WordPress upload error for image ${i + 1}:`, mediaResponse.status, errorText);
+                        if (uploadError) {
+                            console.error(`Storage upload error for image ${i + 1}:`, uploadError.message);
                             continue;
                         }
 
-                        const mediaData = await mediaResponse.json();
-                        const mediaUrl = mediaData.source_url || mediaData.guid?.rendered || mediaData.media_details?.sizes?.full?.source_url || null;
+                        // Get public URL
+                        const { data: urlData } = supabase.storage
+                            .from('review-media')
+                            .getPublicUrl(filePath);
 
-                        if (mediaUrl) {
-                            uploadedMedia.push(mediaUrl);
-                            console.log(`WordPress upload successful for image ${i + 1}:`, mediaUrl);
-                        } else {
-                            console.error(`No URL returned for uploaded image ${i + 1}`);
+                        if (urlData?.publicUrl) {
+                            uploadedMedia.push(urlData.publicUrl);
+                            console.log(`Uploaded image ${i + 1}: ${urlData.publicUrl}`);
                         }
                     }
 
-                    console.log(`Total uploaded media: ${uploadedMedia.length}`);
+                    console.log(`Total uploaded: ${uploadedMedia.length}/${images.length}`);
 
-                    // Save media references to Supabase database (for tracking)
+                    // Save media references to review_media table
                     if (uploadedMedia.length > 0) {
-                        try {
-                            const supabaseUrl = Deno.env.get('SUPABASE_URL') || Deno.env.get('VITE_SUPABASE_URL');
-                            const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+                        const { error: dbError } = await supabase
+                            .from('review_media')
+                            .insert({
+                                review_id: reviewId,
+                                product_id: product_id,
+                                media_urls: uploadedMedia,
+                                reviewer_email: reviewer_email,
+                            });
 
-                            if (supabaseUrl && supabaseServiceKey) {
-                                const supabase = createClient(supabaseUrl, supabaseServiceKey);
-                                console.log('Saving to review_media table...');
-                                const { data: insertData, error: dbError } = await supabase
-                                    .from('review_media')
-                                    .insert({
-                                        review_id: reviewId,
-                                        product_id: product_id,
-                                        media_urls: uploadedMedia,
-                                        reviewer_email: reviewer_email
-                                    })
-                                    .select();
-
-                                if (dbError) {
-                                    console.error('Database error saving media references:', JSON.stringify(dbError));
-                                } else {
-                                    console.log(`Saved ${uploadedMedia.length} media files for review ${reviewId}`, insertData);
-                                }
-                            }
-                        } catch (dbError) {
-                            console.warn('Could not save media references to database:', dbError);
-                            // Continue even if database save fails
+                        if (dbError) {
+                            console.error('DB error saving media refs:', dbError.message);
+                        } else {
+                            console.log(`Saved ${uploadedMedia.length} media URLs for review ${reviewId}`);
                         }
                     }
                 } catch (mediaError) {
                     console.error('Error processing media:', mediaError);
-                    uploadWarning = `Error processing media: ${mediaError instanceof Error ? mediaError.message : String(mediaError)}`;
+                    uploadWarning = mediaError instanceof Error ? mediaError.message : String(mediaError);
                 }
-            } else {
-                console.log('No images to process');
             }
 
             return new Response(
                 JSON.stringify({
                     success: true,
                     review: newReview,
-                    warning: uploadWarning
+                    mediaUploaded: uploadedMedia.length,
+                    warning: uploadWarning,
                 }),
-                {
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                }
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
@@ -300,10 +264,7 @@ serve(async (req) => {
         console.error('Error in woocommerce-reviews function:', errorMessage);
         return new Response(
             JSON.stringify({ error: errorMessage }),
-            {
-                status: 500,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            }
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
 });

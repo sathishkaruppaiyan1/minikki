@@ -1,9 +1,10 @@
-import { useState, useMemo, memo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useMemo, memo, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Product, ProductColor } from "@/types/product";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
+import { getProductCardImage, preloadImage } from "@/lib/imageOptimizer";
 
 // Adorn Icons
 const AdornHeart = ({ filled }: { filled?: boolean }) => (
@@ -78,6 +79,7 @@ const getColorName = (color: ProductColor | string): string => {
 const ProductCard = memo(({ product }: ProductCardProps) => {
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const navigate = useNavigate();
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
   const formatPrice = (price: number) => {
@@ -86,22 +88,46 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
 
   const inWishlist = isInWishlist(product.id);
 
-  // Memoize current image to prevent recalculation
+  // Memoize current image with optimization
   const currentImage = useMemo(() => {
+    let imageUrl: string;
     if (selectedColor && product.variationImages) {
       const variationMatch = product.variationImages.find(
         (v) => v.color.toLowerCase() === selectedColor.toLowerCase()
       );
       if (variationMatch && variationMatch.images.length > 0) {
-        return variationMatch.images[0];
+        imageUrl = variationMatch.images[0];
+      } else {
+        imageUrl = product.images[0] || "/placeholder.svg";
       }
+    } else {
+      imageUrl = product.images[0] || "/placeholder.svg";
     }
-    return product.images[0] || "/placeholder.svg";
+    // Optimize image URL for faster loading (smaller size, better compression)
+    return imageUrl.startsWith("/") || imageUrl.startsWith("data:")
+      ? imageUrl
+      : getProductCardImage(imageUrl);
   }, [selectedColor, product.variationImages, product.images]);
+
+  // Preload main product image for faster hover/click
+  useEffect(() => {
+    if (currentImage && !currentImage.startsWith("/placeholder")) {
+      preloadImage(currentImage).catch(() => {
+        // Silently fail - image will load normally
+      });
+    }
+  }, [currentImage]);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // If it's a variable product, we must go to product page to select variations
+    if (product.type === "variable") {
+      navigate(`/product/${product.id}`);
+      return;
+    }
+
     // Default to first size if available, or just add product
     const size = product.sizes && product.sizes.length > 0 ? product.sizes[0] : undefined;
     addToCart(product, 1, size, selectedColor || undefined);
@@ -174,7 +200,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
         </div>
 
         {/* Add to Cart on hover - bottom (hidden on mobile, visible on desktop hover) */}
-        <div className="hidden md:block absolute bottom-0 left-0 right-0 bg-foreground text-background py-3 text-center font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        <div className="hidden md:block absolute bottom-0 left-0 right-0 bg-foreground text-background py-3 text-center font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer uppercase"
           onClick={handleAddToCart}
         >
           {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
@@ -232,7 +258,9 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
                 >
                   {variationImage ? (
                     <img
-                      src={variationImage}
+                      src={variationImage.startsWith("/") || variationImage.startsWith("data:")
+                        ? variationImage
+                        : getProductCardImage(variationImage)}
                       alt={colorName}
                       loading="lazy"
                       decoding="async"

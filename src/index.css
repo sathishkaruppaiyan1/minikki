@@ -1,8 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Slab:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: scale(1.02);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-in-out;
+  }
+}
 
 @layer base {
   :root {
@@ -138,5 +153,111 @@
   
   .text-body {
     font-family: var(--font-body);
+  }
+}
+
+/* WordPress Page Content Styling */
+@layer components {
+  /* Clean up WordPress content alignment and spacing */
+  .prose article,
+  .prose > div {
+    @apply text-left;
+  }
+  
+  /* Fix inline styles from WordPress that might break layout */
+  .prose [style*="text-align"] {
+    @apply !text-left;
+  }
+  
+  .prose [style*="float"] {
+    @apply !float-none;
+  }
+  
+  /* Ensure proper spacing for nested elements */
+  .prose > *:first-child {
+    @apply mt-0;
+  }
+  
+  .prose > *:last-child {
+    @apply mb-0;
+  }
+  
+  /* Better list styling */
+  .prose ul ul,
+  .prose ol ol,
+  .prose ul ol,
+  .prose ol ul {
+    @apply mt-2 mb-2 ml-4;
+  }
+  
+  /* Fix table alignment */
+  .prose table {
+    @apply text-left;
+  }
+  
+  /* Ensure images don't break layout */
+  .prose img {
+    @apply max-w-full h-auto;
+  }
+  
+  /* Fix any divs with inline styles */
+  .prose div[style] {
+    @apply !block;
+  }
+  
+  /* Better paragraph spacing */
+  .prose p + p {
+    @apply mt-4;
+  }
+  
+  /* Fix alignment for text blocks */
+  .prose p,
+  .prose li,
+  .prose td {
+    @apply text-left;
+  }
+  
+  /* Remove any center alignment from WordPress */
+  .prose [style*="center"],
+  .prose [align="center"] {
+    @apply !text-left;
+  }
+  
+  /* Fix spacing issues */
+  .prose br {
+    @apply block;
+  }
+  
+  /* Ensure proper line height */
+  .prose {
+    @apply leading-relaxed;
+  }
+  
+  /* Fix any weird margins from WordPress */
+  .prose * {
+    @apply max-w-full;
+  }
+  
+  /* Clean up any WordPress wrapper divs */
+  .prose div {
+    @apply text-left;
+  }
+  
+  /* Better spacing between sections */
+  .prose h1 + p,
+  .prose h2 + p,
+  .prose h3 + p {
+    @apply mt-2;
+  }
+  
+  /* Fix list item spacing */
+  .prose li p {
+    @apply mb-2 mt-0;
+  }
+  
+  /* Ensure proper text wrapping */
+  .prose p,
+  .prose li {
+    @apply break-words;
   }
 }

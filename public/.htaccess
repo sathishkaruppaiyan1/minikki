@@ -1,0 +1,11 @@
+# SPA fallback: serve index.html for all routes so refresh on /about-us, /product/123, etc. works.
+# For Apache. If deploying in a subfolder, set RewriteBase /your-subfolder/ and use /your-subfolder/index.html in the last rule.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>

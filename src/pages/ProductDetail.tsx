@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronLeft, Truck, Package, ShieldCheck, ChevronDown, ChevronUp, Loader2, Heart, Ruler, Upload, Star } from "lucide-react";
+import { ChevronRight, ChevronLeft, Truck, Package, ShieldCheck, ChevronDown, ChevronUp, Loader2, Heart, Ruler, Upload, Star, X } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useWooCommerceProductById, useWooCommerceProductGallery, useWooCommerceProducts, useWooCommerceReviews, useSubmitWooCommerceReview, type CreateReviewData } from "@/hooks/useWooCommerce";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { toast } from "sonner";
 import type { Product } from "@/types/product";
+import { getProductDetailImage, getGalleryThumbnail } from "@/lib/imageOptimizer";
 
 // Common color name to hex mapping
 const colorNameToHex: Record<string, string> = {
@@ -65,7 +67,22 @@ const ProductDetail = () => {
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [showValidation, setShowValidation] = useState(false);
   const [quantity, setQuantity] = useState(1);
+
+  // Reset quantity when stock changes or selection changes
+  useEffect(() => {
+    if (!product) return;
+    const stock = getAvailableStock();
+    if (stock !== null && quantity > stock) {
+      setQuantity(Math.max(1, stock));
+    } else if (stock === null || stock === 0) {
+      // If out of stock, set quantity to 0 or keep at 1 if stock is null (unlimited)
+      if (stock === 0) {
+        setQuantity(0);
+      }
+    }
+  }, [selectedSize, selectedColor, product?.id, product?.stockQuantity, product?.variationImages]);
   const [activeImage, setActiveImage] = useState(0);
+  const [imageKey, setImageKey] = useState(0); // Key to force re-render for smooth transition
   const [expandedSection, setExpandedSection] = useState<string | null>("description");
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [enhancedVariationImages, setEnhancedVariationImages] = useState<VariationImage[] | null>(null);
@@ -84,6 +101,61 @@ const ProductDetail = () => {
 
   const { data: reviews, isLoading: isLoadingReviews, refetch: refetchReviews } = useWooCommerceReviews(product?.id || "");
   const submitReview = useSubmitWooCommerceReview();
+
+  // Helper function to get available stock for current selection
+  const getAvailableStock = (): number | null => {
+    if (!product) return null;
+
+    // For simple products, use product stock
+    if (product.type === 'simple' || !product.type || product.type === 'external') {
+      return product.stockQuantity ?? null;
+    }
+
+    // For variable products, find matching variation
+    if (product.type === 'variable' && product.variationImages) {
+      // Find variation by color (and ideally size, but we need full variation data for that)
+      const matchingVariation = product.variationImages.find(
+        (v) => v.color === selectedColor
+      );
+
+      if (matchingVariation && matchingVariation.stockQuantity !== null && matchingVariation.stockQuantity !== undefined) {
+        return matchingVariation.stockQuantity;
+      }
+
+      // Fallback: if no stock data in variation, check if product has stock
+      return product.stockQuantity ?? null;
+    }
+
+    return product.stockQuantity ?? null;
+  };
+
+  const isColorOutOfStock = (colorName: string): boolean => {
+    if (!product || !product.variations || product.variations.length === 0) return false;
+    const colorVariations = product.variations.filter(
+      (v) => v.color.toLowerCase() === colorName.toLowerCase()
+    );
+    if (colorVariations.length === 0) return false;
+    return colorVariations.every((v) => v.stockStatus === 'outofstock' || (v.manageStock && (v.stockQuantity === 0 || v.stockQuantity === null)));
+  };
+
+  const isSizeOutOfStock = (size: string): boolean => {
+    if (!product || !product.variations || product.variations.length === 0) return false;
+
+    if (selectedColor) {
+      const variation = product.variations.find(
+        (v) => v.color.toLowerCase() === selectedColor.toLowerCase() && v.size === size
+      );
+      if (!variation) return false;
+      return variation.stockStatus === 'outofstock' || (variation.manageStock && (variation.stockQuantity === 0 || variation.stockQuantity === null));
+    }
+
+    const sizeVariations = product.variations.filter((v) => v.size === size);
+    if (sizeVariations.length === 0) return false;
+    return sizeVariations.every((v) => v.stockStatus === 'outofstock' || (v.manageStock && (v.stockQuantity === 0 || v.stockQuantity === null)));
+  };
+
+  const availableStock = getAvailableStock();
+  const maxQuantity = availableStock !== null ? availableStock : Infinity;
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -220,11 +292,20 @@ const ProductDetail = () => {
 
     if (isLeftSwipe) {
       // Swipe left - go to next image
-      setActiveImage((prev) => (prev + 1) % imagesLength);
+      const newIndex = (activeImage + 1) % imagesLength;
+      setImageKey(prev => prev + 1);
+      setActiveImage(newIndex);
     } else if (isRightSwipe) {
       // Swipe right - go to previous image
-      setActiveImage((prev) => (prev - 1 + imagesLength) % imagesLength);
+      const newIndex = (activeImage - 1 + imagesLength) % imagesLength;
+      setImageKey(prev => prev + 1);
+      setActiveImage(newIndex);
     }
+  };
+
+  const changeImage = (newIndex: number, imagesLength: number) => {
+    setImageKey(prev => prev + 1);
+    setActiveImage(newIndex);
   };
 
   // Get display images based on selected color
@@ -232,8 +313,8 @@ const ProductDetail = () => {
     if (!product) return ["/placeholder.svg"];
 
     // Use enhanced variation images if available and not empty, otherwise fallback to product variation images
-    const sourceImages = (enhancedVariationImages && enhancedVariationImages.length > 0) 
-      ? enhancedVariationImages 
+    const sourceImages = (enhancedVariationImages && enhancedVariationImages.length > 0)
+      ? enhancedVariationImages
       : (product.variationImages && product.variationImages.length > 0 ? product.variationImages : null);
 
     if (selectedColor && sourceImages && sourceImages.length > 0) {
@@ -264,7 +345,7 @@ const ProductDetail = () => {
         const normalizedColor = (v.color || '').trim().toLowerCase();
         return normalizedColor === normalizedSelectedColor;
       });
-      
+
       if (variationMatch && variationMatch.images && Array.isArray(variationMatch.images) && variationMatch.images.length > 0) {
         const filtered = variationMatch.images.filter((url: any) => url && typeof url === 'string' && url.trim());
         if (filtered.length > 0) {
@@ -272,7 +353,7 @@ const ProductDetail = () => {
         }
       }
     }
-    
+
     // Final fallback to product images
     if (product.images && Array.isArray(product.images) && product.images.length > 0) {
       const filtered = product.images.filter((url: any) => url && typeof url === 'string' && url.trim());
@@ -280,7 +361,7 @@ const ProductDetail = () => {
         return filtered;
       }
     }
-    
+
     return ["/placeholder.svg"];
   };
 
@@ -334,6 +415,19 @@ const ProductDetail = () => {
 
   const displayImages = getDisplayImages();
 
+  // Optimize images for display (main image larger, thumbnails smaller)
+  const optimizedDisplayImages = displayImages.map(img =>
+    img.startsWith("/") || img.startsWith("data:")
+      ? img
+      : getProductDetailImage(img)
+  );
+
+  const optimizedThumbnails = displayImages.map(img =>
+    img.startsWith("/") || img.startsWith("data:")
+      ? img
+      : getGalleryThumbnail(img)
+  );
+
   const getColorHex = (colorName: string): string => {
     return colorNameToHex[colorName.toLowerCase()] || "#CCCCCC";
   };
@@ -361,6 +455,25 @@ const ProductDetail = () => {
       return;
     }
 
+    // Check if selected size/color combination is out of stock
+    if (selectedSize && isSizeOutOfStock(selectedSize)) {
+      toast.error(`Size ${selectedSize} is out of stock`);
+      setSelectedSize(null);
+      return;
+    }
+    if (selectedColor && isColorOutOfStock(selectedColor)) {
+      toast.error(`Color ${selectedColor} is out of stock`);
+      setSelectedColor(null);
+      return;
+    }
+
+    // Check stock availability
+    if (availableStock !== null && quantity > availableStock) {
+      toast.error(`Only ${availableStock} items available in stock`);
+      setQuantity(availableStock);
+      return;
+    }
+
     addToCart(product, quantity, selectedSize || undefined, selectedColor || undefined);
 
     if (buyNow) {
@@ -370,7 +483,7 @@ const ProductDetail = () => {
     }
   };
 
-  const currentActiveImage = displayImages[activeImage] || "/placeholder.svg";
+  const currentActiveImage = optimizedDisplayImages[activeImage] || "/placeholder.svg";
 
   return (
     <Layout>
@@ -401,23 +514,26 @@ const ProductDetail = () => {
               className="aspect-[3/4] overflow-hidden bg-muted relative group touch-pan-y"
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
-              onTouchEnd={() => handleSwipe(displayImages.length)}
+              onTouchEnd={() => handleSwipe(optimizedDisplayImages.length)}
             >
-              <img
-                src={currentActiveImage}
-                alt={product.name}
-                loading="eager"
-                decoding="async"
-                className="w-full h-full object-cover pointer-events-none select-none"
-                draggable={false}
-                onError={(e) => {
-                  // Fallback to placeholder if image fails to load
-                  const target = e.target as HTMLImageElement;
-                  if (target.src !== "/placeholder.svg") {
-                    target.src = "/placeholder.svg";
-                  }
-                }}
-              />
+              <div className="relative w-full h-full overflow-hidden">
+                <img
+                  key={`img-${activeImage}-${imageKey}`}
+                  src={currentActiveImage}
+                  alt={product.name}
+                  loading="eager"
+                  decoding="async"
+                  className="w-full h-full object-cover pointer-events-none select-none animate-fade-in"
+                  draggable={false}
+                  onError={(e) => {
+                    // Fallback to placeholder if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== "/placeholder.svg") {
+                      target.src = "/placeholder.svg";
+                    }
+                  }}
+                />
+              </div>
 
               {/* Wishlist Icon - Top Right */}
               <button
@@ -439,17 +555,17 @@ const ProductDetail = () => {
               )}
 
               {/* Navigation Arrows - Desktop */}
-              {displayImages.length > 1 && (
+              {optimizedDisplayImages.length > 1 && (
                 <>
                   <button
-                    onClick={() => setActiveImage((prev) => (prev - 1 + displayImages.length) % displayImages.length)}
+                    onClick={() => changeImage((activeImage - 1 + optimizedDisplayImages.length) % optimizedDisplayImages.length, optimizedDisplayImages.length)}
                     className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
                     aria-label="Previous image"
                   >
                     <ChevronLeft className="h-6 w-6" />
                   </button>
                   <button
-                    onClick={() => setActiveImage((prev) => (prev + 1) % displayImages.length)}
+                    onClick={() => changeImage((activeImage + 1) % optimizedDisplayImages.length, optimizedDisplayImages.length)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
                     aria-label="Next image"
                   >
@@ -460,13 +576,13 @@ const ProductDetail = () => {
             </div>
 
             {/* Navigation Dots */}
-            {displayImages.length > 1 && (
+            {optimizedDisplayImages.length > 1 && (
               <div className="flex gap-2 justify-center mt-4">
-                {displayImages.map((_, index) => (
+                {optimizedThumbnails.map((thumb, index) => (
                   <button
                     key={index}
                     onClick={() => {
-                      setActiveImage(index);
+                      changeImage(index, optimizedDisplayImages.length);
                       setTouchStart(null); // Reset touch state on click
                     }}
                     className={`rounded-full transition-all duration-300 ${activeImage === index
@@ -526,20 +642,32 @@ const ProductDetail = () => {
                       (v) => (v.color || '').trim().toLowerCase() === colorName.trim().toLowerCase()
                     );
                     const variationImage = variationForColor?.images?.[0];
+                    const outOfStock = isColorOutOfStock(colorName);
 
                     return (
                       <button
                         key={index}
                         onClick={() => {
-                          setSelectedColor(isSelected ? null : colorName);
+                          if (outOfStock) return;
+                          const newColor = isSelected ? null : colorName;
+                          setSelectedColor(newColor);
+                          // Deselect size if it's out of stock for this color
+                          if (newColor && selectedSize && product.variations) {
+                            const variation = product.variations.find(
+                              (v) => v.color.toLowerCase() === newColor.toLowerCase() && v.size === selectedSize
+                            );
+                            if (variation && (variation.stockStatus === 'outofstock' || (variation.manageStock && (variation.stockQuantity === 0 || variation.stockQuantity === null)))) {
+                              setSelectedSize(null);
+                            }
+                          }
                           setActiveImage(0);
                           if (showValidation) setShowValidation(false);
                         }}
-                        className={`w-20 h-28 rounded-md border-2 transition-all overflow-hidden ${isSelected
+                        className={`w-20 h-28 rounded-md border-2 transition-all relative overflow-hidden ${isSelected
                           ? "border-[3px] border-black ring-0" // Bolder black active border
                           : "border-border hover:border-foreground"
-                          }`}
-                        title={colorName}
+                          } ${outOfStock ? "opacity-60" : ""}`}
+                        title={colorName + (outOfStock ? " (Out of Stock)" : "")}
                       >
                         {variationImage ? (
                           <img
@@ -552,6 +680,11 @@ const ProductDetail = () => {
                             className="w-full h-full"
                             style={{ backgroundColor: colorHex }}
                           />
+                        )}
+                        {outOfStock && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <X className="w-12 h-12 text-black/40 stroke-[1px]" />
+                          </div>
                         )}
                       </button>
                     );
@@ -568,27 +701,52 @@ const ProductDetail = () => {
                     Size
                     {showValidation && !selectedSize && <span className="ml-2 text-red-600 animate-pulse">(Required)</span>}
                   </p>
-                  <button className="text-xs font-medium flex items-center gap-1 hover:text-primary border border-foreground px-2 py-1 rounded">
-                    <Ruler className="w-3 h-3" /> Size Chart
-                  </button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button className="text-xs font-medium flex items-center gap-1 hover:text-primary border border-foreground px-2 py-1 rounded">
+                        <Ruler className="w-3 h-3" /> Size Chart
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-4">
+                      <DialogHeader>
+                        <DialogTitle>Size Chart</DialogTitle>
+                      </DialogHeader>
+                      <img
+                        src="/size-chart.jpg"
+                        alt="Black Lovers Size Chart"
+                        className="w-full h-auto rounded-lg"
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {product.sizes.map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => {
-                        setSelectedSize(size);
-                        setActiveImage(0);
-                        if (showValidation) setShowValidation(false);
-                      }}
-                      className={`min-w-[48px] h-12 px-3 border text-base font-bold transition-all ${selectedSize === size
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-black hover:bg-muted bg-background"
-                        }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
+                  {product.sizes.map((size) => {
+                    const outOfStock = isSizeOutOfStock(size);
+                    return (
+                      <button
+                        key={size}
+                        onClick={() => {
+                          if (outOfStock) return;
+                          setSelectedSize(size);
+                          setActiveImage(0);
+                          if (showValidation) setShowValidation(false);
+                        }}
+                        disabled={outOfStock}
+                        className={`min-w-[48px] h-12 px-3 border text-base font-bold transition-all relative ${selectedSize === size
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-black hover:bg-muted bg-background"
+                          } ${outOfStock ? "opacity-40 cursor-not-allowed line-through" : ""}`}
+                        title={outOfStock ? "Out of Stock" : ""}
+                      >
+                        {size}
+                        {outOfStock && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <X className="w-8 h-8 text-black/40 stroke-[1px]" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -596,28 +754,42 @@ const ProductDetail = () => {
             {/* Quantity Selector */}
             <div className="flex items-center gap-4" style={{ paddingTop: '10px' }}>
               <span className="text-sm font-medium">Quantity</span>
-              <div className="flex items-center border border-border bg-background">
-                <button
-                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                  className="px-3 py-2 hover:bg-muted transition-colors"
-                  disabled={quantity <= 1}
-                >
-                  -
-                </button>
-                <span className="w-10 text-center font-medium">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(q => q + 1)}
-                  className="px-3 py-2 hover:bg-muted transition-colors"
-                >
-                  +
-                </button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center border border-border bg-background">
+                  <button
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    className="px-3 py-2 hover:bg-muted transition-colors"
+                    disabled={quantity <= 1}
+                  >
+                    -
+                  </button>
+                  <span className="w-10 text-center font-medium">{quantity}</span>
+                  <button
+                    onClick={() => {
+                      if (availableStock !== null && quantity >= availableStock) {
+                        toast.error(`Only ${availableStock} items available in stock`);
+                        return;
+                      }
+                      setQuantity(q => q + 1);
+                    }}
+                    className="px-3 py-2 hover:bg-muted transition-colors"
+                    disabled={availableStock !== null && quantity >= availableStock}
+                  >
+                    +
+                  </button>
+                </div>
+                {availableStock !== null && (
+                  <span className="text-sm text-muted-foreground">
+                    ({availableStock} available)
+                  </span>
+                )}
               </div>
             </div>
 
             {/* Dispatch Time & Buttons */}
             <div className="space-y-4">
               <div className="text-sm font-bold text-green-700">
-                Dispatch time : 5 days
+                Dispatch time : {product.dispatchTime || '5 days'}
               </div>
 
               <div className="flex flex-row gap-3">
@@ -668,26 +840,36 @@ const ProductDetail = () => {
               </div>
 
               {/* Shipping & Returns */}
-              <div className="border-b border-border">
-                <button
-                  onClick={() => toggleSection("shipping")}
-                  className="w-full flex items-center justify-between py-4 text-left"
-                >
-                  <span className="font-medium">Shipping & Returns</span>
-                  {expandedSection === "shipping" ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
+              {(product.shippingPolicy || product.returnPolicy || !product.shippingPolicy) && (
+                <div className="border-b border-border">
+                  <button
+                    onClick={() => toggleSection("shipping")}
+                    className="w-full flex items-center justify-between py-4 text-left"
+                  >
+                    <span className="font-medium">Shipping & Returns</span>
+                    {expandedSection === "shipping" ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </button>
+                  {expandedSection === "shipping" && (
+                    <div className="pb-4 text-sm text-muted-foreground leading-relaxed space-y-2">
+                      {product.shippingPolicy ? (
+                        <div dangerouslySetInnerHTML={{ __html: product.shippingPolicy }} />
+                      ) : (
+                        <>
+                          <p>Free shipping on all orders across India.</p>
+                          <p>Delivery time: 15-20 working days</p>
+                        </>
+                      )}
+                      {product.returnPolicy && (
+                        <div dangerouslySetInnerHTML={{ __html: product.returnPolicy }} className="mt-2" />
+                      )}
+                    </div>
                   )}
-                </button>
-                {expandedSection === "shipping" && (
-                  <div className="pb-4 text-sm text-muted-foreground leading-relaxed space-y-2">
-                    <p>Free shipping on all orders across India.</p>
-                    <p>Delivery time: 15-20 working days</p>
-                    <p>Easy returns within 7 days of delivery.</p>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Size & Fit */}
               <div className="border-b border-border">
@@ -704,8 +886,9 @@ const ProductDetail = () => {
                 </button>
                 {expandedSection === "size" && (
                   <div className="pb-4 text-sm text-muted-foreground leading-relaxed space-y-2">
-                    <p>Available sizes: S, M, L, XL, XXL, XXXL, 4XL, 5XL</p>
-                    <p>For size guidance, please refer to our size chart.</p>
+                    <p>Available sizes: XS, S, M, L, XL, XXL, 3XL, 4XL</p>
+                    <p>For size guidance, please refer to our size chart below.</p>
+                    <img src="/size-chart.jpg" alt="Size Chart" className="w-full h-auto rounded-lg my-3" />
                     <p>Full lining available (inside)</p>
                     <p>Best quality and best stitching</p>
                   </div>
@@ -713,27 +896,35 @@ const ProductDetail = () => {
               </div>
 
               {/* Wash Care */}
-              <div className="border-b border-border">
-                <button
-                  onClick={() => toggleSection("washcare")}
-                  className="w-full flex items-center justify-between py-4 text-left"
-                >
-                  <span className="font-medium">Wash Care</span>
-                  {expandedSection === "washcare" ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
+              {(product.washCare || !product.washCare) && (
+                <div className="border-b border-border">
+                  <button
+                    onClick={() => toggleSection("washcare")}
+                    className="w-full flex items-center justify-between py-4 text-left"
+                  >
+                    <span className="font-medium">Wash Care</span>
+                    {expandedSection === "washcare" ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </button>
+                  {expandedSection === "washcare" && (
+                    <div className="pb-4 text-sm text-muted-foreground leading-relaxed space-y-2">
+                      {product.washCare ? (
+                        <div dangerouslySetInnerHTML={{ __html: product.washCare }} />
+                      ) : (
+                        <>
+                          <p>Machine wash cold with like colors.</p>
+                          <p>Do not bleach.</p>
+                          <p>Tumble dry low.</p>
+                          <p>Warm iron if needed.</p>
+                        </>
+                      )}
+                    </div>
                   )}
-                </button>
-                {expandedSection === "washcare" && (
-                  <div className="pb-4 text-sm text-muted-foreground leading-relaxed space-y-2">
-                    <p>Machine wash cold with like colors.</p>
-                    <p>Do not bleach.</p>
-                    <p>Tumble dry low.</p>
-                    <p>Warm iron if needed.</p>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
 
             </div>
           </div>

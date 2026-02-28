@@ -13,6 +13,17 @@ export interface VariationImages {
     option: string;
   }[];
   id?: number;
+  stockQuantity?: number;
+  stockStatus?: string;
+}
+
+export interface Variation {
+  id: number;
+  color: string;
+  size: string | null;
+  stockQuantity: number | null;
+  stockStatus: string;
+  manageStock: boolean;
 }
 
 export interface Product {
@@ -28,6 +39,7 @@ export interface Product {
   sizes: string[];
   images: string[];
   variationImages?: VariationImages[];
+  variations?: Variation[];
   description: string;
   shortDescription?: string;
   fabric?: string;
@@ -35,11 +47,16 @@ export interface Product {
   isNew?: boolean;
   isSoldOut?: boolean;
   inStock?: boolean;
+  stockQuantity?: number;
   discount?: number;
   sku?: string;
   type?: 'simple' | 'variable' | 'grouped' | 'external';
   averageRating?: string;
   ratingCount?: number;
+  dispatchTime?: string; // Dispatch time in days (e.g., "5 days", "3-5 days", "7 days")
+  shippingPolicy?: string;
+  returnPolicy?: string;
+  washCare?: string;
 }
 
 export interface Category {

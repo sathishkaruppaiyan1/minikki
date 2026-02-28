@@ -34,12 +34,13 @@ const Footer = () => {
           <div>
             <h3 className="font-heading text-xl font-bold mb-6">Information</h3>
             <ul className="space-y-3 text-base text-gray-300">
-              <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
+              <li><Link to="/about-us" className="hover:text-white transition-colors">About Us</Link></li>
               <li><Link to="/terms" className="hover:text-white transition-colors">Terms & Conditions</Link></li>
               <li><Link to="/shipping" className="hover:text-white transition-colors">Shipping Policy</Link></li>
               <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
               <li><Link to="/refund" className="hover:text-white transition-colors">Refund & Returns</Link></li>
               <li><Link to="/track" className="hover:text-white transition-colors">Track Your Order</Link></li>
+              <li><Link to="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
             </ul>
           </div>
 

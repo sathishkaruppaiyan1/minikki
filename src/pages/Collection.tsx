@@ -1,13 +1,12 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { SlidersHorizontal, Grid3X3, LayoutList, X } from "lucide-react";
+import { SlidersHorizontal, Grid3X3, LayoutList, X, Loader2 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import LoadingScreen from "@/components/ui/LoadingScreen";
-import { useWooCommerceProducts, useWooCommerceCategories } from "@/hooks/useWooCommerce";
+import { useWooCommerceProductsInfinite, useWooCommerceCategories } from "@/hooks/useWooCommerce";
 
 type SortOption = "default" | "price-low" | "price-high" | "newest" | "name-asc" | "name-desc";
 
@@ -33,15 +32,42 @@ const Collection = () => {
   // Skip variations for collection list view - only load when viewing product detail
   // Wait for categories to load before fetching products if we need a category filter
   const shouldFetchProducts = slug === "all" || !!categoryId || !categoriesLoading;
-  const { data: productsData, isLoading: productsLoading } = useWooCommerceProducts({
+  const {
+    data: productsPages,
+    isLoading: productsLoading,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useWooCommerceProductsInfinite({
     category: slug === "all" ? undefined : categoryId,
     search: searchQuery,
-    perPage: 50,
+    perPage: 24, // Load 24 products per page for fast initial load
     skipVariations: true, // Skip variations for faster list loading
     enabled: shouldFetchProducts,
   });
 
-  const rawProducts = productsData?.products || [];
+  // Infinite scroll: fetch next page when user scrolls near bottom
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "400px" } // Start loading 400px before user reaches bottom
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Flatten all pages into a single products array
+  const rawProducts = useMemo(() => {
+    return productsPages?.pages?.flatMap(page => page.products) || [];
+  }, [productsPages]);
+
   const isLoading = categoriesLoading || productsLoading;
 
   // Filter and sort products
@@ -236,7 +262,7 @@ const Collection = () => {
                   Filter
                 </Button>
                 <span className="text-sm text-muted-foreground font-medium">
-                  {products.length} of {rawProducts.length} items
+                  {products.length} of {rawProducts.length} items{isFetchingNextPage ? " (loading more...)" : ""}
                 </span>
               </div>
 
@@ -398,7 +424,18 @@ const Collection = () => {
 
             {/* Products Grid */}
             {isLoading ? (
-              <LoadingScreen />
+              <div className={`grid gap-4 lg:gap-6 ${gridView === "grid"
+                ? "grid-cols-2 md:grid-cols-3"
+                : "grid-cols-1"
+                }`}>
+                {[...Array(12)].map((_, i) => (
+                  <div key={i} className="space-y-3 animate-pulse">
+                    <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className={`grid gap-4 lg:gap-6 ${gridView === "grid"
                 ? "grid-cols-2 md:grid-cols-3"
@@ -407,6 +444,15 @@ const Collection = () => {
                 {products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
+              </div>
+            )}
+
+            {/* Infinite scroll sentinel + loading indicator */}
+            {!isLoading && products.length > 0 && (
+              <div ref={loadMoreRef} className="flex justify-center py-8">
+                {isFetchingNextPage && (
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                )}
               </div>
             )}
 

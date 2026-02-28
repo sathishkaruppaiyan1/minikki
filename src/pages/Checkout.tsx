@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { useWooCommercePaymentGateways, useCreateOrder } from "@/hooks/useWooCommerce";
+import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const Checkout = () => {
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, totalPrice, clearCart, validateCartStock } = useCart();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { data: paymentGateways, isLoading: isLoadingGateways } = useWooCommercePaymentGateways();
@@ -55,12 +56,23 @@ const Checkout = () => {
   // Set default payment method when gateways are loaded
   useEffect(() => {
     if (paymentGateways && paymentGateways.length > 0 && !paymentMethod) {
-      const enabledGateways = paymentGateways.filter(g => g.enabled);
+      const enabledGateways = paymentGateways.filter(g => g.enabled).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       if (enabledGateways.length > 0) {
         setPaymentMethod(enabledGateways[0].id);
       }
     }
   }, [paymentGateways, paymentMethod]);
+
+  // Load Razorpay Script
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
 
@@ -172,13 +184,38 @@ const Checkout = () => {
     setShowConfirmDialog(false);
 
     try {
+      // Final stock validation before creating order
+      const stockIssues = await validateCartStock();
+      if (stockIssues.length > 0) {
+        const outOfStock = stockIssues.filter(i => i.issue === 'out_of_stock' || i.issue === 'product_removed');
+        const adjusted = stockIssues.filter(i => i.issue === 'quantity_exceeded');
+
+        let msg = "";
+        if (outOfStock.length > 0) {
+          msg += outOfStock.map(i => `${i.productName}${i.size ? ` (${i.size})` : ""} is out of stock`).join(". ");
+        }
+        if (adjusted.length > 0) {
+          msg += (msg ? ". " : "") + adjusted.map(i => `${i.productName}${i.size ? ` (${i.size})` : ""} reduced to ${i.availableStock}`).join(". ");
+        }
+
+        toast({
+          variant: "destructive",
+          title: "Cart Updated",
+          description: msg + ". Please review your cart before placing the order.",
+        });
+        setIsProcessing(false);
+        navigate("/cart");
+        return;
+      }
       // Find selected payment gateway details
       const selectedGateway = paymentGateways?.find(g => g.id === paymentMethod);
+      const totalAmount = totalPrice;
 
       const orderData = {
         payment_method: paymentMethod || "cod",
         payment_method_title: selectedGateway?.title || "Cash on Delivery",
         set_paid: false,
+        status: paymentMethod === "razorpay" ? "pending" : "processing",
         billing: {
           first_name: formData.name,
           last_name: "",
@@ -217,7 +254,197 @@ const Checkout = () => {
 
       const response = await createOrder(orderData);
 
-      // Prepare order details for thank you page using response ID
+      if (paymentMethod === "razorpay") {
+        // Initiate Razorpay Flow
+        try {
+          const razorpayPayload = {
+            amount: totalAmount,
+            currency: "INR",
+            receipt: `order_${response.id}`
+          };
+          const { data: razorpayOrder, error: razorpayError } = await supabase.functions.invoke("create-razorpay-order", {
+            body: razorpayPayload,
+          });
+
+          if (razorpayError || !razorpayOrder) {
+            throw new Error(razorpayError?.message || "Failed to create Razorpay order");
+          }
+
+          const options = {
+            key: import.meta.env.VITE_RAZORPAY_KEY_ID, // Enter the Key ID generated from the Dashboard
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency,
+            name: "Blacklovers",
+            description: `Order #${response.number || response.id}`,
+            image: "/logo.webp",
+            order_id: razorpayOrder.id,
+            handler: async function (response_razorpay: any) {
+              // Payment Success Handler — verify signature server-side
+              try {
+                const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-razorpay-payment", {
+                  body: {
+                    razorpay_order_id: response_razorpay.razorpay_order_id,
+                    razorpay_payment_id: response_razorpay.razorpay_payment_id,
+                    razorpay_signature: response_razorpay.razorpay_signature,
+                    woocommerce_order_id: response.id,
+                  },
+                });
+
+                if (verifyError || !verifyData?.verified) {
+                  console.error("Payment verification failed:", verifyError || verifyData);
+                  toast({
+                    variant: "destructive",
+                    title: "Payment Verification Failed",
+                    description: "Payment could not be verified. Please contact support with your order ID.",
+                  });
+                } else if (!verifyData?.updated) {
+                  console.error("Payment verified but order update failed:", verifyData);
+                  toast({
+                    variant: "destructive",
+                    title: "Status Sync Failed",
+                    description: `Payment verified for order #${response.number || response.id}, but store sync failed. Please contact support.`,
+                  });
+                } else {
+                  console.log("Payment verified and order updated:", verifyData);
+                  toast({
+                    title: "Payment Successful",
+                    description: "Your order has been placed and payment confirmed.",
+                  });
+
+                  // Send WhatsApp notification via Interakt
+                  try {
+                    const firstProductImage = items[0]?.product.image || items[0]?.product.images?.[0];
+                    const { error: interaktError } = await supabase.functions.invoke("interakt-order-notification", {
+                      body: {
+                        phoneNumber: formData.whatsapp || formData.phone,
+                        customerName: formData.name,
+                        orderId: String(response.number || response.id),
+                        productImage: firstProductImage,
+                        amount: totalAmount,
+                        currency: "₹",
+                        buttonValue: "https://blacklovers.in/",
+                      },
+                    });
+                    if (interaktError) {
+                      console.error("Failed to send WhatsApp notification:", interaktError);
+                    } else {
+                      console.log("WhatsApp notification sent successfully");
+                    }
+                  } catch (whatsappError) {
+                    console.error("Error calling Interakt edge function:", whatsappError);
+                  }
+                }
+              } catch (updateError: any) {
+                console.error("Unexpected error in success handler:", updateError);
+                toast({
+                  variant: "destructive",
+                  title: "System Error",
+                  description: "Could not verify payment. Please contact support.",
+                });
+              }
+
+              // Prepare order details for thank you page
+              const orderDetails = {
+                orderId: String(response.number || response.id),
+                name: formData.name,
+                address: `${formData.houseNo}, ${formData.street}\n${formData.landmark ? formData.landmark + "\n" : ""}${formData.city}, ${formData.state} - ${formData.pincode}\n${formData.country}`,
+                phone: formData.phone,
+                whatsapp: formData.whatsapp,
+                email: formData.email,
+                items: items.map(item => ({
+                  name: item.product.name,
+                  quantity: item.quantity,
+                  price: item.product.price,
+                  size: item.size,
+                  color: item.color,
+                })),
+                total: totalAmount,
+              };
+
+              clearCart();
+              navigate("/thank-you", { state: orderDetails });
+            },
+            prefill: {
+              name: formData.name,
+              email: formData.email,
+              contact: formData.phone,
+            },
+            theme: {
+              color: "#000000",
+            },
+            modal: {
+              ondismiss: async function () {
+                // Update WooCommerce order to cancelled/failed when user dismisses payment
+                try {
+                  const { error: cancelError } = await supabase.functions.invoke("woocommerce-orders", {
+                    method: "PUT",
+                    body: { id: response.id, status: "cancelled" },
+                  });
+                  if (cancelError) {
+                    console.error("Failed to cancel order in WooCommerce:", cancelError);
+                  } else {
+                    console.log("Order cancelled in WooCommerce:", response.id);
+                  }
+                } catch (err) {
+                  console.error("Error cancelling order:", err);
+                }
+                setIsProcessing(false);
+                toast({
+                  title: "Payment Cancelled",
+                  description: "Your order has been cancelled. No payment was charged.",
+                });
+              }
+            }
+          };
+
+          const rzp1 = (window as any).Razorpay(options);
+
+          // Handle payment failure (bank decline, network error, etc.)
+          rzp1.on("payment.failed", async function (failResponse: any) {
+            console.error("Razorpay payment failed:", failResponse.error);
+            try {
+              const { error: failError } = await supabase.functions.invoke("woocommerce-orders", {
+                method: "PUT",
+                body: {
+                  id: response.id,
+                  status: "failed",
+                  meta_data: [
+                    { key: "_razorpay_failure_reason", value: failResponse.error?.description || "Payment failed" },
+                    { key: "_razorpay_failure_code", value: failResponse.error?.code || "unknown" },
+                  ],
+                },
+              });
+              if (failError) {
+                console.error("Failed to update order status to failed:", failError);
+              } else {
+                console.log("Order marked as failed in WooCommerce:", response.id);
+              }
+            } catch (err) {
+              console.error("Error updating failed order:", err);
+            }
+            setIsProcessing(false);
+            toast({
+              variant: "destructive",
+              title: "Payment Failed",
+              description: failResponse.error?.description || "Your payment was declined. Please try again.",
+            });
+          });
+
+          rzp1.open();
+          return; // Wait for handler or dismiss
+        } catch (err: any) {
+          console.error("Razorpay error:", err);
+          toast({
+            variant: "destructive",
+            title: "Payment Initialization Failed",
+            description: err.message || "Could not initialize Razorpay. Please try again.",
+          });
+          setIsProcessing(false);
+          return;
+        }
+      }
+
+      // Handle COD or other non-instant payments
       const orderDetails = {
         orderId: String(response.number || response.id),
         name: formData.name,
@@ -232,7 +459,7 @@ const Checkout = () => {
           size: item.size,
           color: item.color,
         })),
-        total: totalPrice * 1.18,
+        total: totalAmount,
       };
 
       clearCart();
@@ -245,7 +472,9 @@ const Checkout = () => {
         description: "There was an error placing your order. Please try again.",
       });
     } finally {
-      setIsProcessing(false);
+      if (paymentMethod !== "razorpay") {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -535,7 +764,7 @@ const Checkout = () => {
                         <p className="text-sm text-muted-foreground mt-1">Please contact support for assistance</p>
                       </div>
                     ) : (
-                      paymentGateways.filter(gateway => gateway.enabled).map((gateway) => (
+                      paymentGateways.filter(gateway => gateway.enabled).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((gateway) => (
                         <label
                           key={gateway.id}
                           className={`flex items-center gap-3 p-4 border cursor-pointer transition-colors ${paymentMethod === gateway.id
@@ -604,16 +833,12 @@ const Checkout = () => {
                       <span className="text-muted-foreground">Shipping</span>
                       <span className="font-bold text-green-600">FREE</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Tax (GST 18%)</span>
-                      <span className="font-bold">{formatPrice(totalPrice * 0.18)}</span>
-                    </div>
                   </div>
 
                   <div className="mt-6 pt-6 border-t border-border">
                     <div className="flex justify-between text-lg">
                       <span className="font-bold">Total</span>
-                      <span className="font-bold">{formatPrice(totalPrice * 1.18)}</span>
+                      <span className="font-bold">{formatPrice(totalPrice)}</span>
                     </div>
                   </div>
 
@@ -632,7 +857,7 @@ const Checkout = () => {
                         Processing...
                       </span>
                     ) : (
-                      `PLACE ORDER - ${formatPrice(totalPrice * 1.18)}`
+                      `PLACE ORDER - ${formatPrice(totalPrice)}`
                     )}
                   </Button>
 

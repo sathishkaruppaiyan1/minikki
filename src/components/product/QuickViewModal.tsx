@@ -8,7 +8,7 @@ import { useWishlist } from "@/contexts/WishlistContext";
 
 const AdornHeart = ({ filled }: { filled?: boolean }) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.2">
-    <path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35Z" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35Z" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -24,6 +24,25 @@ const QuickViewModal = () => {
 
   const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
   const inWishlist = isInWishlist(product.id);
+
+  const isColorOutOfStock = (colorName: string): boolean => {
+    if (!product || !product.variations || product.variations.length === 0) return false;
+    const colorVariations = product.variations.filter(
+      (v) => v.color.toLowerCase() === colorName.toLowerCase()
+    );
+    if (colorVariations.length === 0) return false;
+    return colorVariations.every((v) => v.stockStatus === 'outofstock' || (v.manageStock && (v.stockQuantity === 0 || v.stockQuantity === null)));
+  };
+
+  const isSizeOutOfStock = (size: string): boolean => {
+    if (!product || !product.variations || product.variations.length === 0) return false;
+
+    // QuickViewModal doesn't seem to have selectedColor state, it might only have sizes or uses product.colors[0]
+    // Let's assume for now it check across all if no selection
+    const sizeVariations = product.variations.filter((v) => v.size === size);
+    if (sizeVariations.length === 0) return false;
+    return sizeVariations.every((v) => v.stockStatus === 'outofstock' || (v.manageStock && (v.stockQuantity === 0 || v.stockQuantity === null)));
+  };
 
   const handleAddToCart = () => {
     addToCart(product, quantity, selectedSize || undefined);
@@ -64,9 +83,8 @@ const QuickViewModal = () => {
                   <button
                     key={index}
                     onClick={() => setActiveImage(index)}
-                    className={`flex-shrink-0 w-16 h-20 border-2 overflow-hidden ${
-                      activeImage === index ? "border-foreground" : "border-transparent"
-                    }`}
+                    className={`flex-shrink-0 w-16 h-20 border-2 overflow-hidden ${activeImage === index ? "border-foreground" : "border-transparent"
+                      }`}
                   >
                     <img
                       src={image}
@@ -98,19 +116,27 @@ const QuickViewModal = () => {
               <div>
                 <p className="font-bold mb-2">Size</p>
                 <div className="flex flex-wrap gap-2">
-                  {product.sizes.map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`min-w-[50px] h-10 px-4 rounded-full border font-medium transition-all ${
-                        selectedSize === size
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-border hover:border-foreground"
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
+                  {product.sizes.map((size) => {
+                    const outOfStock = isSizeOutOfStock(size);
+                    return (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        className={`min-w-[50px] h-10 px-4 rounded-full border font-medium transition-all relative ${selectedSize === size
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border hover:border-foreground"
+                          } ${outOfStock ? "opacity-60" : ""}`}
+                        title={outOfStock ? "Out of Stock" : ""}
+                      >
+                        {size}
+                        {outOfStock && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <X className="h-6 w-6 text-black/40 stroke-[1.2]" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

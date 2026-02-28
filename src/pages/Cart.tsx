@@ -1,11 +1,45 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Minus, Plus, ShoppingBag, ArrowLeft, Trash2 } from "lucide-react";
+import { Minus, Plus, ShoppingBag, ArrowLeft, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, type StockIssue } from "@/contexts/CartContext";
+import { toast } from "sonner";
 
 const Cart = () => {
-  const { items, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart();
+  const { items, removeFromCart, updateQuantity, totalPrice, clearCart, validateCartStock } = useCart();
+  const [isValidating, setIsValidating] = useState(false);
+  const [stockIssues, setStockIssues] = useState<StockIssue[]>([]);
+
+  // Validate cart stock on page load
+  useEffect(() => {
+    if (items.length === 0) return;
+
+    let cancelled = false;
+    setIsValidating(true);
+
+    validateCartStock().then((issues) => {
+      if (cancelled) return;
+      setStockIssues(issues);
+      if (issues.length > 0) {
+        const removed = issues.filter(i => i.issue === 'out_of_stock' || i.issue === 'product_removed');
+        const adjusted = issues.filter(i => i.issue === 'quantity_exceeded');
+
+        if (removed.length > 0) {
+          toast.error(`${removed.length} item(s) removed - no longer available`);
+        }
+        if (adjusted.length > 0) {
+          toast.warning(`${adjusted.length} item(s) adjusted - stock reduced`);
+        }
+      }
+    }).catch((err) => {
+      console.error("Stock validation failed:", err);
+    }).finally(() => {
+      if (!cancelled) setIsValidating(false);
+    });
+
+    return () => { cancelled = true; };
+  }, []); // Only on mount
 
   const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
 
@@ -19,6 +53,19 @@ const Cart = () => {
             <p className="text-muted-foreground mb-8">
               Looks like you haven't added anything to your cart yet.
             </p>
+            {stockIssues.length > 0 && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-left">
+                <div className="flex items-center gap-2 text-red-700 font-bold mb-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Items were removed from your cart
+                </div>
+                {stockIssues.map((issue, idx) => (
+                  <p key={idx} className="text-sm text-red-600">
+                    {issue.productName}{issue.size ? ` (${issue.size})` : ""} — {issue.issue === 'out_of_stock' ? 'Out of stock' : 'No longer available'}
+                  </p>
+                ))}
+              </div>
+            )}
             <Link to="/collections/all">
               <Button className="bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold px-8 py-6">
                 CONTINUE SHOPPING
@@ -41,6 +88,31 @@ const Cart = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Stock validation banner */}
+        {isValidating && (
+          <div className="flex items-center gap-2 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Checking stock availability...
+          </div>
+        )}
+
+        {stockIssues.length > 0 && !isValidating && (
+          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-2 text-amber-700 font-bold mb-2">
+              <AlertTriangle className="h-4 w-4" />
+              Cart updated due to stock changes
+            </div>
+            {stockIssues.map((issue, idx) => (
+              <p key={idx} className="text-sm text-amber-600">
+                {issue.productName}{issue.size ? ` (${issue.size})` : ""} —{" "}
+                {issue.issue === 'out_of_stock' || issue.issue === 'product_removed'
+                  ? 'Removed (out of stock)'
+                  : `Quantity adjusted to ${issue.availableStock} (was ${issue.requestedQuantity})`}
+              </p>
+            ))}
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2">
@@ -107,8 +179,46 @@ const Cart = () => {
                         </button>
                         <span className="w-10 text-center font-bold text-sm">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.size, item.color)}
+                          onClick={() => {
+                            const getAvailableStock = (): number | null => {
+                              const product = item.product;
+                              if (product.type === 'simple' || !product.type || product.type === 'external') {
+                                return product.stockQuantity ?? null;
+                              }
+                              if (product.type === 'variable' && product.variationImages && item.color) {
+                                const variation = product.variationImages.find(v => v.color === item.color);
+                                if (variation?.stockQuantity !== null && variation?.stockQuantity !== undefined) {
+                                  return variation.stockQuantity;
+                                }
+                              }
+                              return product.stockQuantity ?? null;
+                            };
+
+                            const availableStock = getAvailableStock();
+                            if (availableStock !== null && item.quantity >= availableStock) {
+                              toast.error(`Only ${availableStock} items available in stock`);
+                              return;
+                            }
+                            updateQuantity(item.product.id, item.quantity + 1, item.size, item.color);
+                          }}
                           className="w-8 h-8 flex items-center justify-center hover:bg-muted transition-colors"
+                          disabled={(() => {
+                            const getAvailableStock = (): number | null => {
+                              const product = item.product;
+                              if (product.type === 'simple' || !product.type || product.type === 'external') {
+                                return product.stockQuantity ?? null;
+                              }
+                              if (product.type === 'variable' && product.variationImages && item.color) {
+                                const variation = product.variationImages.find(v => v.color === item.color);
+                                if (variation?.stockQuantity !== null && variation?.stockQuantity !== undefined) {
+                                  return variation.stockQuantity;
+                                }
+                              }
+                              return product.stockQuantity ?? null;
+                            };
+                            const stock = getAvailableStock();
+                            return stock !== null && item.quantity >= stock;
+                          })()}
                         >
                           <Plus className="h-3 w-3" />
                         </button>
@@ -171,8 +281,18 @@ const Cart = () => {
               </div>
 
               <Link to="/checkout" className="block mt-6">
-                <Button className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold">
-                  PROCEED TO CHECKOUT
+                <Button
+                  className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold"
+                  disabled={isValidating}
+                >
+                  {isValidating ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Checking stock...
+                    </span>
+                  ) : (
+                    "PROCEED TO CHECKOUT"
+                  )}
                 </Button>
               </Link>
 
