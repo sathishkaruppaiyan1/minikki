@@ -40,7 +40,15 @@
       "Bash(tail:*)",
       "Bash(cd:*)",
       "Bash(cd /c/Users/sathi/Music/pixel-perfect-shop-1 && python load_test.py 2>&1)",
-      "Bash(curl -s -u \"ck_e7a20a425ab4c460420bf88d664e4c5de2e0d7fe:cs_491275f61cd756adfee614b6cfcf58f98d03da8a\" \"https://admin.blacklovers.in/wp-json/wc/v3/orders/5323\" | python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Order {d[\\\\\"id\\\\\"]}: status={d[\\\\\"status\\\\\"]} total={d[\\\\\"total\\\\\"]} payment={d.get\\(\\\\\"payment_method\\\\\",\\\\\"?\\\\\"\\)} date={d[\\\\\"date_created\\\\\"]}'\\)\" 2>&1)"
+      "Bash(curl -s -u \"ck_e7a20a425ab4c460420bf88d664e4c5de2e0d7fe:cs_491275f61cd756adfee614b6cfcf58f98d03da8a\" \"https://admin.blacklovers.in/wp-json/wc/v3/orders/5323\" | python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Order {d[\\\\\"id\\\\\"]}: status={d[\\\\\"status\\\\\"]} total={d[\\\\\"total\\\\\"]} payment={d.get\\(\\\\\"payment_method\\\\\",\\\\\"?\\\\\"\\)} date={d[\\\\\"date_created\\\\\"]}'\\)\" 2>&1)",
+      "Bash(xargs grep:*)",
+      "Bash(npx vite:*)",
+      "WebFetch(domain:docs.easebuzz.in)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:bhartee-tech-ror.medium.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:workdo.io)"
     ]
   }
 }

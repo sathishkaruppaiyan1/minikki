@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.interakt-verify-otp]
 verify_jwt = false
+
+[functions.initiate-easebuzz-payment]
+verify_jwt = false
+
+[functions.verify-easebuzz-payment]
+verify_jwt = false

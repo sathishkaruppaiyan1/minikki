@@ -74,6 +74,17 @@ const Checkout = () => {
     };
   }, []);
 
+  // Load EaseBuzz Script
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://ebz-static.s3.ap-south-1.amazonaws.com/easecheckout/v2.0.0/easebuzz-checkout-v2.min.js";
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
   const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -215,7 +226,7 @@ const Checkout = () => {
         payment_method: paymentMethod || "cod",
         payment_method_title: selectedGateway?.title || "Cash on Delivery",
         set_paid: false,
-        status: paymentMethod === "razorpay" ? "pending" : "processing",
+        status: (paymentMethod === "razorpay" || paymentMethod === "easebuzz" || paymentMethod === "payeasebuzz") ? "pending" : "processing",
         billing: {
           first_name: formData.name,
           last_name: "",
@@ -444,6 +455,201 @@ const Checkout = () => {
         }
       }
 
+      if (paymentMethod === "easebuzz" || paymentMethod === "payeasebuzz") {
+        try {
+          const txnid = `BL_${response.id}_${Date.now()}`;
+          const currentUrl = window.location.origin;
+          console.log("Initiating EaseBuzz payment:", { txnid, totalAmount, orderId: response.id, name: formData.name, email: formData.email, phone: formData.phone });
+
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+          const ebzPayload = {
+            txnid,
+            amount: totalAmount,
+            productinfo: `Order ${response.number || response.id}`,
+            firstname: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            surl: currentUrl.includes("localhost") ? "https://blacklovers.in/thank-you" : `${currentUrl}/thank-you`,
+            furl: currentUrl.includes("localhost") ? "https://blacklovers.in/checkout" : `${currentUrl}/checkout`,
+            udf1: String(response.id),
+            udf2: "",
+            udf3: "",
+            udf4: "",
+            udf5: "",
+          };
+          console.log("EaseBuzz payload:", ebzPayload);
+
+          const ebzResponse = await fetch(`${supabaseUrl}/functions/v1/initiate-easebuzz-payment`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": supabaseKey,
+              "Authorization": `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify(ebzPayload),
+          });
+
+          const ebzData = await ebzResponse.json();
+          console.log("EaseBuzz initiation response:", ebzData);
+
+          if (!ebzResponse.ok || !ebzData || ebzData.status !== 1) {
+            console.error("EaseBuzz initiation failed:", ebzData);
+            throw new Error(ebzData?.error || "Failed to initiate EaseBuzz payment");
+          }
+
+          const easebuzzCheckout = new (window as any).EasebuzzCheckout(ebzData.access_key, ebzData.env === "test" ? "test" : "prod");
+
+          easebuzzCheckout.initiatePayment({
+            access_key: ebzData.access_key,
+            onResponse: async (ebzResponse: any) => {
+              console.log("EaseBuzz response:", ebzResponse);
+
+              if (ebzResponse.status === "success") {
+                try {
+                  const verifyRes = await fetch(`${supabaseUrl}/functions/v1/verify-easebuzz-payment`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "apikey": supabaseKey,
+                      "Authorization": `Bearer ${supabaseKey}`,
+                    },
+                    body: JSON.stringify({
+                      easebuzz_response: ebzResponse,
+                      woocommerce_order_id: response.id,
+                    }),
+                  });
+                  const verifyData = await verifyRes.json();
+                  console.log("EaseBuzz verification response:", verifyData);
+
+                  if (!verifyRes.ok || !verifyData?.payment_success) {
+                    console.error("EaseBuzz verification failed:", verifyData);
+                    toast({
+                      variant: "destructive",
+                      title: "Payment Verification Failed",
+                      description: "Payment could not be verified. Please contact support with your order ID.",
+                    });
+                  } else if (!verifyData?.updated) {
+                    toast({
+                      variant: "destructive",
+                      title: "Status Sync Failed",
+                      description: `Payment verified for order #${response.number || response.id}, but store sync failed. Please contact support.`,
+                    });
+                  } else {
+                    toast({
+                      title: "Payment Successful",
+                      description: "Your order has been placed and payment confirmed.",
+                    });
+
+                    // Send WhatsApp notification
+                    try {
+                      const firstProductImage = items[0]?.product.image || items[0]?.product.images?.[0];
+                      const interaktRes = await fetch(`${supabaseUrl}/functions/v1/interakt-order-notification`, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          "apikey": supabaseKey,
+                          "Authorization": `Bearer ${supabaseKey}`,
+                        },
+                        body: JSON.stringify({
+                          phoneNumber: formData.whatsapp || formData.phone,
+                          customerName: formData.name,
+                          orderId: String(response.number || response.id),
+                          productImage: firstProductImage,
+                          amount: totalAmount,
+                          currency: "₹",
+                          buttonValue: "https://blacklovers.in/",
+                        }),
+                      });
+                      console.log("Interakt notification response:", interaktRes.status);
+                    } catch (whatsappError) {
+                      console.error("WhatsApp notification error:", whatsappError);
+                    }
+                  }
+                } catch (updateError: any) {
+                  console.error("EaseBuzz verification error:", updateError);
+                  toast({
+                    variant: "destructive",
+                    title: "System Error",
+                    description: "Could not verify payment. Please contact support.",
+                  });
+                }
+
+                const orderDetails = {
+                  orderId: String(response.number || response.id),
+                  name: formData.name,
+                  address: `${formData.houseNo}, ${formData.street}\n${formData.landmark ? formData.landmark + "\n" : ""}${formData.city}, ${formData.state} - ${formData.pincode}\n${formData.country}`,
+                  phone: formData.phone,
+                  whatsapp: formData.whatsapp,
+                  email: formData.email,
+                  items: items.map(item => ({
+                    name: item.product.name,
+                    quantity: item.quantity,
+                    price: item.product.price,
+                    size: item.size,
+                    color: item.color,
+                  })),
+                  total: totalAmount,
+                };
+
+                clearCart();
+                navigate("/thank-you", { state: orderDetails });
+              } else if (ebzResponse.status === "failure") {
+                // Payment failed
+                try {
+                  await supabase.functions.invoke("woocommerce-orders", {
+                    method: "PUT",
+                    body: {
+                      id: response.id,
+                      status: "failed",
+                      meta_data: [
+                        { key: "_easebuzz_failure_reason", value: ebzResponse.error_Message || "Payment failed" },
+                      ],
+                    },
+                  });
+                } catch (err) {
+                  console.error("Error updating failed order:", err);
+                }
+                setIsProcessing(false);
+                toast({
+                  variant: "destructive",
+                  title: "Payment Failed",
+                  description: ebzResponse.error_Message || "Your payment was declined. Please try again.",
+                });
+              } else {
+                // User closed / cancelled
+                try {
+                  await supabase.functions.invoke("woocommerce-orders", {
+                    method: "PUT",
+                    body: { id: response.id, status: "cancelled" },
+                  });
+                } catch (err) {
+                  console.error("Error cancelling order:", err);
+                }
+                setIsProcessing(false);
+                toast({
+                  title: "Payment Cancelled",
+                  description: "Your order has been cancelled. No payment was charged.",
+                });
+              }
+            },
+            theme: "#000000",
+          });
+
+          return;
+        } catch (err: any) {
+          console.error("EaseBuzz error:", err);
+          toast({
+            variant: "destructive",
+            title: "Payment Initialization Failed",
+            description: err.message || "Could not initialize EaseBuzz. Please try again.",
+          });
+          setIsProcessing(false);
+          return;
+        }
+      }
+
       // Handle COD or other non-instant payments
       const orderDetails = {
         orderId: String(response.number || response.id),
@@ -472,7 +678,7 @@ const Checkout = () => {
         description: "There was an error placing your order. Please try again.",
       });
     } finally {
-      if (paymentMethod !== "razorpay") {
+      if (paymentMethod !== "razorpay" && paymentMethod !== "easebuzz") {
         setIsProcessing(false);
       }
     }
