@@ -48,6 +48,7 @@ const Checkout = () => {
   const [isFetchingPincode, setIsFetchingPincode] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [formErrors, setFormErrors] = useState({
+    name: "",
     phone: "",
     alternatePhone: "",
     whatsapp: "",
@@ -141,7 +142,17 @@ const Checkout = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     let hasError = false;
-    const newErrors = { phone: "", alternatePhone: "", whatsapp: "" };
+    const newErrors = { name: "", phone: "", alternatePhone: "", whatsapp: "" };
+
+    // Name validation: must have at least 3 alphabetic characters
+    const nameAlphaOnly = formData.name.replace(/[^a-zA-Z]/g, "");
+    if (!formData.name.trim()) {
+      newErrors.name = "Name is required.";
+      hasError = true;
+    } else if (nameAlphaOnly.length < 3) {
+      newErrors.name = "Name must have at least 3 letters (a-z).";
+      hasError = true;
+    }
 
     // Basic digit validation regex for 10-12 digits
     const phoneRegex = /^\d{10,12}$/;
@@ -464,11 +475,17 @@ const Checkout = () => {
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
           const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+          // EaseBuzz requires firstname to be alphabets and spaces only, min 3 chars
+          const sanitizedName = formData.name
+            .replace(/[^a-zA-Z\s]/g, "")
+            .replace(/\s+/g, " ")
+            .trim() || "Customer";
+
           const ebzPayload = {
             txnid,
             amount: totalAmount,
             productinfo: `Order ${response.number || response.id}`,
-            firstname: formData.name,
+            firstname: sanitizedName,
             email: formData.email,
             phone: formData.phone,
             surl: currentUrl.includes("localhost") ? "https://blacklovers.in/thank-you" : `${currentUrl}/thank-you`,
@@ -741,8 +758,11 @@ const Checkout = () => {
                         onChange={handleInputChange}
                         className="mt-1 rounded-none"
                         required
-                        placeholder="Full Name"
+                        placeholder="Full Name (e.g. Sathish Kumar)"
                       />
+                      {formErrors.name && (
+                        <p className="text-red-500 text-sm mt-1">{formErrors.name}</p>
+                      )}
                     </div>
 
                     {/* House no / building name */}
