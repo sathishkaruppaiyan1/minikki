@@ -262,7 +262,10 @@ const Checkout = () => {
         },
         line_items: items.map(item => ({
           product_id: parseInt(item.product.id),
+          variation_id: item.variationId,
           quantity: item.quantity,
+          subtotal: String(item.product.price * item.quantity),
+          total: String(item.product.price * item.quantity),
           meta_data: [
             ...(item.size ? [{ key: "Size", value: item.size }] : []),
             ...(item.color ? [{ key: "Color", value: item.color }] : [])
@@ -275,6 +278,78 @@ const Checkout = () => {
       };
 
       const response = await createOrder(orderData);
+
+      // Safety check: verify WooCommerce order total matches expected total
+      const wooTotal = parseFloat(response.total);
+      if (!wooTotal || Math.abs(wooTotal - totalAmount) > 1) {
+        console.error("WooCommerce order total mismatch!", {
+          expected: totalAmount,
+          woocommerce_total: wooTotal,
+          order_id: response.id,
+        });
+
+        // Attempt to fix the order total via update
+        try {
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+          const fixResponse = await fetch(
+            `${supabaseUrl}/functions/v1/woocommerce-orders?id=${response.id}`,
+            {
+              method: "PUT",
+              headers: {
+                "apikey": supabaseKey,
+                "Authorization": `Bearer ${supabaseKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                id: response.id,
+                line_items: items.map(item => ({
+                  id: response.line_items?.find((li: any) =>
+                    li.product_id === parseInt(item.product.id)
+                  )?.id,
+                  product_id: parseInt(item.product.id),
+                  variation_id: item.variationId,
+                  quantity: item.quantity,
+                  subtotal: String(item.product.price * item.quantity),
+                  total: String(item.product.price * item.quantity),
+                })),
+              }),
+            }
+          );
+          if (fixResponse.ok) {
+            const fixedOrder = await fixResponse.json();
+            const fixedTotal = parseFloat(fixedOrder.total);
+            console.log("Order total corrected:", { order_id: response.id, corrected_total: fixedTotal });
+            if (!fixedTotal || Math.abs(fixedTotal - totalAmount) > 1) {
+              toast({
+                variant: "destructive",
+                title: "Order Error",
+                description: "Could not set correct order total. Please try again or contact support.",
+              });
+              setIsProcessing(false);
+              return;
+            }
+          } else {
+            console.error("Failed to fix order total:", await fixResponse.text());
+            toast({
+              variant: "destructive",
+              title: "Order Error",
+              description: "Order total mismatch detected. Please try again or contact support.",
+            });
+            setIsProcessing(false);
+            return;
+          }
+        } catch (fixError) {
+          console.error("Error fixing order total:", fixError);
+          toast({
+            variant: "destructive",
+            title: "Order Error",
+            description: "Order total mismatch detected. Please try again or contact support.",
+          });
+          setIsProcessing(false);
+          return;
+        }
+      }
 
       if (paymentMethod === "razorpay") {
         // Initiate Razorpay Flow
@@ -335,10 +410,12 @@ const Checkout = () => {
 
                   // Send WhatsApp notification via Interakt
                   try {
-                    const firstProductImage = items[0]?.product.image || items[0]?.product.images?.[0];
+                    const firstProductImage = items[0]?.product.images?.[0];
+                    const whatsappNum = formData.whatsapp || formData.phone;
+                    console.log("Triggering Razorpay WhatsApp notification for:", whatsappNum);
                     const { error: interaktError } = await supabase.functions.invoke("interakt-order-notification", {
                       body: {
-                        phoneNumber: formData.whatsapp || formData.phone,
+                        phoneNumber: whatsappNum,
                         customerName: formData.name,
                         orderId: String(response.number || response.id),
                         productImage: firstProductImage,
@@ -379,6 +456,7 @@ const Checkout = () => {
                   price: item.product.price,
                   size: item.size,
                   color: item.color,
+                  image: item.image || item.product.images[0],
                 })),
                 total: totalAmount,
               };
@@ -553,36 +631,10 @@ const Checkout = () => {
                       title: "Status Sync Failed",
                       description: `Payment verified for order #${response.number || response.id}, but store sync failed. Please contact support.`,
                     });
-                  } else {
                     toast({
                       title: "Payment Successful",
                       description: "Your order has been placed and payment confirmed.",
                     });
-
-                    // Send WhatsApp notification
-                    try {
-                      const firstProductImage = items[0]?.product.image || items[0]?.product.images?.[0];
-                      const interaktRes = await fetch(`${supabaseUrl}/functions/v1/interakt-order-notification`, {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                          "apikey": supabaseKey,
-                          "Authorization": `Bearer ${supabaseKey}`,
-                        },
-                        body: JSON.stringify({
-                          phoneNumber: formData.whatsapp || formData.phone,
-                          customerName: formData.name,
-                          orderId: String(response.number || response.id),
-                          productImage: firstProductImage,
-                          amount: totalAmount,
-                          currency: "₹",
-                          buttonValue: "https://blacklovers.in/",
-                        }),
-                      });
-                      console.log("Interakt notification response:", interaktRes.status);
-                    } catch (whatsappError) {
-                      console.error("WhatsApp notification error:", whatsappError);
-                    }
                   }
                 } catch (updateError: any) {
                   console.error("EaseBuzz verification error:", updateError);
@@ -606,6 +658,7 @@ const Checkout = () => {
                     price: item.product.price,
                     size: item.size,
                     color: item.color,
+                    image: item.image || item.product.images[0],
                   })),
                   total: totalAmount,
                 };
@@ -681,6 +734,7 @@ const Checkout = () => {
           price: item.product.price,
           size: item.size,
           color: item.color,
+          image: item.image || item.product.images[0],
         })),
         total: totalAmount,
       };

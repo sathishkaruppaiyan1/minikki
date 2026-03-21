@@ -161,13 +161,50 @@ serve(async (req) => {
       );
     }
 
-    let updatedOrder;
-    try {
-      updatedOrder = JSON.parse(responseText);
-    } catch {
-      updatedOrder = { id: woocommerce_order_id };
-    }
+    const updatedOrder = JSON.parse(responseText);
     console.log("Order updated to processing:", updatedOrder.id);
+
+    // Send WhatsApp notification via Interakt
+    try {
+      const whatsappMeta = updatedOrder.meta_data?.find((m: any) => m.key === "whatsapp_number")?.value;
+      const billingPhone = updatedOrder.billing?.phone;
+      const whatsappNumber = whatsappMeta || billingPhone;
+      
+      const customerName = updatedOrder.billing?.first_name || firstname || "Customer";
+      const totalAmount = updatedOrder.total || amount;
+      const firstProductImage = updatedOrder.line_items?.[0]?.image?.src || "";
+
+      console.log("WhatsApp check - Meta:", whatsappMeta, "Billing:", billingPhone, "Selected:", whatsappNumber);
+
+      if (whatsappNumber) {
+        console.log("Triggering WhatsApp notification for order:", updatedOrder.id);
+        const supabaseUrl = Deno.env.get("SUPABASE_URL");
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
+
+        if (supabaseUrl && supabaseKey) {
+          const interaktRes = await fetch(`${supabaseUrl}/functions/v1/interakt-order-notification`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": supabaseKey,
+              "Authorization": `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({
+              phoneNumber: whatsappNumber,
+              customerName: customerName,
+              orderId: String(updatedOrder.number || updatedOrder.id),
+              productImage: firstProductImage,
+              amount: totalAmount,
+              currency: "₹",
+              buttonValue: "https://blacklovers.in/",
+            }),
+          });
+          console.log("Interakt notification status:", interaktRes.status);
+        }
+      }
+    } catch (whatsappError) {
+      console.error("Error sending WhatsApp notification:", whatsappError);
+    }
 
     return new Response(
       JSON.stringify({ verified: hashVerified, payment_success: true, updated: true, order_id: updatedOrder.id }),

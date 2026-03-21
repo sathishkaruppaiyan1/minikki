@@ -7,6 +7,7 @@ interface CartItem {
   size?: string;
   color?: string;
   image?: string;
+  variationId?: number;
 }
 
 export interface StockIssue {
@@ -285,6 +286,17 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           return prev; // Don't add if no stock available
         }
       }
+      
+      // Get variation ID
+      let variationId: number | undefined;
+      if (product.type === 'variable' && (size || color)) {
+        const matchingVariation = product.variations?.find(
+          (v) => 
+            (!size || v.size === size) && 
+            (!color || v.color.toLowerCase() === color.toLowerCase())
+        );
+        variationId = matchingVariation?.id;
+      }
 
       let image = product.images[0];
 
@@ -314,7 +326,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         return updated;
       }
 
-      return [...prev, { product, quantity, size, color, image }];
+      return [...prev, { product, quantity, size, color, image, variationId }];
     });
     setIsOpen(true);
   };

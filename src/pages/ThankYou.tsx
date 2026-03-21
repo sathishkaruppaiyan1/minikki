@@ -17,6 +17,7 @@ interface OrderDetails {
     price: number;
     size?: string;
     color?: string;
+    image?: string;
   }>;
   total: number;
 }
@@ -109,14 +110,25 @@ const ThankYou = () => {
             <div className="space-y-4">
               {orderDetails.items.map((item, index) => (
                 <div key={index} className="flex justify-between items-start border-b border-border pb-4 last:border-0 last:pb-0">
-                  <div>
-                    <p className="font-bold">{item.name}</p>
-                    {(item.size || item.color) && (
-                      <p className="text-sm text-muted-foreground">
-                        {[item.size, item.color].filter(Boolean).join(" / ")}
-                      </p>
+                  <div className="flex gap-4">
+                    {item.image && (
+                      <div className="w-16 h-20 flex-shrink-0 bg-muted">
+                        <img 
+                          src={item.image} 
+                          alt={item.name} 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     )}
-                    <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                    <div>
+                      <p className="font-bold">{item.name}</p>
+                      {(item.size || item.color) && (
+                        <p className="text-sm text-muted-foreground">
+                          {[item.size, item.color].filter(Boolean).join(" / ")}
+                        </p>
+                      )}
+                      <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                    </div>
                   </div>
                   <p className="font-bold">{formatPrice(item.price * item.quantity)}</p>
                 </div>
