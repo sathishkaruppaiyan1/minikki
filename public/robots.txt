@@ -1,8 +1,26 @@
+User-agent: *
+Allow: /
+Disallow: /cart
+Disallow: /checkout
+Disallow: /thank-you
+Disallow: /account
+Disallow: /login
+Disallow: /signup
+Disallow: /reset-password
+
 User-agent: Googlebot
 Allow: /
+Disallow: /cart
+Disallow: /checkout
+Disallow: /thank-you
+Disallow: /account
 
 User-agent: Bingbot
 Allow: /
+Disallow: /cart
+Disallow: /checkout
+Disallow: /thank-you
+Disallow: /account
 
 User-agent: Twitterbot
 Allow: /
@@ -10,5 +28,4 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-User-agent: *
-Allow: /
+Sitemap: https://blacklovers.in/sitemap.xml

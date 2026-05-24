@@ -48,7 +48,20 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:bhartee-tech-ror.medium.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:workdo.io)"
+      "WebFetch(domain:workdo.io)",
+      "WebFetch(domain:api.postalpincode.in)",
+      "WebFetch(domain:www.postalpincode.in)",
+      "WebFetch(domain:publicapi.dev)",
+      "WebFetch(domain:api.zippopotam.us)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__deploy_edge_function",
+      "mcp__claude_ai_Supabase__get_project_url",
+      "WebFetch(domain:tjjpedhwruqiiybuwsgy.supabase.co)",
+      "WebFetch(domain:dashboard.blacklovers.in)",
+      "WebFetch(domain:api.allorigins.win)",
+      "WebFetch(domain:corsproxy.io)",
+      "PowerShell(npm run *)",
+      "PowerShell($response = Invoke-WebRequest -Uri \"http://localhost:4173/\" -UseBasicParsing; $response.StatusCode; $response.Content.Length)"
     ]
   }
 }

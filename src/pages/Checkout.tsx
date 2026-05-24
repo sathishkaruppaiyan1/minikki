@@ -109,31 +109,44 @@ const Checkout = () => {
   };
 
   const fetchPincodeDetails = async (pincode: string) => {
-    setIsFetchingPincode(true);
-    try {
-      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
-      const data = await response.json();
+    if (!/^\d{6}$/.test(pincode)) return;
 
-      if (data && data[0] && data[0].Status === "Success") {
-        const details = data[0].PostOffice[0];
-        setFormData((prev) => ({
-          ...prev,
-          city: details.District,
-          state: details.State,
-        }));
-        toast({
-          title: "Address Found",
-          description: `City: ${details.District}, State: ${details.State}`,
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Invalid Pincode",
-          description: "Could not fetch details for this pincode.",
-        });
+    setIsFetchingPincode(true);
+
+    // api.postalpincode.in has an expired SSL cert + no CORS, so it can't be
+    // called from the browser. zippopotam.us has spotty coverage for rural
+    // Indian pincodes. Solution: call a deployed edge function that proxies
+    // postalpincode.in server-side (full India Post coverage, public data only).
+    const PINCODE_LOOKUP_URL = "https://tjjpedhwruqiiybuwsgy.supabase.co/functions/v1/pincode-lookup";
+
+    try {
+      const response = await fetch(`${PINCODE_LOOKUP_URL}?pincode=${pincode}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
+
+      const result = await response.json();
+      if (!result.city || !result.state) {
+        throw new Error(result.error || "Pincode not found");
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        city: result.city,
+        state: result.state,
+      }));
+      toast({
+        title: "Address Found",
+        description: `City: ${result.city}, State: ${result.state}`,
+      });
     } catch (error) {
       console.error("Error fetching pincode:", error);
+      toast({
+        variant: "destructive",
+        title: "Invalid Pincode",
+        description: "Could not fetch details for this pincode. Please enter city and state manually.",
+      });
+      setFormData((prev) => ({ ...prev, city: "", state: "" }));
     } finally {
       setIsFetchingPincode(false);
     }
@@ -883,7 +896,7 @@ const Checkout = () => {
                       </div>
                     </div>
 
-                    {/* City & State (Auto-fetched) */}
+                    {/* City & State (Auto-fetched from pincode, editable as fallback) */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="city" className="font-bold">City</Label>
@@ -892,9 +905,9 @@ const Checkout = () => {
                           name="city"
                           value={formData.city}
                           onChange={handleInputChange}
-                          className="mt-1 rounded-none bg-muted"
+                          className="mt-1 rounded-none"
                           required
-                          readOnly
+                          placeholder="City"
                         />
                       </div>
                       <div>
@@ -904,9 +917,9 @@ const Checkout = () => {
                           name="state"
                           value={formData.state}
                           onChange={handleInputChange}
-                          className="mt-1 rounded-none bg-muted"
+                          className="mt-1 rounded-none"
                           required
-                          readOnly
+                          placeholder="State"
                         />
                       </div>
                     </div>

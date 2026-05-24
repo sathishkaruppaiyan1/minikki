@@ -67,7 +67,6 @@ const Index = () => {
               title="New Arrivals"
               emoji="🔥"
               products={newArrivals}
-              viewAllLink="/collections/all"
             />
           ) : newArrivalsLoading ? (
             <div className="container mx-auto px-4 py-8 lg:py-16">
@@ -92,7 +91,6 @@ const Index = () => {
               title="Hot Sellers"
               emoji="⚡"
               products={displayHotSellers}
-              viewAllLink="/collections/all"
             />
           ) : hotSellersLoading ? (
             <div className="container mx-auto px-4 py-8 lg:py-16">
