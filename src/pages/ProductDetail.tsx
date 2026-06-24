@@ -786,12 +786,8 @@ const ProductDetail = () => {
               </div>
             </div>
 
-            {/* Dispatch Time & Buttons */}
+            {/* Buttons */}
             <div className="space-y-4">
-              <div className="text-sm font-bold text-green-700">
-                Dispatch time : {product.dispatchTime || '5 days'}
-              </div>
-
               <div className="flex flex-row gap-3">
                 <Button
                   className="flex-1 h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none text-base font-bold"

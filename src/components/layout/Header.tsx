@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useSearch } from "@/contexts/SearchContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useWooCommerceCategories } from "@/hooks/useWooCommerce";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X } from "lucide-react";
@@ -57,6 +58,7 @@ const Header = () => {
   const { totalItems: cartItems, setIsOpen: setCartOpen } = useCart();
   const { totalItems: wishlistItems } = useWishlist();
   const { openSearch } = useSearch();
+  const { isAuthenticated, user, logout } = useAuth();
   const { data: categoriesData } = useWooCommerceCategories();
   const categories = categoriesData?.categories || [];
 
@@ -215,6 +217,60 @@ const Header = () => {
                     </TabsList>
 
                     <TabsContent value="menu" className="space-y-4">
+                      {/* OTP Login details */}
+                      {isAuthenticated && user ? (
+                        <div className="mb-4 rounded-xl border border-border bg-muted/40 p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#800000] text-white font-bold uppercase">
+                              {(user.name?.trim()?.charAt(0) || "U")}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-heading font-semibold text-base truncate">
+                                {user.name || "My Account"}
+                              </p>
+                              <p className="text-sm text-muted-foreground truncate">
+                                +91 {user.phoneNumber}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex items-center gap-2">
+                            <Link
+                              to="/account"
+                              className="flex-1 text-center py-2 px-3 text-sm font-medium rounded-lg bg-[#800000] text-white hover:bg-[#600000] transition-colors"
+                              onClick={() => setIsMenuOpen(false)}
+                            >
+                              My Account
+                            </Link>
+                            <button
+                              type="button"
+                              className="flex-1 text-center py-2 px-3 text-sm font-medium rounded-lg border border-border hover:bg-muted transition-colors"
+                              onClick={() => {
+                                logout();
+                                setIsMenuOpen(false);
+                              }}
+                            >
+                              Logout
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Link
+                          to="/account"
+                          className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-4 hover:border-[#800000] transition-colors"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-100 text-green-700">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-heading font-semibold text-base">Login / Sign Up</p>
+                            <p className="text-sm text-muted-foreground">Login with WhatsApp OTP</p>
+                          </div>
+                        </Link>
+                      )}
+
                       <nav className="flex flex-col space-y-2">
                         {navLinks.map((link) => (
                           <Link
@@ -252,7 +308,7 @@ const Header = () => {
                             <path d="M16 4H18C18.5304 4 19.0391 4.21071 19.4142 4.58579C19.7893 4.96086 20 5.46957 20 6V20C20 20.5304 19.7893 21.0391 19.4142 21.4142C19.0391 21.7893 18.5304 22 18 22H6C5.46957 22 4.96086 21.7893 4.58579 21.4142C4.21071 21.0391 4 20.5304 4 20V6C4 5.46957 4.21071 4.96086 4.58579 4.58579C4.96086 4.21071 5.46957 4 6 4H8" strokeLinecap="round" strokeLinejoin="round" />
                             <path d="M15 2H9C8.44772 2 8 2.44772 8 3V5C8 5.55228 8.44772 6 9 6H15C15.5523 6 16 5.55228 16 5V3C16 2.44772 15.5523 2 15 2Z" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
-                          Order Details
+                          My Orders
                         </Link>
                         <Link
                           to="/size-chart"

@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useSearch } from "@/contexts/SearchContext";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Adorn Icons - Thin line style SVGs
 const AdornHome = () => (
@@ -38,18 +39,33 @@ const AdornCart = () => (
   </svg>
 );
 
+const AdornOrders = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="1.5">
+    <path d="M16 4H18C18.5304 4 19.0391 4.21071 19.4142 4.58579C19.7893 4.96086 20 5.46957 20 6V20C20 20.5304 19.7893 21.0391 19.4142 21.4142C19.0391 21.7893 18.5304 22 18 22H6C5.46957 22 4.96086 21.7893 4.58579 21.4142C4.21071 21.0391 4 20.5304 4 20V6C4 5.46957 4.21071 4.96086 4.58579 4.58579C4.96086 4.21071 5.46957 4 6 4H8" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M15 2H9C8.44772 2 8 2.44772 8 3V5C8 5.55228 8.44772 6 9 6H15C15.5523 6 16 5.55228 16 5V3C16 2.44772 15.5523 2 15 2Z" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9 13L11 15L15 11" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 const MobileNav = () => {
   const location = useLocation();
   const { openSearch } = useSearch();
   const { totalItems: cartItems } = useCart();
   const { totalItems: wishlistItems } = useWishlist();
+  const { isAuthenticated, user } = useAuth();
+
+  // Show login state on the account tab: first name when logged in, otherwise "Login"
+  const accountLabel = isAuthenticated
+    ? (user?.name?.trim().split(" ")[0] || "Account")
+    : "Login";
 
   const navItems = [
     { icon: AdornHome, label: "Home", href: "/" },
-    { icon: AdornUser, label: "Account", href: "/account" },
+    { icon: AdornOrders, label: "Orders", href: "/orders" },
     { icon: AdornSearch, label: "Search", action: openSearch },
     { icon: AdornHeart, label: "Wishlist", href: "/wishlist", count: wishlistItems },
     { icon: AdornCart, label: "Cart", href: "/cart", count: cartItems },
+    { icon: AdornUser, label: accountLabel, href: "/account" },
   ];
 
   return (
@@ -64,7 +80,7 @@ const MobileNav = () => {
               <button
                 key={item.label}
                 onClick={item.action}
-                className="flex flex-col items-center gap-1 px-3 py-1 transition-colors text-muted-foreground hover:text-foreground"
+                className="flex flex-col items-center gap-1 px-2 py-1 transition-colors text-muted-foreground hover:text-foreground"
               >
                 <div className="relative -mt-0.5">
                   <Icon />
@@ -78,7 +94,7 @@ const MobileNav = () => {
             <Link
               key={item.label}
               to={item.href!}
-              className={`flex flex-col items-center gap-1 px-3 py-1 transition-colors relative ${isActive ? "text-[#800000]" : "text-muted-foreground hover:text-foreground"
+              className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative ${isActive ? "text-[#800000]" : "text-muted-foreground hover:text-foreground"
                 }`}
             >
               <div className="relative -mt-0.5">
@@ -89,7 +105,7 @@ const MobileNav = () => {
                   </span>
                 )}
               </div>
-              <span className="text-[11px] font-bold uppercase tracking-wide">{item.label}</span>
+              <span className="text-[11px] font-bold uppercase tracking-wide max-w-[56px] truncate">{item.label}</span>
             </Link>
           );
         })}

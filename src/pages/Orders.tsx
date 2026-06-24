@@ -1,23 +1,33 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUserOrders, type WooCommerceOrder } from "@/hooks/useWooCommerce";
-import { Loader2, Package, Search, LogIn, Clock, Truck, CheckCircle, AlertCircle } from "lucide-react";
+import { useUserOrders } from "@/hooks/useWooCommerce";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Loader2, Package, Phone, MessageSquare, Clock, Truck, CheckCircle, AlertCircle } from "lucide-react";
+
+type LoginStep = "phone" | "otp";
 
 const Orders = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
-  const [orderId, setOrderId] = useState("");
+  const { user, isAuthenticated, login } = useAuth();
+
+  // OTP login state
+  const [step, setStep] = useState<LoginStep>("phone");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [isTracking, setIsTracking] = useState(false);
-  const [trackedOrder, setTrackedOrder] = useState<WooCommerceOrder | null>(null);
-  const [trackError, setTrackError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch orders if logged in
   const normalizedPhone = user?.phoneNumber
@@ -28,6 +38,12 @@ const Orders = () => {
     user?.email,
     normalizedPhone
   );
+
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, []);
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString("en-IN", {
@@ -57,47 +73,94 @@ const Orders = () => {
     return <Clock className="h-4 w-4" />;
   };
 
-  const handleTrackOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!orderId || !email) return;
-
-    setIsTracking(true);
-    setTrackedOrder(null);
-    setTrackError(false);
-
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/woocommerce-orders?email=${encodeURIComponent(email)}`,
-        {
-          method: "GET",
-          headers: {
-            apikey: supabaseKey,
-            Authorization: `Bearer ${supabaseKey}`,
-            "Content-Type": "application/json",
-          },
+  const startCountdown = () => {
+    setCountdown(60);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          return 0;
         }
-      );
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
-      if (!response.ok) throw new Error("Failed to fetch");
-
-      const data = await response.json();
-      const found = (data.orders || []).find(
-        (o: any) => o.id.toString() === orderId.toString()
-      );
-
-      if (found) {
-        setTrackedOrder(found);
-      } else {
-        setTrackError(true);
-      }
-    } catch {
-      setTrackError(true);
-    } finally {
-      setIsTracking(false);
+  const handleSendOTP = async () => {
+    if (!phoneNumber || phoneNumber.length !== 10) {
+      toast.error("Please enter a valid 10-digit phone number");
+      return;
     }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("interakt-send-otp", {
+        body: { phoneNumber, countryCode: "+91" },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success("OTP sent to your WhatsApp!");
+        setStep("otp");
+        startCountdown();
+      } else {
+        throw new Error(data?.error || "Failed to send OTP");
+      }
+    } catch (error: any) {
+      console.error("Error sending OTP:", error);
+      toast.error(error?.message || "Failed to send OTP. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otp || otp.length !== 6) {
+      toast.error("Please enter the 6-digit OTP");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("interakt-verify-otp", {
+        body: {
+          phoneNumber,
+          otp,
+          name: name || undefined,
+          email: email || undefined,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        login(phoneNumber, data.user?.name || name, data.user?.email || email);
+        toast.success("Login successful!");
+      } else {
+        throw new Error(data?.error || "Invalid OTP");
+      }
+    } catch (error: any) {
+      console.error("Error verifying OTP:", error);
+      toast.error(error?.message || "Invalid OTP. Please try again.");
+      setOtp("");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOTP = () => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setOtp("");
+    setCountdown(0);
+    handleSendOTP();
   };
 
   return (
@@ -110,7 +173,7 @@ const Orders = () => {
           <p className="text-gray-500 text-center mb-8">
             {isAuthenticated
               ? "View and track all your orders"
-              : "Track your order or login to view order history"}
+              : "Login with WhatsApp OTP to view your orders"}
           </p>
 
           {/* Logged-in: Show order history */}
@@ -162,7 +225,7 @@ const Orders = () => {
                                 {item.name} <span className="text-gray-400">x{item.quantity}</span>
                               </span>
                               <span className="font-medium">
-                                {order.currency === "INR" ? "\u20B9" : order.currency}{" "}
+                                {order.currency === "INR" ? "₹" : order.currency}{" "}
                                 {item.total}
                               </span>
                             </div>
@@ -172,7 +235,7 @@ const Orders = () => {
                               {order.payment_method_title}
                             </span>
                             <span className="text-lg font-bold">
-                              {order.currency === "INR" ? "\u20B9" : order.currency}{" "}
+                              {order.currency === "INR" ? "₹" : order.currency}{" "}
                               {order.total}
                             </span>
                           </div>
@@ -184,120 +247,153 @@ const Orders = () => {
               )}
             </div>
           ) : (
-            /* Not logged in: Track order form + login prompt */
-            <div className="space-y-6">
-              {/* Track Order Form */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Search className="h-5 w-5" />
-                    Track Your Order
-                  </CardTitle>
-                  <CardDescription>
-                    Enter your order ID and billing email to check order status
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleTrackOrder} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="track-order-id">Order ID</Label>
+            /* Not logged in: WhatsApp OTP login form */
+            <div className="max-w-md mx-auto">
+              {step === "phone" && (
+                <Card>
+                  <CardHeader className="text-center">
+                    <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                      <Phone className="w-8 h-8 text-green-600" />
+                    </div>
+                    <CardTitle>Login with WhatsApp</CardTitle>
+                    <CardDescription>
+                      Enter your phone number to receive an OTP and view your orders
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="orders-phone">Phone Number</Label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground font-medium">+91</span>
                         <Input
-                          id="track-order-id"
-                          placeholder="e.g. 12345"
-                          value={orderId}
-                          onChange={(e) => setOrderId(e.target.value)}
-                          className="h-11"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="track-email">Billing Email</Label>
-                        <Input
-                          id="track-email"
-                          type="email"
-                          placeholder="e.g. john@example.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="h-11"
+                          id="orders-phone"
+                          type="tel"
+                          placeholder="10 digit phone number"
+                          value={phoneNumber}
+                          onChange={(e) =>
+                            setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))
+                          }
+                          maxLength={10}
+                          className="flex-1 h-11"
                         />
                       </div>
                     </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="orders-name">Name (Optional)</Label>
+                      <Input
+                        id="orders-name"
+                        placeholder="Your name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="h-11"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="orders-email">Email (Optional)</Label>
+                      <Input
+                        id="orders-email"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="h-11"
+                      />
+                    </div>
+
                     <Button
-                      type="submit"
-                      className="w-full h-11 bg-[#800000] hover:bg-[#600000] text-white"
-                      disabled={isTracking || !orderId || !email}
+                      className="w-full h-11 bg-[#800000] text-white hover:bg-[#600000]"
+                      onClick={handleSendOTP}
+                      disabled={isLoading || phoneNumber.length !== 10}
                     >
-                      {isTracking ? (
+                      {isLoading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Tracking...
+                          Sending OTP...
                         </>
                       ) : (
-                        "Track Order"
+                        <>
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                          Send OTP via WhatsApp
+                        </>
                       )}
                     </Button>
-                  </form>
+                  </CardContent>
+                </Card>
+              )}
 
-                  {/* Track Result */}
-                  {trackedOrder && (
-                    <div className="mt-6 p-4 bg-green-50 border border-green-100 rounded-lg">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-semibold">Order #{trackedOrder.id}</h4>
-                        <Badge className={getStatusColor(trackedOrder.status)}>
-                          {trackedOrder.status.charAt(0).toUpperCase() +
-                            trackedOrder.status.slice(1)}
-                        </Badge>
-                      </div>
-                      <div className="text-sm space-y-1 text-gray-600">
-                        <p>Date: {formatDate(trackedOrder.date_created)}</p>
-                        <p>
-                          Total: {trackedOrder.currency === "INR" ? "\u20B9" : trackedOrder.currency}{" "}
-                          {trackedOrder.total}
-                        </p>
-                        <p>Payment: {trackedOrder.payment_method_title}</p>
-                        <div className="pt-2">
-                          <p className="font-medium text-gray-700 mb-1">Items:</p>
-                          {trackedOrder.line_items.map((item) => (
-                            <p key={item.id}>
-                              {item.name} x{item.quantity} -{" "}
-                              {trackedOrder.currency === "INR" ? "\u20B9" : trackedOrder.currency}{" "}
-                              {item.total}
-                            </p>
-                          ))}
-                        </div>
+              {step === "otp" && (
+                <Card>
+                  <CardHeader className="text-center">
+                    <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                      <MessageSquare className="w-8 h-8 text-green-600" />
+                    </div>
+                    <CardTitle>Enter OTP</CardTitle>
+                    <CardDescription>
+                      We sent a 6-digit OTP to <strong>+91 {phoneNumber}</strong> via WhatsApp
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="block text-center">Enter 6-digit OTP</Label>
+                      <div className="flex justify-center">
+                        <InputOTP maxLength={6} value={otp} onChange={(value) => setOtp(value)}>
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                            <InputOTPSlot index={3} />
+                            <InputOTPSlot index={4} />
+                            <InputOTPSlot index={5} />
+                          </InputOTPGroup>
+                        </InputOTP>
                       </div>
                     </div>
-                  )}
 
-                  {trackError && (
-                    <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded-lg text-center">
-                      <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
-                      <p className="font-medium text-red-800">Order not found</p>
-                      <p className="text-sm text-red-600 mt-1">
-                        Please check your Order ID and Email and try again.
-                      </p>
+                    <Button
+                      className="w-full h-11 bg-[#800000] text-white hover:bg-[#600000]"
+                      onClick={handleVerifyOTP}
+                      disabled={isLoading || otp.length !== 6}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        "Verify OTP"
+                      )}
+                    </Button>
+
+                    <div className="text-center space-y-2">
+                      {countdown > 0 ? (
+                        <p className="text-sm text-muted-foreground">Resend OTP in {countdown}s</p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleResendOTP}
+                          className="text-sm text-primary hover:underline"
+                          disabled={isLoading}
+                        >
+                          Resend OTP
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStep("phone");
+                          setOtp("");
+                          setCountdown(0);
+                        }}
+                        className="text-sm text-muted-foreground hover:underline block mx-auto"
+                      >
+                        Change phone number
+                      </button>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Login Prompt */}
-              <Card className="border-dashed">
-                <CardContent className="text-center py-8">
-                  <LogIn className="mx-auto h-10 w-10 text-gray-300 mb-3" />
-                  <h3 className="font-semibold mb-1">Want to see all your orders?</h3>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Login to view your complete order history
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate("/account")}
-                  >
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Login / Sign Up
-                  </Button>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </div>
