@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, MapPin, Phone, Mail, MessageCircle, Clock, Send, CheckCircle } from "lucide-react";
+import { Loader2, MapPin, Phone, Mail, MessageCircle, Clock, Send, CheckCircle } from "@/lib/icons";
 
 const WORDPRESS_URL = import.meta.env.VITE_WORDPRESS_URL || "";
 // Contact Form 7 form ID — update this to match your CF7 form ID in WordPress

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { SlidersHorizontal, Grid3X3, LayoutList, X, Loader2 } from "lucide-react";
+import { SlidersHorizontal, Grid3X3, LayoutList, X, Loader2 } from "@/lib/icons";
 import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";

@@ -8,7 +8,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Phone, MessageSquare, Package, MapPin, User, LogOut, Edit2, Save, X } from "lucide-react";
+import { Loader2, Phone, MessageSquare, Package, MapPin, User, LogOut, Edit2, Save, X } from "@/lib/icons";
 import { useUserOrders, type WooCommerceOrder } from "@/hooks/useWooCommerce";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { X, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { X, Minus, Plus, ShoppingBag, Trash2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 

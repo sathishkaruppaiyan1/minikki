@@ -1,4 +1,4 @@
-import { Play } from "lucide-react";
+import { Play } from "@/lib/icons";
 import { Link } from "react-router-dom";
 
 const reels = [

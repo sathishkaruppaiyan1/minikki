@@ -13,8 +13,8 @@ export default {
       },
     },
     fontFamily: {
-      sans: ['Poppins', 'sans-serif'],
-      heading: ['Roboto Slab', 'serif'],
+      sans: ['Outfit', 'sans-serif'],
+      heading: ['Playfair Display', 'serif'],
     },
     extend: {
       colors: {

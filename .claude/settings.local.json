@@ -61,7 +61,11 @@
       "WebFetch(domain:api.allorigins.win)",
       "WebFetch(domain:corsproxy.io)",
       "PowerShell(npm run *)",
-      "PowerShell($response = Invoke-WebRequest -Uri \"http://localhost:4173/\" -UseBasicParsing; $response.StatusCode; $response.Content.Length)"
+      "PowerShell($response = Invoke-WebRequest -Uri \"http://localhost:4173/\" -UseBasicParsing; $response.StatusCode; $response.Content.Length)",
+      "Bash(npm install *)",
+      "Bash(git ls-remote *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

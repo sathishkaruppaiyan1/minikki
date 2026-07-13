@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "@/lib/icons";
 import { useHomeBanners } from "@/hooks/useWooCommerce";
 import type { HomeBanner } from "@/hooks/useWooCommerce";
 

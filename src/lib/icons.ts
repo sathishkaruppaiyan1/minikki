@@ -1,0 +1,53 @@
+// Central icon module.
+//
+// The whole app imports icons from here (instead of directly from a library),
+// so the entire icon family can be swapped in one place. Currently mapped to
+// Phosphor Icons; the global weight ("duotone") is set via IconContext in App.tsx.
+//
+// Names on the left are the lucide-compatible names the components already use,
+// so switching the underlying library only requires editing this file.
+export {
+  X,
+  Minus,
+  Plus,
+  ShoppingBag,
+  ShoppingCart,
+  Trash as Trash2,
+  CircleNotch as Loader2,
+  Phone,
+  ChatText as MessageSquare,
+  ChatCircle as MessageCircle,
+  Package,
+  MapPin,
+  User,
+  SignOut as LogOut,
+  PencilSimple as Edit2,
+  FloppyDisk as Save,
+  CaretLeft as ChevronLeft,
+  CaretRight as ChevronRight,
+  CaretDown as ChevronDown,
+  CaretUp as ChevronUp,
+  Lock,
+  ArrowLeft,
+  Warning as AlertTriangle,
+  WarningCircle as AlertCircle,
+  CheckCircle,
+  Clock,
+  Truck,
+  ShieldCheck,
+  Heart,
+  Ruler,
+  UploadSimple as Upload,
+  Star,
+  Envelope as Mail,
+  PaperPlaneTilt as Send,
+  SlidersHorizontal,
+  GridFour as Grid3X3,
+  ListBullets as LayoutList,
+  Play,
+  // Extra names used by the header / mobile nav
+  List as Menu,
+  MagnifyingGlass as Search,
+  House as Home,
+  ClipboardText as ClipboardList,
+} from "@phosphor-icons/react";

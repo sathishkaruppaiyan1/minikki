@@ -52,8 +52,8 @@
     --radius: 0.25rem;
 
     /* Custom tokens */
-    --font-heading: 'Roboto Slab', serif;
-    --font-body: 'Poppins', sans-serif;
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Outfit', sans-serif;
     
     --promo-bar: 0 0% 8%;
     --promo-bar-foreground: 0 0% 100%;

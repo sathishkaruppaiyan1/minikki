@@ -1,4 +1,4 @@
-import { Star, User } from "lucide-react";
+import { Star, User } from "@/lib/icons";
 import {
     Carousel,
     CarouselContent,

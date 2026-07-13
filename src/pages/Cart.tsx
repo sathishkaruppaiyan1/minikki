@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Minus, Plus, ShoppingBag, ArrowLeft, Trash2, Loader2, AlertTriangle } from "lucide-react";
+import { Minus, Plus, ShoppingBag, ArrowLeft, Trash2, Loader2, AlertTriangle, ShieldCheck, Star } from "@/lib/icons";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { useCart, type StockIssue } from "@/contexts/CartContext";
@@ -303,25 +303,16 @@ const Cart = () => {
               {/* Trust Badges */}
               <div className="mt-6 pt-6 border-t border-border space-y-3">
                 <div className="flex items-center gap-2 text-sm">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <ShieldCheck size={18} />
                   <span>Secure Checkout</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M6 6H21L19 16H8L6 6Z" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M6 6L5 3H2" strokeLinecap="round" strokeLinejoin="round" />
-                    <circle cx="10" cy="20" r="1.5" />
-                    <circle cx="17" cy="20" r="1.5" />
-                  </svg>
+                  <ShoppingBag size={18} />
                   <span>Free Shipping All Over India</span>
                 </div>
 
                 <div className="flex items-center gap-2 text-sm">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <Star size={18} />
                   <span>Premium Quality</span>
                 </div>
               </div>

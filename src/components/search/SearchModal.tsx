@@ -1,16 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, Search } from "@/lib/icons";
 import { Input } from "@/components/ui/input";
 import { useSearch } from "@/contexts/SearchContext";
 import { useWooCommerceProducts } from "@/hooks/useWooCommerce";
 
-const AdornSearch = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="10" cy="10" r="7" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M15 15L21 21" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+const AdornSearch = () => <Search size={24} />;
 
 const SearchModal = () => {
   const { isOpen, closeSearch, query, setQuery } = useSearch();

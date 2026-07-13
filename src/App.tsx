@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { IconContext } from "@phosphor-icons/react";
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -49,6 +50,7 @@ const WordPressPageKeyed = (props: { routeSlug?: string }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <IconContext.Provider value={{ weight: "duotone" }}>
     <TooltipProvider>
       <AuthProvider>
         <CartProvider>
@@ -96,6 +98,7 @@ const App = () => (
         </CartProvider>
       </AuthProvider>
     </TooltipProvider>
+    </IconContext.Provider>
   </QueryClientProvider>
 );
 
