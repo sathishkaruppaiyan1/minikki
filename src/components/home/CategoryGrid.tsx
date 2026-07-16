@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useWooCommerceCategories } from "@/hooks/useWooCommerce";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Reveal } from "@/components/ui/Reveal";
 
 const CategoryGrid = () => {
   const { data, isLoading, error } = useWooCommerceCategories();
@@ -35,7 +36,7 @@ const CategoryGrid = () => {
   }
 
   return (
-    <section className="pb-12 lg:pb-16 bg-[#FFF9E5]">
+    <section className="pb-12 lg:pb-16 bg-background">
       <div className="container mx-auto px-4">
         <h2 className="font-heading text-2xl lg:text-3xl font-semibold text-center mb-8">
           Shop By Category
@@ -49,29 +50,38 @@ const CategoryGrid = () => {
               className="group animate-fade-in block h-full"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 h-full flex flex-col p-3">
-                <div className="relative aspect-[3/4] overflow-hidden rounded-lg">
-                  <img
-                    src={category.image}
-                    alt={category.name}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      if (target.src !== "/placeholder.svg") {
-                        target.src = "/placeholder.svg";
-                      }
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-foreground/10 group-hover:bg-foreground/0 transition-colors" />
-                </div>
-                <div className="pt-3 bg-white">
-                  <h3 className="text-center font-bold text-base lg:text-lg group-hover:text-primary transition-colors text-black">
+              <Reveal className="relative aspect-[3/4] overflow-hidden rounded-2xl shadow-card transition-all duration-300 group-hover:shadow-card-hover group-hover:-translate-y-1">
+                <img
+                  src={category.image}
+                  alt={category.name}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== "/placeholder.svg") {
+                      target.src = "/placeholder.svg";
+                    }
+                  }}
+                />
+
+                {/* Espresso gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--surface-dark))]/90 via-[hsl(var(--surface-dark))]/25 to-transparent" />
+
+                {/* Gold frame on hover */}
+                <div className="absolute inset-2 rounded-xl border border-primary/0 group-hover:border-primary/70 transition-colors duration-300 pointer-events-none" />
+
+                {/* Name + CTA */}
+                <div className="absolute inset-x-0 bottom-0 p-3 lg:p-4 text-center">
+                  <span className="block mx-auto mb-2 h-0.5 w-8 bg-primary rounded-full transition-all duration-300 group-hover:w-14" />
+                  <h3 className="font-heading text-lg lg:text-xl font-semibold text-[hsl(var(--surface-dark-foreground))] leading-tight">
                     {category.name}
                   </h3>
+                  <span className="block text-[11px] font-bold uppercase tracking-[0.2em] text-primary mt-1 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                    Shop Now
+                  </span>
                 </div>
-              </div>
+              </Reveal>
             </Link>
           ))}
         </div>

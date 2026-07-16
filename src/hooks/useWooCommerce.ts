@@ -1,5 +1,6 @@
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getSessionToken } from "@/contexts/AuthContext";
 import type { Product, Category } from "@/types/product";
 
 interface ProductsResponse {
@@ -537,6 +538,7 @@ export const useUserOrders = (email?: string, phone?: string) => {
     queryFn: async (): Promise<WooCommerceOrder[]> => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const sessionToken = getSessionToken();
 
       const params = new URLSearchParams();
       if (email) params.set("email", email);
@@ -550,6 +552,7 @@ export const useUserOrders = (email?: string, phone?: string) => {
             "apikey": supabaseKey,
             "Authorization": `Bearer ${supabaseKey}`,
             "Content-Type": "application/json",
+            ...(sessionToken ? { "x-session-token": sessionToken } : {}),
           },
         }
       );
@@ -777,5 +780,48 @@ export const useHomeBanners = () => {
     gcTime: 1000 * 60 * 60, // 1 hour
     refetchOnMount: true,
     refetchOnWindowFocus: false,
+  });
+};
+
+// Recent orders for the social-proof popup (sanitized server-side: first name + city only).
+export interface SocialProofItem {
+  firstName: string;
+  city: string;
+  productName: string;
+  productImage: string | null;
+  productId: number | null;
+  dateCreated: string | null;
+}
+
+export const useRecentOrdersSocialProof = () => {
+  return useQuery({
+    queryKey: ["social-proof-orders"],
+    queryFn: async (): Promise<SocialProofItem[]> => {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/woocommerce-orders?recent=1`,
+        {
+          method: "GET",
+          headers: {
+            "apikey": supabaseKey,
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch recent orders: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.orders || [];
+    },
+    staleTime: 1000 * 60 * 5, // 5 min
+    gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 };

@@ -64,8 +64,24 @@ async function fetchFreshProduct(productId: string): Promise<Product | null> {
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>(() => {
-    const stored = localStorage.getItem("cart");
-    return stored ? JSON.parse(stored) : [];
+    try {
+      const stored = localStorage.getItem("cart");
+      const parsed = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(parsed)) return [];
+      // Drop malformed entries (e.g., saved by an older app version)
+      return parsed.filter(
+        (item): item is CartItem =>
+          item &&
+          typeof item === "object" &&
+          item.product &&
+          typeof item.product === "object" &&
+          item.product.id != null &&
+          typeof item.quantity === "number" &&
+          item.quantity > 0
+      );
+    } catch {
+      return [];
+    }
   });
   const [isOpen, setIsOpen] = useState(false);
 
@@ -393,7 +409,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
+    (sum, item) => sum + (item.product?.price ?? 0) * item.quantity,
     0
   );
 

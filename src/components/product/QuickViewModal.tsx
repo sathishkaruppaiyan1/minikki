@@ -7,7 +7,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 
 const AdornHeart = ({ filled }: { filled?: boolean }) => (
-  <Heart size={20} weight={filled ? "fill" : "duotone"} />
+  <Heart size={20} weight={filled ? "fill" : "regular"} />
 );
 
 const QuickViewModal = () => {

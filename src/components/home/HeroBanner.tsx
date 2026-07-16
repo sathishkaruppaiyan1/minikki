@@ -43,7 +43,7 @@ const HeroBanner = () => {
       <div className="w-full">
         <Link to="/collections/all">
           <img
-            src="/new_arrival_banner.jpg"
+            src="/banner-fallback.png"
             alt="Shop Now"
             className="w-full h-auto object-cover"
           />

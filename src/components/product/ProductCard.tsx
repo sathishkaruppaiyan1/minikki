@@ -6,10 +6,11 @@ import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { getProductCardImage, preloadImage } from "@/lib/imageOptimizer";
 import { Heart, ShoppingBag } from "@/lib/icons";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 // Product-card icons (Phosphor); heart fills when wishlisted
 const AdornHeart = ({ filled }: { filled?: boolean }) => (
-  <Heart size={18} weight={filled ? "fill" : "duotone"} />
+  <Heart size={18} weight={filled ? "fill" : "regular"} />
 );
 
 const AdornBag = () => <ShoppingBag size={18} />;
@@ -131,9 +132,14 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
     toggleWishlist(product);
   };
 
+  const { ref: imageRevealRef, visible: imageRevealed } = useScrollReveal<HTMLDivElement>();
+
   return (
-    <div className="group animate-fade-in">
-      <div className="relative overflow-hidden bg-muted aspect-[1/1.5]">
+    <div className="group animate-fade-in transition-transform duration-300 hover:-translate-y-1">
+      <div
+        ref={imageRevealRef}
+        className={`relative overflow-hidden rounded-image bg-muted aspect-[1/1.5] shadow-card transition-shadow duration-300 group-hover:shadow-card-hover reveal-zoom ${imageRevealed ? "is-visible" : ""}`}
+      >
         <Link to={`/product/${product.id}`}>
           <img
             src={currentImage}
@@ -208,7 +214,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
         </Link>
 
         <div className="flex items-center justify-center flex-wrap gap-2">
-          <span className="price text-base font-bold text-[#800000]">{formatPrice(product.price)}</span>
+          <span className="price text-base font-bold">{formatPrice(product.price)}</span>
           {product.originalPrice && product.originalPrice > product.price && (
             <>
               <span className="price-old text-sm text-muted-foreground/60 line-through">

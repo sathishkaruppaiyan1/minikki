@@ -9,10 +9,22 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (phoneNumber: string, name?: string, email?: string) => void;
+  login: (phoneNumber: string, name?: string, email?: string, sessionToken?: string) => void;
   logout: () => void;
   isAuthenticated: boolean;
 }
+
+/** Signed token issued by the OTP verify function; sent to the orders API as proof of identity. */
+export const getSessionToken = (): string | null => {
+  try {
+    const sessionData = localStorage.getItem(SESSION_KEY);
+    if (!sessionData) return null;
+    const session = JSON.parse(sessionData);
+    return session.sessionToken || null;
+  } catch {
+    return null;
+  }
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -47,17 +59,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const login = (phoneNumber: string, name?: string, email?: string) => {
+  const login = (phoneNumber: string, name?: string, email?: string, sessionToken?: string) => {
     const userData: User = {
       phoneNumber,
       name: name || `User ${phoneNumber}`,
       email,
     };
     setUser(userData);
-    
+
     // Store session in localStorage forever (no expiry)
     const session = {
       ...userData,
+      ...(sessionToken ? { sessionToken } : {}),
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   };

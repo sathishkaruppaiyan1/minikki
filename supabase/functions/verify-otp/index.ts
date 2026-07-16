@@ -6,6 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function hmacHex(key: string, msg: string): Promise<string> {
+  const enc = new TextEncoder();
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw', enc.encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(msg));
+  return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 interface VerifyOTPPayload {
   phoneNumber: string;
   otp: string;
@@ -137,12 +146,15 @@ serve(async (req) => {
       await supabase.from('otps').delete().eq('phone_number', formattedPhone);
     }
 
-    // Generate session token (simple JWT-like token)
-    const sessionToken = btoa(JSON.stringify({
+    // Generate HMAC-signed session token; woocommerce-orders verifies the
+    // signature with the same key, so the phone number inside is trusted.
+    const payloadB64 = btoa(JSON.stringify({
       phoneNumber: formattedPhone,
       userId: userData?.id || formattedPhone,
       expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 days
     }));
+    const signingKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const sessionToken = `${payloadB64}.${await hmacHex(signingKey, payloadB64)}`;
 
     return new Response(
       JSON.stringify({ 

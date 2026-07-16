@@ -75,10 +75,10 @@ const Checkout = () => {
     };
   }, []);
 
-  // Load EaseBuzz Script
+  // Load Cashfree Script
   useEffect(() => {
     const script = document.createElement("script");
-    script.src = "https://ebz-static.s3.ap-south-1.amazonaws.com/easecheckout/v2.0.0/easebuzz-checkout-v2.min.js";
+    script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
     script.async = true;
     document.body.appendChild(script);
     return () => {
@@ -250,7 +250,7 @@ const Checkout = () => {
         payment_method: paymentMethod || "cod",
         payment_method_title: selectedGateway?.title || "Cash on Delivery",
         set_paid: false,
-        status: (paymentMethod === "razorpay" || paymentMethod === "easebuzz" || paymentMethod === "payeasebuzz") ? "pending" : "processing",
+        status: (paymentMethod === "razorpay" || paymentMethod.includes("cashfree")) ? "pending" : "processing",
         billing: {
           first_name: formData.name,
           last_name: "",
@@ -316,6 +316,7 @@ const Checkout = () => {
               },
               body: JSON.stringify({
                 id: response.id,
+                order_key: response.order_key,
                 line_items: items.map(item => ({
                   id: response.line_items?.find((li: any) =>
                     li.product_id === parseInt(item.product.id)
@@ -384,9 +385,9 @@ const Checkout = () => {
             key: import.meta.env.VITE_RAZORPAY_KEY_ID, // Enter the Key ID generated from the Dashboard
             amount: razorpayOrder.amount,
             currency: razorpayOrder.currency,
-            name: "Blacklovers",
+            name: "Minikki",
             description: `Order #${response.number || response.id}`,
-            image: "/logo.webp",
+            image: "/logo.png",
             order_id: razorpayOrder.id,
             handler: async function (response_razorpay: any) {
               // Payment Success Handler — verify signature server-side
@@ -421,29 +422,26 @@ const Checkout = () => {
                     description: "Your order has been placed and payment confirmed.",
                   });
 
-                  // Send WhatsApp notification via Interakt
+                  // Send WhatsApp notification via WATI
                   try {
-                    const firstProductImage = items[0]?.product.images?.[0];
                     const whatsappNum = formData.whatsapp || formData.phone;
                     console.log("Triggering Razorpay WhatsApp notification for:", whatsappNum);
-                    const { error: interaktError } = await supabase.functions.invoke("interakt-order-notification", {
+                    const { error: watiError } = await supabase.functions.invoke("wati-order-notification", {
                       body: {
                         phoneNumber: whatsappNum,
                         customerName: formData.name,
                         orderId: String(response.number || response.id),
-                        productImage: firstProductImage,
                         amount: totalAmount,
                         currency: "₹",
-                        buttonValue: "https://blacklovers.in/",
                       },
                     });
-                    if (interaktError) {
-                      console.error("Failed to send WhatsApp notification:", interaktError);
+                    if (watiError) {
+                      console.error("Failed to send WhatsApp notification:", watiError);
                     } else {
                       console.log("WhatsApp notification sent successfully");
                     }
                   } catch (whatsappError) {
-                    console.error("Error calling Interakt edge function:", whatsappError);
+                    console.error("Error calling WATI edge function:", whatsappError);
                   }
                 }
               } catch (updateError: any) {
@@ -491,7 +489,7 @@ const Checkout = () => {
                 try {
                   const { error: cancelError } = await supabase.functions.invoke("woocommerce-orders", {
                     method: "PUT",
-                    body: { id: response.id, status: "cancelled" },
+                    body: { id: response.id, order_key: response.order_key, status: "cancelled" },
                   });
                   if (cancelError) {
                     console.error("Failed to cancel order in WooCommerce:", cancelError);
@@ -520,6 +518,7 @@ const Checkout = () => {
                 method: "PUT",
                 body: {
                   id: response.id,
+                  order_key: response.order_key,
                   status: "failed",
                   meta_data: [
                     { key: "_razorpay_failure_reason", value: failResponse.error?.description || "Payment failed" },
@@ -557,176 +556,127 @@ const Checkout = () => {
         }
       }
 
-      if (paymentMethod === "easebuzz" || paymentMethod === "payeasebuzz") {
+      if (paymentMethod.includes("cashfree")) {
         try {
-          const txnid = `BL_${response.id}_${Date.now()}`;
-          const currentUrl = window.location.origin;
-          console.log("Initiating EaseBuzz payment:", { txnid, totalAmount, orderId: response.id, name: formData.name, email: formData.email, phone: formData.phone });
+          console.log("Initiating Cashfree payment for order:", response.id);
 
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-          // EaseBuzz requires firstname to be alphabets and spaces only, min 3 chars
-          const sanitizedName = formData.name
-            .replace(/[^a-zA-Z\s]/g, "")
-            .replace(/\s+/g, " ")
-            .trim() || "Customer";
-
-          const ebzPayload = {
-            txnid,
-            amount: totalAmount,
-            productinfo: `Order ${response.number || response.id}`,
-            firstname: sanitizedName,
-            email: formData.email,
-            phone: formData.phone,
-            surl: currentUrl.includes("localhost") ? "https://blacklovers.in/thank-you" : `${currentUrl}/thank-you`,
-            furl: currentUrl.includes("localhost") ? "https://blacklovers.in/checkout" : `${currentUrl}/checkout`,
-            udf1: String(response.id),
-            udf2: "",
-            udf3: "",
-            udf4: "",
-            udf5: "",
-          };
-          console.log("EaseBuzz payload:", ebzPayload);
-
-          const ebzResponse = await fetch(`${supabaseUrl}/functions/v1/initiate-easebuzz-payment`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "apikey": supabaseKey,
-              "Authorization": `Bearer ${supabaseKey}`,
+          const { data: cfData, error: cfError } = await supabase.functions.invoke("create-cashfree-order", {
+            body: {
+              woocommerce_order_id: response.id,
+              amount: totalAmount,
+              customerName: formData.name,
+              customerEmail: formData.email,
+              customerPhone: formData.phone,
             },
-            body: JSON.stringify(ebzPayload),
           });
 
-          const ebzData = await ebzResponse.json();
-          console.log("EaseBuzz initiation response:", ebzData);
-
-          if (!ebzResponse.ok || !ebzData || ebzData.status !== 1) {
-            console.error("EaseBuzz initiation failed:", ebzData);
-            throw new Error(ebzData?.error || "Failed to initiate EaseBuzz payment");
+          if (cfError || !cfData?.payment_session_id) {
+            console.error("Cashfree initiation failed:", cfError || cfData);
+            throw new Error(cfData?.error || "Failed to initiate Cashfree payment");
           }
 
-          const easebuzzCheckout = new (window as any).EasebuzzCheckout(ebzData.access_key, ebzData.env === "test" ? "test" : "prod");
-
-          easebuzzCheckout.initiatePayment({
-            access_key: ebzData.access_key,
-            onResponse: async (ebzResponse: any) => {
-              console.log("EaseBuzz response:", ebzResponse);
-
-              if (ebzResponse.status === "success") {
-                try {
-                  const verifyRes = await fetch(`${supabaseUrl}/functions/v1/verify-easebuzz-payment`, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "apikey": supabaseKey,
-                      "Authorization": `Bearer ${supabaseKey}`,
-                    },
-                    body: JSON.stringify({
-                      easebuzz_response: ebzResponse,
-                      woocommerce_order_id: response.id,
-                    }),
-                  });
-                  const verifyData = await verifyRes.json();
-                  console.log("EaseBuzz verification response:", verifyData);
-
-                  if (!verifyRes.ok || !verifyData?.payment_success) {
-                    console.error("EaseBuzz verification failed:", verifyData);
-                    toast({
-                      variant: "destructive",
-                      title: "Payment Verification Failed",
-                      description: "Payment could not be verified. Please contact support with your order ID.",
-                    });
-                  } else if (!verifyData?.updated) {
-                    toast({
-                      variant: "destructive",
-                      title: "Status Sync Failed",
-                      description: `Payment verified for order #${response.number || response.id}, but store sync failed. Please contact support.`,
-                    });
-                    toast({
-                      title: "Payment Successful",
-                      description: "Your order has been placed and payment confirmed.",
-                    });
-                  }
-                } catch (updateError: any) {
-                  console.error("EaseBuzz verification error:", updateError);
-                  toast({
-                    variant: "destructive",
-                    title: "System Error",
-                    description: "Could not verify payment. Please contact support.",
-                  });
-                }
-
-                const orderDetails = {
-                  orderId: String(response.number || response.id),
-                  name: formData.name,
-                  address: `${formData.houseNo}, ${formData.street}\n${formData.landmark ? formData.landmark + "\n" : ""}${formData.city}, ${formData.state} - ${formData.pincode}\n${formData.country}`,
-                  phone: formData.phone,
-                  whatsapp: formData.whatsapp,
-                  email: formData.email,
-                  items: items.map(item => ({
-                    name: item.product.name,
-                    quantity: item.quantity,
-                    price: item.product.price,
-                    size: item.size,
-                    color: item.color,
-                    image: item.image || item.product.images[0],
-                  })),
-                  total: totalAmount,
-                };
-
-                clearCart();
-                navigate("/thank-you", { state: orderDetails });
-              } else if (ebzResponse.status === "failure") {
-                // Payment failed
-                try {
-                  await supabase.functions.invoke("woocommerce-orders", {
-                    method: "PUT",
-                    body: {
-                      id: response.id,
-                      status: "failed",
-                      meta_data: [
-                        { key: "_easebuzz_failure_reason", value: ebzResponse.error_Message || "Payment failed" },
-                      ],
-                    },
-                  });
-                } catch (err) {
-                  console.error("Error updating failed order:", err);
-                }
-                setIsProcessing(false);
-                toast({
-                  variant: "destructive",
-                  title: "Payment Failed",
-                  description: ebzResponse.error_Message || "Your payment was declined. Please try again.",
-                });
-              } else {
-                // User closed / cancelled
-                try {
-                  await supabase.functions.invoke("woocommerce-orders", {
-                    method: "PUT",
-                    body: { id: response.id, status: "cancelled" },
-                  });
-                } catch (err) {
-                  console.error("Error cancelling order:", err);
-                }
-                setIsProcessing(false);
-                toast({
-                  title: "Payment Cancelled",
-                  description: "Your order has been cancelled. No payment was charged.",
-                });
-              }
-            },
-            theme: "#000000",
+          const cashfree = (window as any).Cashfree({
+            mode: cfData.env === "production" ? "production" : "sandbox",
           });
 
+          const result = await cashfree.checkout({
+            paymentSessionId: cfData.payment_session_id,
+            redirectTarget: "_modal",
+          });
+
+          if (result?.error) {
+            // User closed the modal or the payment errored before completing
+            console.log("Cashfree checkout closed/errored:", result.error);
+            try {
+              await supabase.functions.invoke("woocommerce-orders", {
+                method: "PUT",
+                body: { id: response.id, order_key: response.order_key, status: "cancelled" },
+              });
+            } catch (err) {
+              console.error("Error cancelling order:", err);
+            }
+            setIsProcessing(false);
+            toast({
+              title: "Payment Cancelled",
+              description: "Your order has been cancelled. No payment was charged.",
+            });
+            return;
+          }
+
+          // Payment attempt finished — verify server-side (trusted check with Cashfree)
+          const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-cashfree-payment", {
+            body: {
+              cashfree_order_id: cfData.cashfree_order_id,
+              woocommerce_order_id: response.id,
+            },
+          });
+          console.log("Cashfree verification response:", verifyData);
+
+          if (verifyError || !verifyData?.payment_success) {
+            try {
+              await supabase.functions.invoke("woocommerce-orders", {
+                method: "PUT",
+                body: {
+                  id: response.id,
+                  order_key: response.order_key,
+                  status: "failed",
+                  meta_data: [
+                    { key: "_cashfree_failure_status", value: verifyData?.status || "unverified" },
+                  ],
+                },
+              });
+            } catch (err) {
+              console.error("Error updating failed order:", err);
+            }
+            setIsProcessing(false);
+            toast({
+              variant: "destructive",
+              title: "Payment Failed",
+              description: "Your payment was not completed. Please try again.",
+            });
+            return;
+          }
+
+          if (!verifyData?.updated) {
+            toast({
+              variant: "destructive",
+              title: "Status Sync Failed",
+              description: `Payment verified for order #${response.number || response.id}, but store sync failed. Please contact support.`,
+            });
+          }
+
+          toast({
+            title: "Payment Successful",
+            description: "Your order has been placed and payment confirmed.",
+          });
+
+          const orderDetails = {
+            orderId: String(response.number || response.id),
+            name: formData.name,
+            address: `${formData.houseNo}, ${formData.street}\n${formData.landmark ? formData.landmark + "\n" : ""}${formData.city}, ${formData.state} - ${formData.pincode}\n${formData.country}`,
+            phone: formData.phone,
+            whatsapp: formData.whatsapp,
+            email: formData.email,
+            items: items.map(item => ({
+              name: item.product.name,
+              quantity: item.quantity,
+              price: item.product.price,
+              size: item.size,
+              color: item.color,
+              image: item.image || item.product.images[0],
+            })),
+            total: totalAmount,
+          };
+
+          clearCart();
+          navigate("/thank-you", { state: orderDetails });
           return;
         } catch (err: any) {
-          console.error("EaseBuzz error:", err);
+          console.error("Cashfree error:", err);
           toast({
             variant: "destructive",
             title: "Payment Initialization Failed",
-            description: err.message || "Could not initialize EaseBuzz. Please try again.",
+            description: err.message || "Could not initialize Cashfree. Please try again.",
           });
           setIsProcessing(false);
           return;
@@ -762,7 +712,7 @@ const Checkout = () => {
         description: "There was an error placing your order. Please try again.",
       });
     } finally {
-      if (paymentMethod !== "razorpay" && paymentMethod !== "easebuzz") {
+      if (paymentMethod !== "razorpay" && !paymentMethod.includes("cashfree")) {
         setIsProcessing(false);
       }
     }
@@ -797,7 +747,7 @@ const Checkout = () => {
               Back to Cart
             </Link>
             <Link to="/">
-              <img src="/logo.webp" alt="Blacklovers" className="h-12" />
+              <img src="/logo.png" alt="Minikki" className="h-12" />
             </Link>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Lock className="h-4 w-4" />

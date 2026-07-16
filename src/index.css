@@ -21,50 +21,63 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 10%;
+    /* Minikki design system — warm gold palette */
+    --background: 45 100% 98%;        /* #FFFDF7 */
+    --foreground: 25 27% 19%;         /* #3E2F24 text */
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card: 42 50% 96%;               /* #FAF7F0 */
+    --card-foreground: 25 27% 19%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover: 42 50% 96%;
+    --popover-foreground: 25 27% 19%;
 
-    --primary: 350 89% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 46 65% 52%;            /* #D4AF37 gold */
+    --primary-foreground: 0 0% 100%;  /* white text on gold */
 
-    --secondary: 30 30% 96%;
-    --secondary-foreground: 0 0% 10%;
+    --secondary: 42 53% 54%;          /* #C8A44D */
+    --secondary-foreground: 25 27% 19%;
 
-    --muted: 30 20% 96%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 42 30% 93%;              /* warm divider */
+    --muted-foreground: 27 15% 40%;   /* warm paragraph */
 
-    --accent: 45 93% 47%;
-    --accent-foreground: 0 0% 10%;
+    --accent: 44 69% 69%;             /* #E6C878 */
+    --accent-foreground: 25 27% 19%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 60%;         /* #EF4444 danger */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 20% 90%;
-    --input: 30 20% 90%;
-    --ring: 350 89% 60%;
+    --border: 42 30% 88%;             /* warm border */
+    --input: 42 30% 88%;
+    --ring: 46 65% 52%;
 
-    --radius: 0.25rem;
+    --radius: 0.75rem;                /* 12px buttons/inputs */
 
     /* Custom tokens */
     --font-heading: 'Playfair Display', serif;
     --font-body: 'Outfit', sans-serif;
-    
-    --promo-bar: 0 0% 8%;
-    --promo-bar-foreground: 0 0% 100%;
-    
-    --price: 350 89% 50%;
-    --price-old: 0 0% 60%;
-    
-    --badge-sale: 350 89% 50%;
-    --badge-new: 45 93% 47%;
-    --badge-soldout: 0 0% 40%;
-    
+    --font-price: 'Manrope', sans-serif;
+
+    /* Brand extras */
+    --brand-purple: 277 70% 36%;      /* #6A1B9A */
+    --brand-mint: 167 100% 38%;       /* #00C49A */
+    --brand-gold: 46 65% 52%;         /* #D4AF37 */
+    --brand-yellow: 45 100% 51%;      /* #FFC107 */
+    --success: 160 84% 39%;           /* #10B981 */
+    --warning: 38 92% 50%;            /* #F59E0B */
+
+    --surface-dark: 24 35% 10%;       /* deep espresso — header/footer */
+    --surface-dark-foreground: 42 50% 96%;
+
+    --promo-bar: 46 65% 52%;          /* gold announcement bar */
+    --promo-bar-foreground: 25 27% 19%;
+
+    --price: 43 60% 35%;              /* deepened gold — readable on light bg */
+    --price-old: 27 10% 55%;
+
+    --badge-sale: 46 65% 52%;         /* #D4AF37 */
+    --badge-new: 42 53% 54%;          /* #C8A44D */
+    --badge-soldout: 25 15% 28%;      /* warm charcoal-brown */
+
     --overlay: 0 0% 0% / 0.5;
   }
 
@@ -78,7 +91,7 @@
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 350 89% 60%;
+    --primary: 46 65% 52%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 15%;
@@ -87,15 +100,15 @@
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 65%;
 
-    --accent: 45 93% 47%;
-    --accent-foreground: 0 0% 10%;
+    --accent: 44 69% 69%;
+    --accent-foreground: 25 27% 19%;
 
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 95%;
 
     --border: 0 0% 20%;
     --input: 0 0% 20%;
-    --ring: 350 89% 60%;
+    --ring: 46 65% 52%;
   }
 }
 
@@ -125,7 +138,8 @@
   }
   
   .price {
-    @apply text-[hsl(var(--price))] font-semibold;
+    font-family: var(--font-price);
+    @apply text-[hsl(var(--price))] font-bold;
   }
   
   .price-old {
@@ -141,7 +155,7 @@
   }
   
   .badge-soldout {
-    @apply bg-[hsl(var(--badge-soldout))] text-[hsl(var(--primary-foreground))];
+    @apply bg-[hsl(var(--badge-soldout))] text-[hsl(var(--surface-dark-foreground))] uppercase tracking-wide;
   }
 }
 
@@ -153,6 +167,45 @@
   
   .text-body {
     font-family: var(--font-body);
+  }
+
+  /* Hide scrollbar while keeping horizontal scroll (used by category carousel) */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Brand gradients (design system) */
+  .gradient-primary { background-image: linear-gradient(135deg, #D4AF37, #C8A44D); }
+  .gradient-cta { background-image: linear-gradient(135deg, #D4AF37, #E6C878); }
+  .gradient-gold { background-image: linear-gradient(135deg, #E6C878, #D4AF37); }
+  .gradient-mint { background-image: linear-gradient(135deg, #00C49A, #2DD4BF); }
+  .text-gradient-primary {
+    background-image: linear-gradient(135deg, #C8A44D, #D4AF37);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Zoom-out reveal for grid images as they scroll into view */
+  .reveal-zoom {
+    opacity: 0;
+    transform: scale(1.14);
+    transition: opacity 0.7s ease, transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal-zoom.is-visible {
+    opacity: 1;
+    transform: scale(1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal-zoom {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
   }
 }
 

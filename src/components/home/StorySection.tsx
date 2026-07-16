@@ -17,7 +17,7 @@ const StorySection = () => {
             <div className="relative">
               <img
                 src="/founder.jpg"
-                alt="Usha Nandhini Saravanan - Founder of Black Lovers"
+                alt="Dhanalakshmi - Founder of Minikki"
                 className="w-72 md:w-80 lg:w-full max-w-sm rounded-2xl shadow-lg object-cover"
                 loading="lazy"
                 decoding="async"
@@ -25,92 +25,111 @@ const StorySection = () => {
                 height="512"
               />
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent rounded-b-2xl p-4 pt-10">
-                <p className="text-white font-heading font-semibold text-lg">Usha Nandhini Saravanan</p>
-                <p className="text-white/80 text-sm">Founder, Black Lovers</p>
+                <p className="text-white font-heading font-semibold text-lg">Dhanalakshmi</p>
+                <p className="text-white/80 text-sm">Founder, Minikki</p>
               </div>
             </div>
           </div>
 
           {/* Story Content */}
           <div className="text-muted-foreground leading-relaxed space-y-4 text-[15px]">
-            <p className="text-foreground font-semibold text-lg italic">
-              "Why not create a brand dedicated to people like me who love black?"
+            <h3 className="font-heading text-lg font-semibold text-foreground">Meet the Founder</h3>
+            <p>
+              Hi, I'm <strong className="text-foreground">Dhanalakshmi</strong>, Founder of Minikki.
             </p>
             <p>
-              That's how <strong className="text-foreground">Black Lovers</strong> was born.
-            </p>
-            <p>
-              I'm Usha Nandhini Saravanan, the founder of this brand. I was born and raised in Chennai in a simple lower-middle-class family. Growing up, life was never easy financially. From a young age, I was constantly told that education was the only way to build a secure future, so I focused entirely on studying and scoring well.
-            </p>
-            <p>
-              I worked hard and scored 493/500 in my 10th standard, which earned me a free seat at Velammal School. Later, with strong scores again, I secured admission to Anna University. Instead of choosing a common path, I took up Automobile Engineering because I wanted to do something different.
-            </p>
-            <p>
-              But somewhere along the way, I realized something important — I had always been living based on what others expected from me. Good marks, good college, good placement... everything planned by others. Nothing was truly my choice.
+              I'm not just a business owner — I'm also a proud mother of two. Like every woman, I understand the challenge of balancing family, work, and personal life. Managing everything while finding time for ourselves isn't easy.
             </p>
             <p className="text-foreground font-medium">
-              For the first time, I asked myself: What do I really want to do?
+              That understanding is what inspired me to start Minikki.
             </p>
+
+            <h3 className="font-heading text-lg font-semibold text-foreground pt-2">Why We Started Minikki</h3>
             <p>
-              I didn't have a clear answer. But I knew one thing — <strong className="text-foreground">I loved black.</strong> Black outfits, black bags, black accessories... everything black.
+              Today's women lead busy lives. Between work, family, children, and daily responsibilities, spending hours visiting multiple stores for shopping has become difficult. Even after spending an entire day shopping, finding the right design, quality, and price isn't always guaranteed.
+            </p>
+            <p className="text-foreground font-medium">I believed there had to be a better way.</p>
+            <p>
+              That's why we created <strong className="text-foreground">Minikki</strong> — a place where every woman can discover the latest trending collections, compare styles, and shop from the comfort of her home in just a few minutes. Fashion should be simple, convenient, and enjoyable.
             </p>
 
             {/* Expandable section */}
             <div className={`space-y-4 overflow-hidden transition-all duration-500 ${expanded ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"}`}>
+              <h3 className="font-heading text-lg font-semibold text-foreground pt-2">Our Mission</h3>
               <p>
-                I started with almost no investment. I borrowed small amounts from friends and began selling online through Instagram. I curated only black dresses and accessories. Slowly, customers started noticing. Orders came in. The brand began to grow.
+                Our mission is to make premium-quality fashion affordable and accessible for every woman. We carefully select every collection to ensure it is trendy, stylish, comfortable, and budget-friendly. Our goal is to provide a safe and hassle-free online shopping experience that saves your time without compromising on quality.
               </p>
+
+              <h3 className="font-heading text-lg font-semibold text-foreground pt-2">Why Choose Minikki?</h3>
               <p>
-                But the journey wasn't smooth. There was no family support initially. I was pressured to attend placements and take a regular job. It took me nearly two years to convince my family that this business was my dream. Eventually, they understood and stood by me.
+                At Minikki, we believe shopping is not just about buying clothes — it's about confidence. That's why we focus on:
               </p>
-              <p>
-                As the brand grew, customers requested more colors and wider collections. So I evolved. From a niche black-only store, we expanded into a full-fledged fashion brand while still keeping black as our signature identity.
-              </p>
-              <p>
-                To provide better quality at better prices, I researched fabrics and suppliers and discovered that most major sourcing happens in Surat, Gujarat. With limited income at home and family responsibilities, I made a bold decision — I moved to Surat alone to grow the business.
-              </p>
-              <p className="text-foreground font-medium">
-                It was not easy. Language barriers. Dealer issues. Accommodation struggles. Food problems. Even discrimination at times. But quitting was never an option.
-              </p>
-              <p>
-                Slowly, we built strong supplier networks, opened our own office, and strengthened operations. One of the biggest pillars of my journey has been my husband. Even though he had different career goals, he chose to support my dream wholeheartedly and helped take this business to the next level.
-              </p>
-              <p>
-                Today, we have our own office and our own manufacturing unit in Surat. From reselling, we've moved into in-house production, which allows us to control quality and offer the best prices to our customers.
-              </p>
-              <p>We are continuously working to improve:</p>
               <ul className="list-disc list-inside space-y-1 pl-2">
-                <li>Quality</li>
-                <li>Customer service</li>
-                <li>Faster delivery</li>
-                <li>Better experience</li>
+                <li>Premium Quality Collections</li>
+                <li>Latest Trending Designs</li>
+                <li>Budget-Friendly Prices</li>
+                <li>Fast &amp; Safe Dispatch</li>
+                <li>Easy Online Shopping</li>
+                <li>Friendly Customer Support</li>
+                <li>Carefully Curated Collections</li>
               </ul>
               <p>
-                None of this would have been possible without our customers and followers. As an introvert who once never stepped out much, the love and support from our community gave me the courage to grow beyond my limits.
+                Every outfit is chosen with love so that you receive fashion that makes you look and feel your best.
               </p>
-              <p className="text-foreground font-medium italic">
-                My biggest dream is to open a premium flagship showroom in Chennai — a building fully designed around our brand identity, with an entire floor dedicated exclusively to Black Lovers and black collections.
+
+              <h3 className="font-heading text-lg font-semibold text-foreground pt-2">Our Journey</h3>
+              <p>
+                What started as a small dream has now become the choice of thousands of women across India. For the past 4 years, we have been dedicated to delivering quality fashion with honesty and care.
+              </p>
+
+              {/* Milestone stats */}
+              <div className="grid grid-cols-3 gap-3 py-2">
+                <div className="bg-card rounded-xl p-3 text-center shadow-sm">
+                  <p className="font-heading text-lg lg:text-xl font-bold text-primary">1,00,000+</p>
+                  <p className="text-xs text-muted-foreground mt-1">Safe Deliveries</p>
+                </div>
+                <div className="bg-card rounded-xl p-3 text-center shadow-sm">
+                  <p className="font-heading text-lg lg:text-xl font-bold text-primary">10,000+</p>
+                  <p className="text-xs text-muted-foreground mt-1">Happy Customers</p>
+                </div>
+                <div className="bg-card rounded-xl p-3 text-center shadow-sm">
+                  <p className="font-heading text-lg lg:text-xl font-bold text-primary">500+</p>
+                  <p className="text-xs text-muted-foreground mt-1">Orders Every Day</p>
+                </div>
+              </div>
+
+              <p>
+                Every order reminds us that customer trust is our greatest achievement.
+              </p>
+
+              <h3 className="font-heading text-lg font-semibold text-foreground pt-2">Our Promise</h3>
+              <ul className="list-disc list-inside space-y-1 pl-2">
+                <li>Every order is carefully packed.</li>
+                <li>Every product is quality checked before dispatch.</li>
+                <li>Every customer is treated like family.</li>
+              </ul>
+              <p>
+                At Minikki, we don't just deliver outfits — we deliver trust, happiness, and a shopping experience you'll love to come back to.
+              </p>
+
+              <h3 className="font-heading text-lg font-semibold text-foreground pt-2">Thank You, Dear Customer</h3>
+              <p>
+                Thank you for choosing Minikki and becoming a part of our journey. Your trust motivates us to bring you better collections, better quality, and better service every single day.
               </p>
               <p>
-                And this is just the beginning. We still have a long way to go, and we are committed to improving every single day. Your feedback, trust, and support mean everything to us.
-              </p>
-              <p className="text-sm text-muted-foreground/80">
-                Many of you often ask why we speak Tamil in our videos while our website shows a Surat address. The reason is simple — we are originally from Chennai, but we moved our operations to Surat to scale the business, source better fabrics, and manufacture directly. Being in Surat helps us reduce costs and deliver better quality products at more affordable prices. No matter where we operate from, our roots will always remain Tamil, and Chennai will always be home.
-              </p>
-              <p className="text-foreground font-semibold pt-2">
-                Thank you for being part of our journey.
+                We are truly grateful for your love and support, and we look forward to being a part of your fashion journey for many more years.
               </p>
               <p className="text-muted-foreground italic">
-                With gratitude,<br />
-                Usha Nandhini Saravanan<br />
-                Founder, Black Lovers
+                With Love,<br />
+                Dhanalakshmi<br />
+                Founder, Minikki
               </p>
             </div>
 
             {/* Read More / Less button */}
             <button
               onClick={() => setExpanded(!expanded)}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#800000] hover:text-[#600000] transition-colors pt-1"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors pt-1"
             >
               {expanded ? (
                 <>Read Less <ChevronUp className="w-4 h-4" /></>

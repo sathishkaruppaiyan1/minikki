@@ -81,7 +81,7 @@ const Contact = () => {
       icon: <MapPin className="h-5 w-5" />,
       title: "Visit Us",
       lines: [
-        "BLACK LOVERS",
+        "MINIKKI",
         "3076 - B WING, AVADH RUTURAJ",
         "TEXTILE HUB, BRTS ROAD",
         "Surat, Gujarat 395012",
@@ -112,7 +112,7 @@ const Contact = () => {
     <Layout>
       <div className="bg-gray-50 min-h-[60vh]">
         {/* Hero */}
-        <div className="bg-[#800000] text-white py-12 md:py-16">
+        <div className="bg-primary text-primary-foreground py-12 md:py-16">
           <div className="container mx-auto px-4 text-center">
             <h1 className="font-heading text-3xl md:text-4xl font-bold mb-3">
               Contact Us
@@ -130,7 +130,7 @@ const Contact = () => {
               {contactInfo.map((info) => (
                 <Card key={info.title}>
                   <CardContent className="p-5 flex gap-4">
-                    <div className="shrink-0 w-10 h-10 rounded-full bg-[#800000]/10 text-[#800000] flex items-center justify-center">
+                    <div className="shrink-0 w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                       {info.icon}
                     </div>
                     <div>
@@ -145,7 +145,7 @@ const Contact = () => {
                           href={info.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-[#800000] font-medium mt-2 hover:underline"
+                          className="inline-flex items-center gap-1 text-sm text-primary font-medium mt-2 hover:underline"
                         >
                           {info.linkLabel}
                           <MessageCircle className="h-3.5 w-3.5" />
@@ -276,7 +276,7 @@ const Contact = () => {
 
                         <Button
                           type="submit"
-                          className="w-full h-11 bg-[#800000] hover:bg-[#600000] text-white"
+                          className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground"
                           disabled={isSubmitting}
                         >
                           {isSubmitting ? (

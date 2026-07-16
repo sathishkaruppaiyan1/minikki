@@ -22,6 +22,9 @@ const Collection = () => {
   const [inStockOnly, setInStockOnly] = useState(false);
   const [onSaleOnly, setOnSaleOnly] = useState(false);
 
+  // Category header banner image — zoom-out parallax on scroll
+  const bannerImgRef = useRef<HTMLImageElement>(null);
+
   const { data: categoriesData, isLoading: categoriesLoading } = useWooCommerceCategories();
   const categories = categoriesData?.categories || [];
 
@@ -127,6 +130,28 @@ const Collection = () => {
 
   const hasActiveFilters = inStockOnly || onSaleOnly || priceRange.min > 0 || priceRange.max < 50000;
 
+  // Scroll-driven zoom-out + parallax for the category header image
+  useEffect(() => {
+    const img = bannerImgRef.current;
+    if (!img) return;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const scale = Math.max(1, 1.25 - y / 900);   // starts zoomed-in, zooms out on scroll
+        const shift = Math.min(y * 0.35, 140);        // subtle parallax drift
+        img.style.transform = `translate3d(0, ${shift}px, 0) scale(${scale})`;
+      });
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, [currentCategory?.image, categoryTitle]);
+
   // Prevent body scroll when filter drawer is open
   useEffect(() => {
     if (showFilters) {
@@ -142,14 +167,39 @@ const Collection = () => {
   return (
     <Layout>
       {/* Category Header */}
-      <div className="bg-[#FFF9E5] py-8 text-center">
-        <h1 className="font-heading text-3xl lg:text-4xl">
-          {categoryTitle}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Home &gt; {searchQuery ? "Search" : categoryTitle}
-        </p>
-      </div>
+      {!searchQuery && currentCategory?.image ? (
+        <div className="relative h-48 sm:h-60 lg:h-80 overflow-hidden bg-[#FFF9E5]">
+          <img
+            ref={bannerImgRef}
+            src={currentCategory.image}
+            alt={categoryTitle}
+            className="absolute inset-0 h-full w-full object-cover will-change-transform"
+            style={{ transform: "scale(1.25)" }}
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              if (target.src !== "/placeholder.svg") target.src = "/placeholder.svg";
+            }}
+          />
+          <div className="absolute inset-0 bg-black/35" />
+          <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center text-white">
+            <h1 className="font-heading text-3xl lg:text-5xl drop-shadow-lg">
+              {categoryTitle}
+            </h1>
+            <p className="mt-2 text-sm text-white/85 drop-shadow">
+              Home &gt; {categoryTitle}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-[#FFF9E5] py-8 text-center">
+          <h1 className="font-heading text-3xl lg:text-4xl">
+            {categoryTitle}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Home &gt; {searchQuery ? "Search" : categoryTitle}
+          </p>
+        </div>
+      )}
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-8">

@@ -9,12 +9,13 @@ export default {
       center: true,
       padding: "1rem",
       screens: {
-        "2xl": "1400px",
+        "2xl": "1440px",
       },
     },
     fontFamily: {
       sans: ['Outfit', 'sans-serif'],
       heading: ['Playfair Display', 'serif'],
+      price: ['Manrope', 'sans-serif'],
     },
     extend: {
       colors: {
@@ -56,11 +57,27 @@ export default {
           DEFAULT: "hsl(var(--promo-bar))",
           foreground: "hsl(var(--promo-bar-foreground))",
         },
+        brand: {
+          pink: "hsl(var(--primary))",
+          purple: "hsl(var(--brand-purple))",
+          mint: "hsl(var(--brand-mint))",
+          gold: "hsl(var(--brand-gold))",
+          yellow: "hsl(var(--brand-yellow))",
+        },
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        card: "18px",
+        image: "20px",
+      },
+      boxShadow: {
+        card: "0 10px 30px rgba(0,0,0,0.08)",
+        "card-hover": "0 20px 40px rgba(62,47,36,0.15)",
+        btn: "0 8px 25px rgba(62,47,36,0.18)",
       },
       keyframes: {
         "accordion-down": {

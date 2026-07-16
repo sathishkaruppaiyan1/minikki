@@ -65,7 +65,18 @@
       "Bash(npm install *)",
       "Bash(git ls-remote *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Read(//c/Users/sathi/Downloads/**)",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(git check-ignore *)",
+      "Bash(gh repo *)",
+      "Bash(git rm *)",
+      "PowerShell(gh repo list --limit 50)",
+      "Bash(cp \"/c/Users/sathi/Downloads/IMG_4860.JPG.jpeg\" \"/c/Users/sathi/Music/pixel-perfect-shop/public/founder.jpg\" && ls -la \"/c/Users/sathi/Music/pixel-perfect-shop/public/\")",
+      "Bash(python -)",
+      "Bash(grep -i \"^\\\\.env$\")"
     ]
   }
 }

@@ -2,7 +2,7 @@
 //
 // The whole app imports icons from here (instead of directly from a library),
 // so the entire icon family can be swapped in one place. Currently mapped to
-// Phosphor Icons; the global weight ("duotone") is set via IconContext in App.tsx.
+// Phosphor Icons; the global weight ("regular") is set via IconContext in App.tsx.
 //
 // Names on the left are the lucide-compatible names the components already use,
 // so switching the underlying library only requires editing this file.

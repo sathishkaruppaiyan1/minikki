@@ -3,7 +3,7 @@ import { useSearch } from "@/contexts/SearchContext";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Home, User, Search, Heart, ShoppingBag, ClipboardList } from "@/lib/icons";
+import { Home, User, Search, Heart, ShoppingBag, Package } from "@/lib/icons";
 
 // Bottom-nav icons (Phosphor)
 const AdornHome = () => <Home size={24} />;
@@ -11,7 +11,7 @@ const AdornUser = () => <User size={24} />;
 const AdornSearch = () => <Search size={24} />;
 const AdornHeart = () => <Heart size={24} />;
 const AdornCart = () => <ShoppingBag size={24} />;
-const AdornOrders = () => <ClipboardList size={24} />;
+const AdornOrders = () => <Package size={24} />;
 
 const MobileNav = () => {
   const location = useLocation();
@@ -35,7 +35,7 @@ const MobileNav = () => {
   ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 shadow-[0_0_10px_rgba(0,0,0,0.1)]">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 shadow-[0_0_10px_rgba(0,0,0,0.1)] rounded-t-2xl">
       <div className="flex items-center justify-around py-3">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -46,7 +46,7 @@ const MobileNav = () => {
               <button
                 key={item.label}
                 onClick={item.action}
-                className="flex flex-col items-center gap-1 px-2 py-1 transition-colors text-muted-foreground hover:text-foreground"
+                className="flex flex-col items-center gap-1 px-2 py-1 transition-colors text-black"
               >
                 <div className="relative -mt-0.5">
                   <Icon />
@@ -60,13 +60,13 @@ const MobileNav = () => {
             <Link
               key={item.label}
               to={item.href!}
-              className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative ${isActive ? "text-[#800000]" : "text-muted-foreground hover:text-foreground"
+              className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative ${isActive ? "text-secondary font-bold" : "text-black"
                 }`}
             >
               <div className="relative -mt-0.5">
                 <Icon />
                 {item.count !== undefined && item.count > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#800000] text-white text-[10px] flex items-center justify-center font-bold">
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
                     {item.count}
                   </span>
                 )}

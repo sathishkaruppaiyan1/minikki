@@ -5,6 +5,8 @@ import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useWooCommerceProductById, useWooCommerceProductGallery, useWooCommerceProducts, useWooCommerceReviews, useSubmitWooCommerceReview, type CreateReviewData } from "@/hooks/useWooCommerce";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
@@ -485,8 +487,32 @@ const ProductDetail = () => {
 
   const currentActiveImage = optimizedDisplayImages[activeImage] || "/placeholder.svg";
 
+  // Review stats for the reviews accordion
+  const approvedReviews = reviews?.filter((r: any) => r.status === 'approved') || [];
+  const reviewCount = approvedReviews.length;
+  const totalRating = approvedReviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0);
+  const averageRating = reviewCount > 0 ? (totalRating / reviewCount).toFixed(1) : "0.0";
+  const roundedAverage = Math.round(parseFloat(averageRating));
+  const ratingBreakdown = [5, 4, 3, 2, 1].map(rating => {
+    const count = approvedReviews.filter((r: any) => r.rating === rating).length;
+    const percentage = reviewCount > 0 ? (count / reviewCount) * 100 : 0;
+    return { rating, count, percentage };
+  });
+
   return (
     <Layout>
+      <div
+        className="bg-white"
+        style={{
+          // Bright-white page: neutralize the warm theme tokens locally so
+          // bg-background / bg-card / bg-muted inside this page render pure white/gray
+          ["--background" as string]: "0 0% 100%",
+          ["--card" as string]: "0 0% 100%",
+          ["--muted" as string]: "0 0% 96%",
+          ["--border" as string]: "0 0% 90%",
+          ["--input" as string]: "0 0% 90%",
+        } as React.CSSProperties}
+      >
       {/* Breadcrumb */}
       <div className="container mx-auto px-4 py-3 border-b border-border">
         <nav className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -540,7 +566,7 @@ const ProductDetail = () => {
                 onClick={() => toggleWishlist(product)}
                 className="absolute top-4 right-4 z-10 p-2 bg-white/80 rounded-full hover:bg-white transition-colors shadow-sm"
               >
-                <Heart className={`h-6 w-6 ${inWishlist ? "fill-[#800000] text-[#800000]" : "text-gray-600"}`} />
+                <Heart className={`h-6 w-6 ${inWishlist ? "fill-primary text-primary" : "text-gray-600"}`} />
               </button>
 
               {selectedColor && (
@@ -604,7 +630,7 @@ const ProductDetail = () => {
                 {product.name}
               </h1>
               <div className="flex items-center gap-3 mt-2">
-                <span className="text-xl font-bold text-[#800000]">{formatPrice(product.price)}</span>
+                <span className="text-xl font-bold text-[hsl(var(--price))]">{formatPrice(product.price)}</span>
                 {product.originalPrice && product.originalPrice > product.price && (
                   <>
                     <span className="text-muted-foreground/60 line-through text-lg">
@@ -622,9 +648,9 @@ const ProductDetail = () => {
             {/* Color Selection */}
             {product.colors && product.colors.length > 0 && (
               <div>
-                <div className="flex justify-between items-center mb-3">
+                <div className="flex justify-between items-center mb-2">
                   <p className={`text-sm font-medium ${showValidation && !selectedColor ? "text-red-600" : ""}`}>
-                    Color{selectedColor && <span className="capitalize font-bold text-[#800000]">: {selectedColor}</span>}
+                    Color{selectedColor && <span className="capitalize font-bold text-primary">: {selectedColor}</span>}
                     {showValidation && !selectedColor && <span className="ml-2 text-red-600 animate-pulse">(Required)</span>}
                   </p>
                 </div>
@@ -663,7 +689,7 @@ const ProductDetail = () => {
                           setActiveImage(0);
                           if (showValidation) setShowValidation(false);
                         }}
-                        className={`w-20 h-28 rounded-md border-2 transition-all relative overflow-hidden ${isSelected
+                        className={`w-14 h-20 sm:w-20 sm:h-28 rounded-md border-2 transition-all relative overflow-hidden ${isSelected
                           ? "border-[3px] border-black ring-0" // Bolder black active border
                           : "border-border hover:border-foreground"
                           } ${outOfStock ? "opacity-60" : ""}`}
@@ -696,7 +722,7 @@ const ProductDetail = () => {
             {/* Size Selection */}
             {product.sizes.length > 0 && (
               <div>
-                <div className="flex justify-between items-center mb-3">
+                <div className="flex justify-between items-center mb-2">
                   <p className={`text-sm font-medium ${showValidation && !selectedSize ? "text-red-600" : ""}`}>
                     Size
                     {showValidation && !selectedSize && <span className="ml-2 text-red-600 animate-pulse">(Required)</span>}
@@ -713,7 +739,7 @@ const ProductDetail = () => {
                       </DialogHeader>
                       <img
                         src="/size-chart.jpg"
-                        alt="Black Lovers Size Chart"
+                        alt="Minikki Size Chart"
                         className="w-full h-auto rounded-lg"
                       />
                     </DialogContent>
@@ -732,7 +758,7 @@ const ProductDetail = () => {
                           if (showValidation) setShowValidation(false);
                         }}
                         disabled={outOfStock}
-                        className={`min-w-[48px] h-12 px-3 border text-base font-bold transition-all relative ${selectedSize === size
+                        className={`min-w-[40px] h-10 px-2.5 text-sm sm:min-w-[48px] sm:h-12 sm:px-3 sm:text-base border font-bold transition-all relative ${selectedSize === size
                           ? "border-foreground bg-foreground text-background"
                           : "border-black hover:bg-muted bg-background"
                           } ${outOfStock ? "opacity-40 cursor-not-allowed line-through" : ""}`}
@@ -752,7 +778,7 @@ const ProductDetail = () => {
             )}
 
             {/* Quantity Selector */}
-            <div className="flex items-center gap-4" style={{ paddingTop: '10px' }}>
+            <div className="flex items-center gap-4 pt-1 sm:pt-2.5">
               <span className="text-sm font-medium">Quantity</span>
               <div className="flex items-center gap-2">
                 <div className="flex items-center border border-border bg-background">
@@ -788,26 +814,64 @@ const ProductDetail = () => {
 
             {/* Buttons */}
             <div className="space-y-4">
-              <div className="flex flex-row gap-3">
+              <div className="flex flex-row gap-2 sm:gap-3">
                 <Button
-                  className="flex-1 h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none text-base font-bold"
+                  className="flex-1 h-11 sm:h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none text-sm sm:text-base font-bold"
                   disabled={product.isSoldOut}
                   onClick={() => handleAddToCart(false)}
                 >
                   {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
                 </Button>
                 <Button
-                  className="flex-1 h-12 bg-[#8B0000] text-white hover:bg-[#6B0000] rounded-none text-base font-bold"
+                  className="flex-1 h-11 sm:h-12 bg-primary text-primary-foreground hover:bg-primary/90 rounded-none text-sm sm:text-base font-bold"
                   disabled={product.isSoldOut}
                   onClick={() => handleAddToCart(true)}
                 >
                   BUY NOW
                 </Button>
+                <a
+                  href={`https://wa.me/917990190234?text=${encodeURIComponent(`Hi, I'm interested in "${product.name}" - ${typeof window !== "undefined" ? window.location.href : ""}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 flex items-center justify-center bg-[#25D366] hover:bg-[#1DA851] text-white transition-colors"
+                  aria-label="Ask about this product on WhatsApp"
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                  </svg>
+                </a>
               </div>
             </div>
 
-            {/* Accordion Sections */}
-            <div className="border-t border-border mt-6">
+            {/* Mobile: single "Description" button opening a right-side drawer */}
+            <div className="lg:hidden border-t border-border mt-6">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <button className="w-full flex items-center justify-between py-4 text-left">
+                    <span className="font-medium">Description</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[88%] sm:max-w-md overflow-y-auto p-0">
+                  <SheetHeader className="sticky top-0 bg-background border-b border-border px-5 py-4 text-left">
+                    <SheetTitle className="text-xl font-heading">Description</SheetTitle>
+                  </SheetHeader>
+                  <div className="prose prose-sm max-w-none px-5 py-4 text-foreground leading-relaxed">
+                    {product.shortDescription && (
+                      <p className="mb-2">{stripHtml(product.shortDescription)}</p>
+                    )}
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html: product.description || "No description available.",
+                      }}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            {/* Accordion Sections (desktop) */}
+            <div className="hidden lg:block border-t border-border mt-6">
               {/* Description */}
               <div className="border-b border-border">
                 <button
@@ -926,29 +990,23 @@ const ProductDetail = () => {
           </div>
         </div>
 
-        {/* Customer Reviews Section */}
-        <section className="border-t border-border pt-10">
-          <h2 className="font-heading text-2xl font-semibold text-center mb-8">Customer Reviews</h2>
-
-          <div className="max-w-4xl mx-auto space-y-8">
-            {/* Rating Summary */}
-            {(() => {
-              // Calculate exact average rating and count from reviews
-              const approvedReviews = reviews?.filter((r: any) => r.status === 'approved') || [];
-              const reviewCount = approvedReviews.length;
-              const totalRating = approvedReviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0);
-              const averageRating = reviewCount > 0 ? (totalRating / reviewCount).toFixed(1) : "0.0";
-              const roundedAverage = Math.round(parseFloat(averageRating));
-
-              // Calculate rating breakdown
-              const ratingBreakdown = [5, 4, 3, 2, 1].map(rating => {
-                const count = approvedReviews.filter((r: any) => r.rating === rating).length;
-                const percentage = reviewCount > 0 ? (count / reviewCount) * 100 : 0;
-                return { rating, count, percentage };
-              });
-
-              return (
-                <div className="flex flex-col md:flex-row gap-8 p-6 bg-muted/30 rounded-xl">
+        {/* Customer Reviews Section — compact dropdowns */}
+        <section className="border-t border-border pt-4 pb-2">
+          <div className="max-w-4xl mx-auto">
+            <Accordion type="single" collapsible className="w-full">
+            {/* Customer Reviews — summary + all reviews combined */}
+            <AccordionItem value="customer-reviews" className="border-border">
+                  <AccordionTrigger className="hover:no-underline py-4">
+                    <div className="flex items-center gap-3">
+                      <span className="font-heading text-lg font-semibold">Customer Reviews</span>
+                      <span className="flex items-center gap-1 text-sm text-muted-foreground font-normal">
+                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                        {averageRating} · {reviewCount} {reviewCount === 1 ? "review" : "reviews"}
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                <div className="flex flex-col md:flex-row gap-8 p-4 md:p-6 bg-muted/30 rounded-xl">
                   {/* Overall Rating */}
                   <div className="text-center md:border-r md:border-border md:pr-8 md:min-w-[180px]">
                     <div className="text-5xl font-bold">{averageRating}</div>
@@ -982,12 +1040,83 @@ const ProductDetail = () => {
                     ))}
                   </div>
                 </div>
-              );
-            })()}
+
+
+            {/* All reviews list */}
+            <div className="pt-4">
+              <h3 className="text-base font-semibold mb-4">All Reviews ({reviews?.length || 0})</h3>
+
+              {isLoadingReviews ? (
+                <div className="text-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+                </div>
+              ) : reviews && reviews.length > 0 ? (
+                <div className="space-y-6">
+                  {reviews.map((review: any) => (
+                    <div key={review.id} className="border-b border-border pb-6">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <Star key={star} className={`w-4 h-4 ${star <= review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
+                          ))}
+                        </div>
+                        <span className="font-semibold">{review.reviewer}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(review.date_created).toLocaleDateString()}</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: review.review }} />
+
+                      {/* Display review media (images/videos) */}
+                      {review.media && review.media.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {review.media.map((mediaUrl: string, idx: number) => {
+                            const isVideo = mediaUrl.match(/\.(mp4|webm|ogg|mov)$/i);
+                            return isVideo ? (
+                              <video
+                                key={idx}
+                                src={mediaUrl}
+                                controls
+                                className="w-32 h-32 object-cover rounded-lg border border-border"
+                              />
+                            ) : (
+                              <a
+                                key={idx}
+                                href={mediaUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block"
+                              >
+                                <img
+                                  src={mediaUrl}
+                                  alt={`Review image ${idx + 1}`}
+                                  className="w-24 h-24 object-cover rounded-lg border border-border hover:opacity-90 transition-opacity"
+                                />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Empty State */
+                <div className="text-center py-12 border border-border rounded-xl bg-muted/20">
+                  <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h4 className="font-medium text-lg mb-2">No Reviews Yet</h4>
+                  <p className="text-sm text-muted-foreground mb-4">Be the first to review this product!</p>
+                </div>
+              )}
+            </div>
+              </AccordionContent>
+            </AccordionItem>
 
             {/* Write a Review Section */}
-            <div className="border border-border rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-5">Write a Review</h3>
+            <AccordionItem value="write-review" className="border-border">
+              <AccordionTrigger className="hover:no-underline py-4">
+                <span className="font-heading text-lg font-semibold">Write a Review</span>
+              </AccordionTrigger>
+              <AccordionContent>
+              <div className="border border-border rounded-xl p-4 md:p-6">
 
               {/* Star Rating Input */}
               <div className="mb-5">
@@ -1111,74 +1240,9 @@ const ProductDetail = () => {
                 Submit Review
               </Button>
             </div>
-
-            {/* Customer Reviews List */}
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold">All Reviews ({reviews?.length || 0})</h3>
-              </div>
-
-              {isLoadingReviews ? (
-                <div className="text-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
-                </div>
-              ) : reviews && reviews.length > 0 ? (
-                <div className="space-y-6">
-                  {reviews.map((review: any) => (
-                    <div key={review.id} className="border-b border-border pb-6">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="flex">
-                          {[1, 2, 3, 4, 5].map(star => (
-                            <Star key={star} className={`w-4 h-4 ${star <= review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
-                          ))}
-                        </div>
-                        <span className="font-semibold">{review.reviewer}</span>
-                        <span className="text-xs text-muted-foreground">{new Date(review.date_created).toLocaleDateString()}</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: review.review }} />
-
-                      {/* Display review media (images/videos) */}
-                      {review.media && review.media.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {review.media.map((mediaUrl: string, idx: number) => {
-                            const isVideo = mediaUrl.match(/\.(mp4|webm|ogg|mov)$/i);
-                            return isVideo ? (
-                              <video
-                                key={idx}
-                                src={mediaUrl}
-                                controls
-                                className="w-32 h-32 object-cover rounded-lg border border-border"
-                              />
-                            ) : (
-                              <a
-                                key={idx}
-                                href={mediaUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block"
-                              >
-                                <img
-                                  src={mediaUrl}
-                                  alt={`Review image ${idx + 1}`}
-                                  className="w-24 h-24 object-cover rounded-lg border border-border hover:opacity-90 transition-opacity"
-                                />
-                              </a>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                /* Empty State */
-                <div className="text-center py-12 border border-border rounded-xl bg-muted/20">
-                  <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h4 className="font-medium text-lg mb-2">No Reviews Yet</h4>
-                  <p className="text-sm text-muted-foreground mb-4">Be the first to review this product!</p>
-                </div>
-              )}
-            </div>
+              </AccordionContent>
+            </AccordionItem>
+            </Accordion>
           </div>
         </section>
 
@@ -1244,6 +1308,7 @@ const ProductDetail = () => {
             </div>
           </section>
         )}
+      </div>
       </div>
     </Layout >
   );

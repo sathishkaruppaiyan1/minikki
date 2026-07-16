@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, getSessionToken } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Phone, MessageSquare, Package, MapPin, User, LogOut, Edit2, Save, X } from "@/lib/icons";
@@ -114,20 +114,21 @@ const Account = () => {
 
     setIsLoading(true);
     try {
-      // Update in Supabase users table
-      const { error } = await supabase
-        .from("users")
-        .update({
-          name: editedName || null,
-          email: editedEmail || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("phone_number", user.phoneNumber);
+      // Update via edge function — verifies the signed session token server-side
+      const sessionToken = getSessionToken();
+      if (!sessionToken) {
+        throw new Error("Session expired. Please log in again.");
+      }
 
-      if (error) throw error;
+      const { data, error } = await supabase.functions.invoke("update-user-details", {
+        body: { name: editedName || null, email: editedEmail || null },
+        headers: { "x-session-token": sessionToken },
+      });
 
-      // Update in AuthContext
-      login(user.phoneNumber, editedName || undefined, editedEmail || undefined);
+      if (error || !data?.success) throw (error || new Error(data?.error || "Update failed"));
+
+      // Update in AuthContext (keep the session token)
+      login(user.phoneNumber, editedName || undefined, editedEmail || undefined, sessionToken);
       
       toast.success("Account details updated successfully!");
       setIsEditingDetails(false);
@@ -424,7 +425,7 @@ const Account = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("interakt-send-otp", {
+      const { data, error } = await supabase.functions.invoke("wati-send-otp", {
         body: { phoneNumber, countryCode: "+91" },
       });
 
@@ -475,7 +476,7 @@ const Account = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("interakt-verify-otp", {
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
         body: {
           phoneNumber,
           otp,
@@ -490,7 +491,7 @@ const Account = () => {
 
       if (data?.success) {
         // Login user
-        login(phoneNumber, data.user?.name || name, data.user?.email || email);
+        login(phoneNumber, data.user?.name || name, data.user?.email || email, data.sessionToken);
         toast.success("Login successful!");
         setStep("success");
         setTimeout(() => {
@@ -579,7 +580,7 @@ const Account = () => {
               </div>
 
               <Button
-                className="w-full bg-[#800000] text-white hover:bg-[#600000]"
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={handleSendOTP}
                 disabled={isLoading || phoneNumber.length !== 10}
               >
@@ -633,7 +634,7 @@ const Account = () => {
               </div>
 
               <Button
-                className="w-full bg-[#800000] text-white hover:bg-[#600000]"
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={handleVerifyOTP}
                 disabled={isLoading || otp.length !== 6}
               >

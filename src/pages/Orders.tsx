@@ -98,7 +98,7 @@ const Orders = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("interakt-send-otp", {
+      const { data, error } = await supabase.functions.invoke("wati-send-otp", {
         body: { phoneNumber, countryCode: "+91" },
       });
 
@@ -127,7 +127,7 @@ const Orders = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("interakt-verify-otp", {
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
         body: {
           phoneNumber,
           otp,
@@ -139,7 +139,7 @@ const Orders = () => {
       if (error) throw error;
 
       if (data?.success) {
-        login(phoneNumber, data.user?.name || name, data.user?.email || email);
+        login(phoneNumber, data.user?.name || name, data.user?.email || email, data.sessionToken);
         toast.success("Login successful!");
       } else {
         throw new Error(data?.error || "Invalid OTP");
@@ -193,7 +193,7 @@ const Orders = () => {
                     </p>
                     <Button
                       onClick={() => navigate("/collections/all")}
-                      className="bg-[#800000] hover:bg-[#600000] text-white"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
                       Start Shopping
                     </Button>
@@ -303,7 +303,7 @@ const Orders = () => {
                     </div>
 
                     <Button
-                      className="w-full h-11 bg-[#800000] text-white hover:bg-[#600000]"
+                      className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90"
                       onClick={handleSendOTP}
                       disabled={isLoading || phoneNumber.length !== 10}
                     >
@@ -352,7 +352,7 @@ const Orders = () => {
                     </div>
 
                     <Button
-                      className="w-full h-11 bg-[#800000] text-white hover:bg-[#600000]"
+                      className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90"
                       onClick={handleVerifyOTP}
                       disabled={isLoading || otp.length !== 6}
                     >

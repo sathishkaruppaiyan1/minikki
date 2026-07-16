@@ -50,7 +50,7 @@ const WordPressPageKeyed = (props: { routeSlug?: string }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <IconContext.Provider value={{ weight: "duotone" }}>
+    <IconContext.Provider value={{ weight: "regular" }}>
     <TooltipProvider>
       <AuthProvider>
         <CartProvider>

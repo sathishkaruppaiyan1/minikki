@@ -2,10 +2,11 @@ import Layout from "@/components/layout/Layout";
 import { useMemo, useEffect } from "react";
 
 import HeroBanner from "@/components/home/HeroBanner";
+import CategoryCarousel from "@/components/home/CategoryCarousel";
 import CategoryGrid from "@/components/home/CategoryGrid";
 import ProductSection from "@/components/home/ProductSection";
-import StorySection from "@/components/home/StorySection";
 import ReviewsSlider from "@/components/home/ReviewsSlider";
+import StorySection from "@/components/home/StorySection";
 import { useWooCommerceProducts, useWooCommerceCategories } from "@/hooks/useWooCommerce";
 import { Skeleton } from "@/components/ui/skeleton";
 import { preloadImages, getProductCardImage } from "@/lib/imageOptimizer";
@@ -50,6 +51,7 @@ const Index = () => {
 
   return (
     <Layout>
+      <CategoryCarousel />
       <HeroBanner />
       {/* Categories load independently and show immediately */}
       <CategoryGrid />
@@ -65,8 +67,8 @@ const Index = () => {
           {newArrivals.length > 0 ? (
             <ProductSection
               title="New Arrivals"
-              emoji="🔥"
               products={newArrivals}
+              viewAllLink="/collections/all"
             />
           ) : newArrivalsLoading ? (
             <div className="container mx-auto px-4 py-8 lg:py-16">
@@ -89,8 +91,8 @@ const Index = () => {
           {displayHotSellers.length > 0 ? (
             <ProductSection
               title="Hot Sellers"
-              emoji="⚡"
               products={displayHotSellers}
+              viewAllLink="/collections/all"
             />
           ) : hotSellersLoading ? (
             <div className="container mx-auto px-4 py-8 lg:py-16">
@@ -110,6 +112,7 @@ const Index = () => {
           ) : null}
 
           <ReviewsSlider />
+
           <StorySection />
         </>
       )}
