@@ -40,7 +40,7 @@ const CartDrawer = () => {
               <Button
                 onClick={() => setIsOpen(false)}
                 className="mt-4"
-                variant="outline"
+                variant="outline" 
               >
                 Continue Shopping
               </Button>
@@ -57,14 +57,14 @@ const CartDrawer = () => {
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-sm truncate">{item.product.name}</h3>
+                    <h3 className="font-heading font-extrabold text-black tracking-tight text-sm truncate">{item.product.name}</h3>
                     {/* Variations - Single line "S, BLUE" */}
                     {(item.size || item.color) && (
                       <p className="text-xs text-muted-foreground mt-1 uppercase">
                         {[item.size, item.color].filter(Boolean).join(", ")}
                       </p>
                     )}
-                    <p className="font-bold text-sm mt-1">{formatPrice(item.product.price)}</p>
+                    <p className="font-extrabold text-[#B91C1C] text-sm mt-1">{formatPrice(item.product.price)}</p>
 
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center border border-border">
@@ -114,7 +114,7 @@ const CartDrawer = () => {
                 </Button>
               </Link>
               <Link to="/checkout" onClick={() => setIsOpen(false)}>
-                <Button className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold">
+                <Button className="w-full h-12 bg-black text-white hover:bg-black/90 rounded-none font-bold">
                   CHECKOUT
                 </Button>
               </Link>

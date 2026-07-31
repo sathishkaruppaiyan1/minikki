@@ -119,11 +119,22 @@ const StorySection = () => {
               <p>
                 We are truly grateful for your love and support, and we look forward to being a part of your fashion journey for many more years.
               </p>
-              <p className="text-muted-foreground italic">
+              {/* <p className="text-muted-foreground italic">
                 With Love,<br />
-                Dhanalakshmi<br />
+                Dhanalakshmi<br />A
                 Founder, Minikki
-              </p>
+              </p> */}
+              <div className="mt-6 p-5 rounded-xl bg-primary/5 border-l-4 border-primary">
+  <p className="text-foreground italic leading-relaxed">
+    With Love,
+  </p>
+  <p className="font-heading text-lg font-semibold text-primary">
+    Dhanalakshmi
+  </p>
+  <p className="text-sm text-muted-foreground font-medium">
+    Founder, Minikki
+  </p>
+</div>
             </div>
 
             {/* Read More / Less button */}

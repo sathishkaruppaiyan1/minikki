@@ -43,7 +43,7 @@ const Header = () => {
         <div className="container mx-auto px-4">
           {/* Mobile Header */}
           <div className="flex lg:hidden items-center justify-between h-20">
-            {/* Left - Burger & Search */}
+            {/* Left - Burger */}
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -53,15 +53,17 @@ const Header = () => {
               >
                 {isMenuOpen ? <AdornClose /> : <AdornMenu />}
               </Button>
-              <Button
-                variant="ghost"
-                className="h-10 w-10 p-0 hover:bg-transparent hover:text-primary"
-                style={{ height: '40px', width: '40px' }}
-                onClick={openSearch}
-                aria-label="Search"
-              >
-                <AdornSearch />
-              </Button>
+
+                            <Link to="/wishlist" className="relative">
+                <Button variant="ghost" className="h-10 w-10 p-0 hover:bg-transparent hover:text-primary" style={{ height: '40px', width: '40px' }}>
+                  <AdornHeart />
+                </Button>
+                {wishlistItems > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
+                    {wishlistItems}
+                  </span>
+                )}
+              </Link>
             </div>
 
             {/* Center - Logo */}
@@ -73,14 +75,14 @@ const Header = () => {
               />
             </Link>
 
-            {/* Right - Cart & Account */}
-            {/* Right - Account & Cart */}
+            {/* Right - Account, Wishlist & Cart */}
             <div className="flex items-center gap-1">
               <Link to="/account">
                 <Button variant="ghost" className="h-10 w-10 p-0 hover:bg-transparent hover:text-primary" style={{ height: '40px', width: '40px' }}>
                   <AdornUser />
                 </Button>
               </Link>
+
               <Button variant="ghost" className="h-10 w-10 relative p-0 hover:bg-transparent hover:text-primary" style={{ height: '40px', width: '40px' }} onClick={() => setCartOpen(true)}>
                 <AdornCart />
                 {cartItems > 0 && (
@@ -88,6 +90,27 @@ const Header = () => {
                     {cartItems}
                   </span>
                 )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Mobile Search */}
+          <div className="lg:hidden pb-4">
+            <div className="relative" onClick={openSearch}>
+              <Input
+                type="text"
+                placeholder="Search products..."
+                readOnly
+                className="w-full h-11 pl-4 pr-12 rounded-full text-sm cursor-pointer"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Search"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 hover:bg-transparent hover:text-primary"
+              >
+                <AdornSearch />
               </Button>
             </div>
           </div>

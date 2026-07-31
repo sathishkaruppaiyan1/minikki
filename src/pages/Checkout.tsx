@@ -87,6 +87,10 @@ const Checkout = () => {
   }, []);
 
   const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
+  const formatCheckoutPrice = (price: number) =>
+    `Rs. ${price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const gstAmount = totalPrice * 0.05;
+  const checkoutTotal = totalPrice + gstAmount;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -244,7 +248,7 @@ const Checkout = () => {
       }
       // Find selected payment gateway details
       const selectedGateway = paymentGateways?.find(g => g.id === paymentMethod);
-      const totalAmount = totalPrice;
+          const totalAmount = checkoutTotal;
 
       const orderData = {
         payment_method: paymentMethod || "cod",
@@ -727,7 +731,7 @@ const Checkout = () => {
             Add some items to your cart before checking out.
           </p>
           <Link to="/collections/all">
-            <Button className="bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold">
+            <Button className="bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold"> className="w-full h-14 mt-6 bg-black text-white hover:bg-black/90 rounded-none font-bold text-base"
               CONTINUE SHOPPING
             </Button>
           </Link>
@@ -1054,13 +1058,13 @@ const Checkout = () => {
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm truncate">{item.product.name}</p>
+                          <p className="font-heading font-extrabold text-black tracking-tight text-sm truncate">{item.product.name}</p>
                           {(item.size || item.color) && (
                             <p className="text-xs text-muted-foreground uppercase">
                               {[item.size, item.color].filter(Boolean).join(", ")}
                             </p>
                           )}
-                          <p className="font-bold text-sm mt-1">{formatPrice(item.product.price * item.quantity)}</p>
+                          <p className="font-extrabold text-[#B91C1C] text-sm mt-1">{formatPrice(item.product.price * item.quantity)}</p>
                         </div>
                       </div>
                     ))}
@@ -1076,12 +1080,16 @@ const Checkout = () => {
                       <span className="text-muted-foreground">Shipping</span>
                       <span className="font-bold text-green-600">FREE</span>
                     </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">GST (5%)</span>
+                      <span className="font-bold">{formatCheckoutPrice(gstAmount)}</span>
+                    </div>
                   </div>
 
                   <div className="mt-6 pt-6 border-t border-border">
                     <div className="flex justify-between text-lg">
                       <span className="font-bold">Total</span>
-                      <span className="font-bold">{formatPrice(totalPrice)}</span>
+                      <span className="font-bold">{formatCheckoutPrice(checkoutTotal)}</span>
                     </div>
                   </div>
 
@@ -1089,7 +1097,7 @@ const Checkout = () => {
                   <Button
                     type="submit"
                     disabled={isProcessing}
-                    className="w-full h-14 mt-6 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold text-base"
+                    className="w-full h-14 mt-6 bg-black text-white hover:bg-black/90 rounded-none font-bold text-base"
                   >
                     {isProcessing ? (
                       <span className="flex items-center gap-2">
@@ -1100,7 +1108,7 @@ const Checkout = () => {
                         Processing...
                       </span>
                     ) : (
-                      `PLACE ORDER - ${formatPrice(totalPrice)}`
+                      `PLACE ORDER - ${formatCheckoutPrice(checkoutTotal)}`
                     )}
                   </Button>
 
@@ -1160,7 +1168,7 @@ const Checkout = () => {
               setShowConfirmDialog(false);
               window.scrollTo(0, 0);
             }}>Edit</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmOrder} className="bg-foreground text-background hover:bg-foreground/90">
+            <AlertDialogAction onClick={handleConfirmOrder} className="bg-black text-white hover:bg-black/90">
               Yes, Place Order
             </AlertDialogAction>
           </AlertDialogFooter>

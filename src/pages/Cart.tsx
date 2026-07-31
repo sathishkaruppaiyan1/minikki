@@ -142,7 +142,7 @@ const Cart = () => {
                         <div className="flex-1 min-w-0 flex flex-col items-start text-left">
                           <Link
                             to={`/product/${item.product.id}`}
-                            className="font-bold hover:text-primary transition-colors line-clamp-2 text-left"
+                            className="font-heading font-extrabold text-black tracking-tight line-clamp-2 text-left"
                           >
                             {item.product.name}
                           </Link>
@@ -165,7 +165,7 @@ const Cart = () => {
                     {/* Price */}
                     <div className="col-span-4 md:col-span-2 text-center">
                       <span className="md:hidden text-sm text-muted-foreground">Price: </span>
-                      <span className="font-bold">{formatPrice(item.product.price)}</span>
+                      <span className="font-extrabold text-[#B91C1C]">{formatPrice(item.product.price)}</span>
                     </div>
 
                     {/* Quantity */}
@@ -282,7 +282,7 @@ const Cart = () => {
 
               <Link to="/checkout" className="block mt-6">
                 <Button
-                  className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold"
+                  className="w-full h-12 bg-black text-white hover:bg-black/90 rounded-none font-bold"
                   disabled={isValidating}
                 >
                   {isValidating ? (
