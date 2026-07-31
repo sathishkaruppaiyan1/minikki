@@ -4,6 +4,7 @@ import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useCart } from "@/contexts/CartContext";
+import { getProductPriceDetails } from "@/lib/utils";
 
 const Wishlist = () => {
   const { items, removeFromWishlist, clearWishlist } = useWishlist();
@@ -103,7 +104,7 @@ const Wishlist = () => {
                 {/* Badges */}
                 <div className="absolute top-2 left-2 flex flex-col gap-1">
                   {product.discount && (
-                    <span className="badge-sale text-xs px-2 py-1 font-bold">
+                    <span className="text-xs font-bold text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] px-2.5 py-1 rounded-md">
                       -{product.discount}%
                     </span>
                   )}
@@ -118,25 +119,26 @@ const Wishlist = () => {
               {/* Product Info */}
               <div className="p-4">
                 <Link to={`/product/${product.id}`}>
-                  <h3 className="font-bold hover:text-primary transition-colors line-clamp-1">
+                  <h3 className="font-heading font-extrabold text-black tracking-tight line-clamp-1">
                     {product.name}
                   </h3>
                 </Link>
 
-                <div className="flex items-center gap-2 mt-2">
-                  {product.originalPrice && product.originalPrice > product.price && (
-                    <span className="text-muted-foreground line-through text-sm">
-                      {formatPrice(product.originalPrice)}
-                    </span>
-                  )}
-                  <span className="font-bold text-[hsl(var(--price))]">{formatPrice(product.price)}</span>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <span className="font-extrabold text-[#B91C1C]">{formatPrice(getProductPriceDetails(product.price, product.originalPrice).offerPrice)}</span>
+                  <span className="text-sm font-medium text-gray-400 line-through">
+                    {formatPrice(getProductPriceDetails(product.price, product.originalPrice).actualPrice)}
+                  </span>
+                  <span className="text-xs font-bold text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] px-2.5 py-1 rounded-md">
+                    {getProductPriceDetails(product.price, product.originalPrice).discountPercentage}% OFF
+                  </span>
                 </div>
 
                 {/* Add to Cart Button */}
                 <Button
                   onClick={() => handleAddToCart(product)}
                   disabled={product.isSoldOut}
-                  className="w-full mt-4 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold"
+                  className="w-full mt-4 bg-black text-white hover:bg-black/90 rounded-none font-bold"
                 >
                   {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
                 </Button>

@@ -7,6 +7,7 @@ import { useWishlist } from "@/contexts/WishlistContext";
 import { getProductCardImage, preloadImage } from "@/lib/imageOptimizer";
 import { Heart, ShoppingBag } from "@/lib/icons";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { getProductPriceDetails } from "@/lib/utils";
 
 // Product-card icons (Phosphor); heart fills when wishlisted
 const AdornHeart = ({ filled }: { filled?: boolean }) => (
@@ -80,6 +81,10 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
   };
 
   const inWishlist = isInWishlist(product.id);
+  const priceDetails = useMemo(
+    () => getProductPriceDetails(product.price, product.originalPrice),
+    [product.price, product.originalPrice]
+  );
 
   // Memoize current image with optimization
   const currentImage = useMemo(() => {
@@ -160,7 +165,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {product.discount && (
-            <span className="badge-sale text-xs px-2 py-1 font-bold">
+            <span className="text-xs font-bold text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] px-2.5 py-1 rounded-md">
               -{product.discount}%
             </span>
           )}
@@ -198,7 +203,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
         </div>
 
         {/* Add to Cart on hover - bottom (hidden on mobile, visible on desktop hover) */}
-        <div className="hidden md:block absolute bottom-0 left-0 right-0 bg-foreground text-background py-3 text-center font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer uppercase"
+        <div className="hidden md:block absolute bottom-0 left-0 right-0 bg-black text-white py-3 text-center font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer uppercase"
           onClick={handleAddToCart}
         >
           {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
@@ -208,23 +213,19 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
       {/* Product info */}
       <div className="mt-3 space-y-2 text-center">
         <Link to={`/product/${product.id}`}>
-          <h3 className="text-base font-extrabold font-sans hover:text-primary transition-colors line-clamp-1">
+          <h3 className="text-base font-heading font-extrabold text-black tracking-tight line-clamp-1">
             {product.name}
           </h3>
         </Link>
 
         <div className="flex items-center justify-center flex-wrap gap-2">
-          <span className="price text-base font-bold">{formatPrice(product.price)}</span>
-          {product.originalPrice && product.originalPrice > product.price && (
-            <>
-              <span className="price-old text-sm text-muted-foreground/60 line-through">
-                {formatPrice(product.originalPrice)}
-              </span>
-              <span className="text-xs font-bold text-[#FF0000]">
-                {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-              </span>
-            </>
-          )}
+          <span className="text-base font-extrabold text-[#B91C1C]">{formatPrice(priceDetails.offerPrice)}</span>
+          <span className="text-sm font-medium text-gray-400 line-through">
+            {formatPrice(priceDetails.actualPrice)}
+          </span>
+          <span className="text-xs font-bold text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] px-2.5 py-1 rounded-md">
+            {priceDetails.discountPercentage}% OFF
+          </span>
         </div>
 
         {/* Color swatches with variation images */}
@@ -243,7 +244,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
               return (
                 <button
                   key={index}
-                  className={`w-10 h-10 rounded-md overflow-hidden transition-all ${isSelected
+                  className={`w-12 h-16 sm:w-14 sm:h-18 md:w-16 md:h-20  rounded-md overflow-hidden transition-all ${isSelected
                     ? "border-2 border-black"
                     : "border border-border hover:border-black"
                     }`}
@@ -262,7 +263,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
                       alt={colorName}
                       loading="lazy"
                       decoding="async"
-                      className="w-full h-full object-cover border-2 border-white"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
                     <div

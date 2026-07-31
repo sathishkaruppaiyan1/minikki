@@ -4,6 +4,7 @@ import { X, Loader2, Search } from "@/lib/icons";
 import { Input } from "@/components/ui/input";
 import { useSearch } from "@/contexts/SearchContext";
 import { useWooCommerceProducts } from "@/hooks/useWooCommerce";
+import { getProductPriceDetails } from "@/lib/utils";
 
 const AdornSearch = () => <Search size={24} />;
 
@@ -113,7 +114,10 @@ const SearchModal = () => {
               </p>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {products.map((product) => (
+                {products.map((product) => {
+                  const priceDetails = getProductPriceDetails(product.price, product.originalPrice);
+
+                  return (
                   <Link
                     key={product.id}
                     to={`/product/${product.id}`}
@@ -128,15 +132,24 @@ const SearchModal = () => {
                       />
                     </div>
                     <div className="mt-2">
-                      <h3 className="text-sm font-bold truncate group-hover:text-primary transition-colors">
+                      <h3 className="text-sm font-heading font-extrabold text-black tracking-tight truncate">
                         {product.name}
                       </h3>
-                      <p className="text-sm font-bold text-primary mt-1">
-                        {formatPrice(product.price)}
-                      </p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <p className="text-sm font-extrabold text-[#B91C1C]">
+                          {formatPrice(priceDetails.offerPrice)}
+                        </p>
+                        <p className="text-xs font-medium text-gray-400 line-through">
+                          {formatPrice(priceDetails.actualPrice)}
+                        </p>
+                        <p className="text-xs font-bold text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] px-2.5 py-1 rounded-md">
+                          {priceDetails.discountPercentage}% OFF
+                        </p>
+                      </div>
                     </div>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

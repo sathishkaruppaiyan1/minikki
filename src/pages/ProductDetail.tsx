@@ -13,6 +13,7 @@ import { useWishlist } from "@/contexts/WishlistContext";
 import { toast } from "sonner";
 import type { Product } from "@/types/product";
 import { getProductDetailImage, getGalleryThumbnail } from "@/lib/imageOptimizer";
+import { getProductPriceDetails } from "@/lib/utils";
 
 // Common color name to hex mapping
 const colorNameToHex: Record<string, string> = {
@@ -413,6 +414,7 @@ const ProductDetail = () => {
   }
 
   const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
+  const priceDetails = getProductPriceDetails(product.price, product.originalPrice);
   const inWishlist = isInWishlist(product.id);
 
   const displayImages = getDisplayImages();
@@ -626,21 +628,17 @@ const ProductDetail = () => {
           <div className="space-y-2">
             {/* Title & Price */}
             <div>
-              <h1 className="font-heading text-xl lg:text-2xl font-semibold text-foreground">
+              <h1 className="font-heading text-xl lg:text-2xl font-extrabold text-black tracking-tight">
                 {product.name}
               </h1>
-              <div className="flex items-center gap-3 mt-2">
-                <span className="text-xl font-bold text-[hsl(var(--price))]">{formatPrice(product.price)}</span>
-                {product.originalPrice && product.originalPrice > product.price && (
-                  <>
-                    <span className="text-muted-foreground/60 line-through text-lg">
-                      {formatPrice(product.originalPrice)}
-                    </span>
-                    <span className="text-sm font-bold text-[#FF0000] border border-[#FF0000] px-2 py-0.5 rounded-sm">
-                      {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
-                    </span>
-                  </>
-                )}
+              <div className="flex items-center flex-wrap gap-3 mt-3">
+                <span className="text-xl lg:text-2xl font-extrabold text-[#B91C1C]">{formatPrice(priceDetails.offerPrice)}</span>
+                <span className="text-base lg:text-lg font-medium text-gray-400 line-through">
+                  {formatPrice(priceDetails.actualPrice)}
+                </span>
+                <span className="text-xs lg:text-sm font-bold text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] px-2.5 py-1 rounded-md">
+                  {priceDetails.discountPercentage}% OFF
+                </span>
               </div>
 
             </div>
@@ -816,14 +814,14 @@ const ProductDetail = () => {
             <div className="space-y-4">
               <div className="flex flex-row gap-2 sm:gap-3">
                 <Button
-                  className="flex-1 h-11 sm:h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none text-sm sm:text-base font-bold"
+                  className="flex-1 h-11 sm:h-12 bg-black text-white hover:bg-black/90 rounded-none text-sm sm:text-base font-bold"
                   disabled={product.isSoldOut}
                   onClick={() => handleAddToCart(false)}
                 >
                   {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
                 </Button>
                 <Button
-                  className="flex-1 h-11 sm:h-12 bg-primary text-primary-foreground hover:bg-primary/90 rounded-none text-sm sm:text-base font-bold"
+                  className="flex-1 h-11 sm:h-12 bg-[#800000] text-white hover:bg-[#800000]/90 rounded-none text-sm sm:text-base font-bold"
                   disabled={product.isSoldOut}
                   onClick={() => handleAddToCart(true)}
                 >

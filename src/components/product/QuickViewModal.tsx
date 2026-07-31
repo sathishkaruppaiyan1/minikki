@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useQuickView } from "@/contexts/QuickViewContext";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
+import { getProductPriceDetails } from "@/lib/utils";
 
 const AdornHeart = ({ filled }: { filled?: boolean }) => (
   <Heart size={20} weight={filled ? "fill" : "regular"} />
@@ -22,6 +23,7 @@ const QuickViewModal = () => {
 
   const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
   const inWishlist = isInWishlist(product.id);
+  const priceDetails = getProductPriceDetails(product.price, product.originalPrice);
 
   const isColorOutOfStock = (colorName: string): boolean => {
     if (!product || !product.variations || product.variations.length === 0) return false;
@@ -98,14 +100,15 @@ const QuickViewModal = () => {
           {/* Product Info */}
           <div className="space-y-4">
             <div>
-              <h2 className="text-2xl font-bold">{product.name}</h2>
-              <div className="flex items-center gap-3 mt-2">
-                <span className="text-xl font-bold">{formatPrice(product.price)}</span>
-                {product.originalPrice && product.originalPrice > product.price && (
-                  <span className="text-muted-foreground line-through">
-                    {formatPrice(product.originalPrice)}
-                  </span>
-                )}
+              <h2 className="text-2xl font-heading font-extrabold text-black tracking-tight">{product.name}</h2>
+              <div className="flex items-center flex-wrap gap-3 mt-3">
+                <span className="text-xl font-extrabold text-[#B91C1C]">{formatPrice(priceDetails.offerPrice)}</span>
+                <span className="text-base font-medium text-gray-400 line-through">
+                  {formatPrice(priceDetails.actualPrice)}
+                </span>
+                <span className="text-xs font-bold text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] px-2.5 py-1 rounded-md">
+                  {priceDetails.discountPercentage}% OFF
+                </span>
               </div>
             </div>
 
@@ -163,7 +166,7 @@ const QuickViewModal = () => {
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={handleAddToCart}
-                className="flex-1 h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold"
+                className="flex-1 h-12 bg-black text-white hover:bg-black/90 rounded-none font-bold"
                 disabled={product.isSoldOut}
               >
                 {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}

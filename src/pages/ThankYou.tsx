@@ -130,7 +130,7 @@ const ThankYou = () => {
                       <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                     </div>
                   </div>
-                  <p className="font-bold">{formatPrice(item.price * item.quantity)}</p>
+                  <p className="font-extrabold text-[#B91C1C]">{formatPrice(item.price * item.quantity)}</p>
                 </div>
               ))}
             </div>
