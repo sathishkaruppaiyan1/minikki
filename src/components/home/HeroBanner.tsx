@@ -2,11 +2,43 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "@/lib/icons";
 import { useHomeBanners } from "@/hooks/useWooCommerce";
+import { useHomeConfig } from "@/hooks/useHomeConfig";
 import type { HomeBanner } from "@/hooks/useWooCommerce";
+import type { HomeBannerItem } from "@/hooks/useHomeConfig";
 
-const HeroBanner = () => {
-  const { data: banners = [], isLoading } = useHomeBanners();
+/** Map a WordPress-plugin banner onto the existing Supabase banner shape. */
+const fromConfig = (banner: HomeBannerItem): HomeBanner => ({
+  id: banner.id,
+  image_url: banner.image,
+  mobile_image_url: banner.mobile_image || null,
+  redirect_link: banner.link || "/collections/all",
+  alt_text: banner.alt,
+  is_active: true,
+  display_order: banner.id,
+});
+
+interface HeroBannerProps {
+  /** Which slot in the plugin config to render. Defaults to the main hero. */
+  placement?: "hero" | "below_hero";
+}
+
+const HeroBanner = ({ placement = "hero" }: HeroBannerProps) => {
+  const { data: supabaseBanners = [], isLoading: supabaseLoading } = useHomeBanners();
+  const { data: config, isLoading: configLoading } = useHomeConfig();
   const [current, setCurrent] = useState(0);
+
+  const configured = (config?.banners?.[placement] || []).map(fromConfig);
+
+  // WordPress wins when it has banners for this slot. The main hero still falls
+  // back to the Supabase-managed banners so nothing disappears mid-migration;
+  // the below-hero slot exists only in WordPress.
+  const banners = configured.length > 0
+    ? configured
+    : placement === "hero"
+      ? supabaseBanners
+      : [];
+
+  const isLoading = configLoading || (placement === "hero" && configured.length === 0 && supabaseLoading);
 
   const goNext = useCallback(() => {
     setCurrent((prev) => (prev + 1) % banners.length);
@@ -30,26 +62,33 @@ const HeroBanner = () => {
     }
   }, [banners.length, current]);
 
-  // Loading skeleton
-  if (isLoading) {
-    return (
-      <div className="w-full aspect-[16/7] md:aspect-[16/5] bg-muted animate-pulse" />
-    );
-  }
+  // The below-hero strip is purely optional: nothing configured, nothing rendered.
+  if (placement === "below_hero") {
+    if (isLoading || banners.length === 0) {
+      return null;
+    }
+  } else {
+    // Loading skeleton
+    if (isLoading) {
+      return (
+        <div className="w-full aspect-[16/7] md:aspect-[16/5] bg-muted animate-pulse" />
+      );
+    }
 
-  // Fallback if no banners in DB
-  if (banners.length === 0) {
-    return (
-      <div className="w-full">
-        <Link to="/collections/all">
-          <img
-            src="/banner-fallback.png"
-            alt="Shop Now"
-            className="w-full h-auto object-cover"
-          />
-        </Link>
-      </div>
-    );
+    // Fallback if no banners configured anywhere
+    if (banners.length === 0) {
+      return (
+        <div className="w-full">
+          <Link to="/collections/all">
+            <img
+              src="/banner-fallback.png"
+              alt="Shop Now"
+              className="w-full h-auto object-cover"
+            />
+          </Link>
+        </div>
+      );
+    }
   }
 
   // Single banner - no controls needed

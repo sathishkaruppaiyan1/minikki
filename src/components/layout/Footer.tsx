@@ -62,9 +62,32 @@ const LinkList = ({ links }: { links: { name: string; href: string }[] }) => (
 
 const ContactInfo = () => (
   <div className="space-y-3 text-base text-gray-300">
-    <p>MINIKKI 3076 – B WING, AVADH RUTURAJ</p>
-    <p>TEXTILE HUB, BRTS ROAD, Surat Gujarat 395012</p>
-    <p className="pt-2 font-semibold">Whatsapp: +91 73387 33187</p>
+    <p className="font-semibold">
+      Phone:{" "}
+      <a href="tel:+917338733187" className="hover:text-white transition-colors">
+        +91 73387 33187
+      </a>
+    </p>
+    <p className="font-semibold">
+      Whatsapp:{" "}
+      <a
+        href="https://wa.me/917338733187"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hover:text-white transition-colors"
+      >
+        +91 73387 33187
+      </a>
+    </p>
+    <p className="font-semibold break-all">
+      Email:{" "}
+      <a
+        href="mailto:minikki.boutique@gmail.com"
+        className="hover:text-white transition-colors"
+      >
+        minikki.boutique@gmail.com
+      </a>
+    </p>
   </div>
 );
 

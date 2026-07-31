@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Star, User } from "@/lib/icons";
 import {
     Carousel,
@@ -6,10 +7,12 @@ import {
     CarouselNext,
     CarouselPrevious,
 } from "@/components/ui/carousel";
+import { useHomeConfig } from "@/hooks/useHomeConfig";
 
+// Fallback reviews, used until the WordPress plugin has reviews of its own.
 // Add a customer/review photo URL to `image` to show it at the top of the card.
 // Leave it empty ("") to fall back to a generic avatar icon.
-const reviews = [
+const fallbackReviews = [
     {
         id: 1,
         name: "Priya Sharma",
@@ -47,17 +50,57 @@ const reviews = [
     }
 ];
 
+/** Wraps a review photo in a link when the admin set one, otherwise renders it bare. */
+const ReviewMedia = ({ link, children }: { link?: string; children: React.ReactNode }) => {
+    if (!link) return <>{children}</>;
+
+    if (link.startsWith("http")) {
+        return (
+            <a href={link} target="_blank" rel="noopener noreferrer" className="block">
+                {children}
+            </a>
+        );
+    }
+
+    return (
+        <Link to={link} className="block">
+            {children}
+        </Link>
+    );
+};
+
 const ReviewsSlider = () => {
+    const { data: config } = useHomeConfig();
+    const section = config?.reviews;
+
+    if (section && !section.enabled) {
+        return null;
+    }
+
+    const reviews = section?.items?.length
+        ? section.items.map((item) => ({
+            id: item.id,
+            name: item.name,
+            rating: item.rating,
+            text: item.text,
+            image: item.image,
+            link: item.link,
+        }))
+        : fallbackReviews.map((review) => ({ ...review, link: "" }));
+
+    const title = section?.title || "MINIKKI x YOU";
+    const subtitle = section?.subtitle || "Happy Minikki Family";
+
     return (
         <div className="py-12 lg:py-16 bg-[#f3f1ec]">
             <div className="container mx-auto px-4">
                 {/* Heading */}
                 <div className="flex items-baseline justify-between mb-8 gap-4">
                     <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl tracking-wide text-foreground/90">
-                        MINIKKI <span className="font-light">x</span> YOU
+                        {title}
                     </h2>
                     <span className="text-[11px] sm:text-sm font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
-                        Happy Minikki Family
+                        {subtitle}
                     </span>
                 </div>
 
@@ -70,24 +113,26 @@ const ReviewsSlider = () => {
                             >
                                 <div className="flex flex-col h-full">
                                     {/* Image */}
-                                    <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-4">
-                                        {review.image ? (
-                                            <img
-                                                src={review.image}
-                                                alt={review.name}
-                                                loading="lazy"
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => {
-                                                    const t = e.target as HTMLImageElement;
-                                                    if (t.src !== "/placeholder.svg") t.src = "/placeholder.svg";
-                                                }}
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                                <User className="h-12 w-12 text-muted-foreground/60" />
-                                            </div>
-                                        )}
-                                    </div>
+                                    <ReviewMedia link={review.link}>
+                                        <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-muted mb-4">
+                                            {review.image ? (
+                                                <img
+                                                    src={review.image}
+                                                    alt={review.name}
+                                                    loading="lazy"
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        const t = e.target as HTMLImageElement;
+                                                        if (t.src !== "/placeholder.svg") t.src = "/placeholder.svg";
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <User className="h-12 w-12 text-muted-foreground/60" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </ReviewMedia>
 
                                     {/* Star rating */}
                                     <div className="flex items-center gap-0.5 mb-2 text-foreground">

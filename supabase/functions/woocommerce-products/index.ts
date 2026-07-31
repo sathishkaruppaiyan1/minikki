@@ -64,9 +64,16 @@ serve(async (req) => {
     const skipVariations = url.searchParams.get('skip_variations') === 'true'; // Skip variations for list views
     const status = url.searchParams.get('status') || 'publish';
     const tag = url.searchParams.get('tag') || '';
+    // Comma-separated product IDs. Used by homepage sections that pin an exact,
+    // manually-curated set of products (order is re-applied client-side).
+    const include = (url.searchParams.get('include') || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => /^\d+$/.test(value))
+      .join(',');
 
     // Build cache key from all query parameters
-    const cacheKey = `${productId || 'list'}:${categoryId}:${page}:${perPage}:${search}:${tag}:${skipVariations}:${status}`;
+    const cacheKey = `${productId || 'list'}:${categoryId}:${page}:${perPage}:${search}:${tag}:${skipVariations}:${status}:${include}`;
     const cacheTTL = productId ? DETAIL_CACHE_TTL : LIST_CACHE_TTL;
     const cacheHeaders = productId ? detailCacheHeaders : listCacheHeaders;
 
@@ -126,6 +133,12 @@ serve(async (req) => {
     } else {
       // Include meta_data in the response for product list
       apiUrl = `${storeUrl}/wp-json/wc/v3/products?per_page=${perPage}&page=${page}&meta_data=true&status=${status}`;
+
+      // Explicit ID set — ask Woo for exactly these products. per_page must cover
+      // the whole set or WooCommerce silently truncates it.
+      if (include) {
+        apiUrl += `&include=${include}`;
+      }
 
       if (categoryId && categoryId !== 'all') {
         apiUrl += `&category=${categoryId}`;

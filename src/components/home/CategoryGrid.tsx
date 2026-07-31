@@ -96,23 +96,48 @@
 
 import { Link } from "react-router-dom";
 import { useWooCommerceCategories } from "@/hooks/useWooCommerce";
+import { useHomeConfig } from "@/hooks/useHomeConfig";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Reveal } from "@/components/ui/Reveal";
 
 const CategoryGrid = () => {
   const { data, isLoading, error } = useWooCommerceCategories();
-  const categories = data?.categories || [];
+  const { data: config } = useHomeConfig();
+
+  const section = config?.shop_by_category;
+  const curated = section?.source === "manual" ? section.items : null;
+  const heading = section?.title || "Shop By Category";
+
+  const categories = curated
+    ? curated.map((item) => ({
+        id: item.id,
+        name: item.name,
+        slug: item.slug,
+        image: item.image || "/placeholder.svg",
+        link: item.link,
+      }))
+    : (data?.categories || []).map((category) => ({
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        image: category.image,
+        link: `/collections/${category.slug}`,
+      }));
 
   if (error) {
     console.error("CategoryGrid error:", error);
   }
 
-  if (isLoading) {
+  if (section && !section.enabled) {
+    return null;
+  }
+
+  if (isLoading && !curated) {
     return (
       <section className="pt-4 pb-12 lg:pb-16">
         <div className="container mx-auto px-4">
           <h2 className="font-heading text-2xl lg:text-3xl font-semibold text-center mb-8">
-            Shop By Category
+            {heading}
           </h2>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -136,14 +161,14 @@ const CategoryGrid = () => {
     <section className="pb-12 lg:pb-16 bg-background">
       <div className="container mx-auto px-4">
         <h2 className="font-heading text-2xl lg:text-3xl font-semibold text-center mb-8">
-          Shop By Category
+          {heading}
         </h2>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {categories.map((category, index) => (
             <Link
               key={category.id}
-              to={`/collections/${category.slug}`}
+              to={category.link}
               className="group animate-fade-in block h-full"
               style={{ animationDelay: `${index * 0.1}s` }}
             >

@@ -1,5 +1,5 @@
 import Layout from "@/components/layout/Layout";
-import { useMemo, useEffect } from "react";
+import { useEffect } from "react";
 
 import HeroBanner from "@/components/home/HeroBanner";
 import CategoryCarousel from "@/components/home/CategoryCarousel";
@@ -7,30 +7,81 @@ import CategoryGrid from "@/components/home/CategoryGrid";
 import ProductSection from "@/components/home/ProductSection";
 import ReviewsSlider from "@/components/home/ReviewsSlider";
 import StorySection from "@/components/home/StorySection";
-import { useWooCommerceProducts, useWooCommerceCategories } from "@/hooks/useWooCommerce";
+import {
+  useWooCommerceProducts,
+  useWooCommerceProductsByIds,
+} from "@/hooks/useWooCommerce";
+import { useHomeConfig } from "@/hooks/useHomeConfig";
+import type { HomeProductSection } from "@/hooks/useHomeConfig";
+import type { Product } from "@/types/product";
 import { Skeleton } from "@/components/ui/skeleton";
 import { preloadImages, getProductCardImage } from "@/lib/imageOptimizer";
 
+const ProductSectionSkeleton = () => (
+  <div className="container mx-auto px-4 py-8 lg:py-16">
+    <div className="flex justify-center mb-8">
+      <Skeleton className="h-10 w-48" />
+    </div>
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="space-y-4">
+          <Skeleton className="h-[300px] w-full rounded-none" />
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+/**
+ * Resolves one homepage product row.
+ *
+ * When the WordPress plugin pins an explicit product list we fetch exactly those
+ * IDs and keep the curated order. Otherwise we keep the original tag-driven
+ * behaviour, so the page works unchanged without the plugin.
+ */
+const useHomeProductRow = (
+  section: HomeProductSection | undefined,
+  fallbackTag: string
+): { products: Product[]; isLoading: boolean; error: unknown } => {
+  const manualIds = section?.source === "manual" ? section.product_ids : [];
+  const useManual = manualIds.length > 0;
+
+  const manual = useWooCommerceProductsByIds(manualIds, useManual);
+
+  const tagged = useWooCommerceProducts({
+    perPage: 8,
+    tag: section?.tag || fallbackTag,
+    skipVariations: true,
+    enabled: !useManual,
+  });
+
+  if (useManual) {
+    return { products: manual.data || [], isLoading: manual.isLoading, error: manual.error };
+  }
+
+  return {
+    products: tagged.data?.products || [],
+    isLoading: tagged.isLoading,
+    error: tagged.error,
+  };
+};
+
 const Index = () => {
-  // New Arrivals - products tagged "new-arrivals" in WooCommerce
-  const { data: newArrivalsData, isLoading: newArrivalsLoading, error: newArrivalsError } = useWooCommerceProducts({
-    perPage: 8,
-    tag: 'new-arrivals',
-    skipVariations: true,
-  });
+  const { data: config } = useHomeConfig();
 
-  // Hot Sellers - products tagged "hot-sellers" in WooCommerce
-  const { data: hotSellersData, isLoading: hotSellersLoading } = useWooCommerceProducts({
-    perPage: 8,
-    tag: 'hot-sellers',
-    skipVariations: true,
-  });
+  const newArrivalsConfig = config?.new_arrivals;
+  const hotSellersConfig = config?.hot_sellers;
 
-  const { data: categories } = useWooCommerceCategories();
+  const newArrivalsRow = useHomeProductRow(newArrivalsConfig, "new-arrivals");
+  const hotSellersRow = useHomeProductRow(hotSellersConfig, "hot-sellers");
 
-  const newArrivals = newArrivalsData?.products || [];
+  const newArrivals = newArrivalsRow.products;
+  const displayHotSellers = hotSellersRow.products;
 
-  const displayHotSellers = hotSellersData?.products || [];
+  const showNewArrivals = !newArrivalsConfig || newArrivalsConfig.enabled;
+  const showHotSellers = !hotSellersConfig || hotSellersConfig.enabled;
 
   // Preload critical above-the-fold images (first 4 products) for instant display
   useEffect(() => {
@@ -53,63 +104,43 @@ const Index = () => {
     <Layout>
       <CategoryCarousel />
       <HeroBanner />
+
+      {/* Optional banner strip below the hero, managed in WordPress */}
+      <HeroBanner placement="below_hero" />
+
       {/* Categories load independently and show immediately */}
       <CategoryGrid />
 
       {/* Products section - show products immediately when available */}
-      {newArrivalsError ? (
+      {newArrivalsRow.error ? (
         <div className="container mx-auto px-4 py-12 text-center">
           <p className="text-muted-foreground">Failed to load products. Please try again.</p>
         </div>
       ) : (
         <>
-          {/* Show New Arrivals immediately when we have products - don't wait for all 8 */}
-          {newArrivals.length > 0 ? (
-            <ProductSection
-              title="New Arrivals"
-              products={newArrivals}
-              viewAllLink="/collections/all"
-            />
-          ) : newArrivalsLoading ? (
-            <div className="container mx-auto px-4 py-8 lg:py-16">
-              <div className="flex justify-center mb-8">
-                <Skeleton className="h-10 w-48" />
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="space-y-4">
-                    <Skeleton className="h-[300px] w-full rounded-none" />
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          {showNewArrivals && (
+            newArrivals.length > 0 ? (
+              <ProductSection
+                title={newArrivalsConfig?.title || "New Arrivals"}
+                products={newArrivals}
+                viewAllLink={newArrivalsConfig?.view_all_link || "/collections/all"}
+              />
+            ) : newArrivalsRow.isLoading ? (
+              <ProductSectionSkeleton />
+            ) : null
+          )}
 
-          {/* Show Hot Sellers - products tagged "hot-sellers" in WooCommerce */}
-          {displayHotSellers.length > 0 ? (
-            <ProductSection
-              title="Hot Sellers"
-              products={displayHotSellers}
-              viewAllLink="/collections/all"
-            />
-          ) : hotSellersLoading ? (
-            <div className="container mx-auto px-4 py-8 lg:py-16">
-              <div className="flex justify-center mb-8">
-                <Skeleton className="h-10 w-48" />
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="space-y-4">
-                    <Skeleton className="h-[300px] w-full rounded-none" />
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          {showHotSellers && (
+            displayHotSellers.length > 0 ? (
+              <ProductSection
+                title={hotSellersConfig?.title || "Hot Sellers"}
+                products={displayHotSellers}
+                viewAllLink={hotSellersConfig?.view_all_link || "/collections/all"}
+              />
+            ) : hotSellersRow.isLoading ? (
+              <ProductSectionSkeleton />
+            ) : null
+          )}
 
           <ReviewsSlider />
 

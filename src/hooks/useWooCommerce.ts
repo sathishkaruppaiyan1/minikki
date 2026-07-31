@@ -133,6 +133,66 @@ export const useWooCommerceProducts = (params: ProductsParams = {}) => {
   });
 };
 
+/**
+ * Fetch an explicit set of products and return them in exactly the order the
+ * IDs were given. Used by homepage sections whose order is curated in the
+ * WordPress "Minikki Home Builder" plugin — WooCommerce ignores the order of
+ * `include`, so we re-sort here.
+ */
+export const useWooCommerceProductsByIds = (ids: number[], enabled = true) => {
+  const idsKey = ids.join(",");
+
+  return useQuery({
+    queryKey: ["woocommerce-products-by-ids", idsKey],
+    enabled: enabled && ids.length > 0,
+    queryFn: async (): Promise<Product[]> => {
+      if (ids.length === 0) return [];
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const queryParams = new URLSearchParams();
+      queryParams.set("include", idsKey);
+      // per_page must cover the whole set or WooCommerce truncates the result.
+      queryParams.set("per_page", String(Math.max(ids.length, 10)));
+      queryParams.set("skip_variations", "true");
+      queryParams.set("status", "publish");
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/woocommerce-products?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            "apikey": supabaseKey,
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Products-by-ids fetch error:", response.status, errorText);
+        throw new Error(`Failed to fetch products: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const products: Product[] = data.products || [];
+
+      // Re-apply the curated order; drop IDs that no longer resolve.
+      const byId = new Map(products.map((product) => [String(product.id), product]));
+
+      return ids
+        .map((id) => byId.get(String(id)))
+        .filter((product): product is Product => !!product);
+    },
+    staleTime: 10_000,
+    gcTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+};
+
 // Infinite scroll hook for progressive loading
 export const useWooCommerceProductsInfinite = (params: Omit<ProductsParams, 'page'> = {}) => {
   const { category, perPage = 24, search, skipVariations = false, status = 'publish' } = params;

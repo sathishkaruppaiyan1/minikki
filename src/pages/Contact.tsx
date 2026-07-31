@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, MapPin, Phone, Mail, MessageCircle, Clock, Send, CheckCircle } from "@/lib/icons";
+import { Loader2, Phone, Mail, MessageCircle, Clock, Send, CheckCircle } from "@/lib/icons";
 
 const WORDPRESS_URL = import.meta.env.VITE_WORDPRESS_URL || "";
 // Contact Form 7 form ID — update this to match your CF7 form ID in WordPress
@@ -78,27 +78,17 @@ const Contact = () => {
 
   const contactInfo = [
     {
-      icon: <MapPin className="h-5 w-5" />,
-      title: "Visit Us",
-      lines: [
-        "MINIKKI",
-        "3076 - B WING, AVADH RUTURAJ",
-        "TEXTILE HUB, BRTS ROAD",
-        "Surat, Gujarat 395012",
-      ],
-    },
-    {
       icon: <Phone className="h-5 w-5" />,
       title: "WhatsApp",
-      lines: ["+91 8939048873"],
-      link: "https://wa.me/918939048873",
+      lines: ["+91 73387 33187"],
+      link: "https://wa.me/917338733187",
       linkLabel: "Chat on WhatsApp",
     },
     {
       icon: <Mail className="h-5 w-5" />,
       title: "Email",
-      lines: ["support@blacklovers.in"],
-      link: "mailto:support@blacklovers.in",
+      lines: ["minikki.boutique@gmail.com"],
+      link: "mailto:minikki.boutique@gmail.com",
       linkLabel: "Send Email",
     },
     {

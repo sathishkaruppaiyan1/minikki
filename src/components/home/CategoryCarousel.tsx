@@ -1,13 +1,39 @@
 import { useWooCommerceCategories } from "@/hooks/useWooCommerce";
+import { useHomeConfig } from "@/hooks/useHomeConfig";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 
-// Static category list with continuous sword-shine effect
+// Category list with continuous sword-shine effect.
+// Selection and order come from the WordPress plugin when it is set to
+// "manual"; otherwise every WooCommerce category is shown, as before.
 const CategoryCarousel = () => {
   const { data, isLoading } = useWooCommerceCategories();
-  const categories = data?.categories || [];
+  const { data: config, isLoading: configLoading } = useHomeConfig();
 
-  if (isLoading) {
+  const section = config?.circle_categories;
+  const curated = section?.source === "manual" ? section.items : null;
+
+  const categories = curated
+    ? curated.map((item) => ({
+        id: item.id,
+        name: item.name,
+        slug: item.slug,
+        image: item.image || "/placeholder.svg",
+        link: item.link,
+      }))
+    : (data?.categories || []).map((category) => ({
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        image: category.image,
+        link: `/collections/${category.slug}`,
+      }));
+
+  if (section && !section.enabled) {
+    return null;
+  }
+
+  if ((isLoading && !curated) || (configLoading && !data)) {
     return (
       <section className="bg-background border-b border-border/60">
         <div className="container mx-auto px-4 py-4">
@@ -38,7 +64,7 @@ const CategoryCarousel = () => {
           {categories.map((category) => (
             <Link
               key={category.id}
-              to={`/collections/${category.slug}`}
+              to={category.link}
               className="group flex flex-col items-center gap-2 shrink-0"
             >
               {/* Category Image with Gradient Ring */}

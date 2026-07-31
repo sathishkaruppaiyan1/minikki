@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useSearch } from "@/contexts/SearchContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useWordPressPages } from "@/hooks/useWooCommerce";
+import { useHomeConfig } from "@/hooks/useHomeConfig";
 import {
   X,
   Menu,
@@ -28,8 +30,42 @@ const Header = () => {
   const { totalItems: cartItems, setIsOpen: setCartOpen } = useCart();
   const { totalItems: wishlistItems } = useWishlist();
   const { openSearch } = useSearch();
+  const { isAuthenticated, user } = useAuth();
   const { data: pagesData, isLoading: pagesLoading } = useWordPressPages();
-  const menuPages = pagesData || [];
+
+  // Matches the bottom nav: first name when logged in, otherwise "Login".
+  const accountLabel = isAuthenticated
+    ? (user?.name?.trim().split(" ")[0] || "My Account")
+    : "Login";
+  const { data: homeConfig } = useHomeConfig();
+
+  const mobileMenu = homeConfig?.mobile_menu;
+
+  // "wp_menu" mirrors the theme's Appearance → Menus menu; "manual" is the
+  // plugin's own curated list. Either way the plugin sends resolved items.
+  const curatedMenu =
+    mobileMenu && mobileMenu.source !== "auto" && mobileMenu.items.length > 0
+      ? mobileMenu.items
+      : null;
+
+  // Otherwise every published page, exactly as before the plugin existed.
+  const menuItems = curatedMenu
+    ? curatedMenu.map((item) => ({
+        key: `m-${item.id}`,
+        label: item.label,
+        href: item.link,
+        child: !!item.parent,
+      }))
+    : (pagesData || []).map((page) => ({
+        key: `p-${page.id}`,
+        label: page.title,
+        href: `/page/${page.slug}`,
+        child: false,
+      }));
+
+  const menuTitle = mobileMenu?.title || "Menu";
+  const menuLoading = !curatedMenu && pagesLoading;
+  const showMenuButton = !mobileMenu || mobileMenu.enabled;
 
   const navLinks = [
     { name: "Home", href: "/" },
@@ -39,20 +75,22 @@ const Header = () => {
 
   return (
     <>
-      <header className="sticky top-2 z-50 mx-2 lg:mx-4 bg-[hsl(var(--surface-dark))] text-[hsl(var(--surface-dark-foreground))] rounded-2xl">
+      <header className="relative lg:sticky lg:top-2 z-50 mx-2 lg:mx-4 bg-[hsl(var(--surface-dark))] text-[hsl(var(--surface-dark-foreground))] rounded-2xl">
         <div className="container mx-auto px-4">
           {/* Mobile Header */}
           <div className="flex lg:hidden items-center justify-between h-20">
             {/* Left - Burger */}
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                className="h-10 w-10 p-0 hover:bg-transparent hover:text-primary"
-                style={{ height: '40px', width: '40px' }}
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-              >
-                {isMenuOpen ? <AdornClose /> : <AdornMenu />}
-              </Button>
+              {showMenuButton && (
+                <Button
+                  variant="ghost"
+                  className="h-10 w-10 p-0 hover:bg-transparent hover:text-primary"
+                  style={{ height: '40px', width: '40px' }}
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                >
+                  {isMenuOpen ? <AdornClose /> : <AdornMenu />}
+                </Button>
+              )}
 
                             <Link to="/wishlist" className="relative">
                 <Button variant="ghost" className="h-10 w-10 p-0 hover:bg-transparent hover:text-primary" style={{ height: '40px', width: '40px' }}>
@@ -197,33 +235,79 @@ const Header = () => {
                 onClick={() => setIsMenuOpen(false)}
               />
               {/* Sidebar Content */}
-              <div className="absolute top-0 left-0 bottom-0 w-[85%] max-w-sm bg-background text-black animate-slide-in">
-                <div className="flex justify-between items-center p-4 border-b border-border">
-                  <span className="font-heading font-bold text-lg">Menu</span>
+              <div className="absolute top-0 left-0 bottom-0 w-[85%] max-w-sm bg-background text-black animate-slide-in flex flex-col">
+                <div className="flex justify-between items-center p-4 border-b border-border shrink-0">
+                  <span className="font-heading font-bold text-lg">{menuTitle}</span>
                   <Button variant="ghost" size="icon" className="hover:bg-transparent hover:text-primary" onClick={() => setIsMenuOpen(false)}>
                     <X className="h-6 w-6" />
                   </Button>
                 </div>
 
-                <div className="p-4">
-                  <nav className="flex flex-col space-y-1 max-h-[calc(100vh-6rem)] overflow-y-auto">
-                    {pagesLoading && menuPages.length === 0 ? (
+                {/* pb-28 keeps the last item clear of the fixed bottom nav bar */}
+                <div className="p-4 pb-28 flex-1 overflow-y-auto">
+                  <nav className="flex flex-col space-y-1">
+                    {menuLoading && menuItems.length === 0 ? (
                       <p className="py-3 px-2 text-base text-muted-foreground">Loading menu…</p>
-                    ) : menuPages.length === 0 ? (
+                    ) : menuItems.length === 0 ? (
                       <p className="py-3 px-2 text-base text-muted-foreground">No menu items</p>
                     ) : (
-                      menuPages.map((page) => (
-                        <Link
-                          key={page.id}
-                          to={`/page/${page.slug}`}
-                          className="py-3 px-2 text-base font-medium border-b border-border/50 hover:text-primary transition-colors"
-                          onClick={() => setIsMenuOpen(false)}
-                        >
-                          {page.title}
-                        </Link>
-                      ))
+                      menuItems.map((item) => {
+                        // Sub-menu items from a WordPress menu are indented and
+                        // set slightly lighter than their parent.
+                        const className = `py-3 text-base border-b border-border/50 hover:text-primary transition-colors ${
+                          item.child ? "pl-6 pr-2 font-normal text-muted-foreground" : "px-2 font-medium"
+                        }`;
+
+                        return item.href.startsWith("http") ? (
+                          <a
+                            key={item.key}
+                            href={item.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={className}
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            {item.label}
+                          </a>
+                        ) : (
+                          <Link
+                            key={item.key}
+                            to={item.href}
+                            className={className}
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            {item.label}
+                          </Link>
+                        );
+                      })
                     )}
                   </nav>
+
+                  {/* Account actions — flow directly after the last menu item */}
+                  <div className="mt-4 pt-4 border-t border-border space-y-2">
+                  <Link
+                    to="/wishlist"
+                    className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-base font-medium hover:border-primary hover:text-primary transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Heart size={22} />
+                    <span className="flex-1">Wishlist</span>
+                    {wishlistItems > 0 && (
+                      <span className="h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
+                        {wishlistItems}
+                      </span>
+                    )}
+                  </Link>
+
+                  <Link
+                    to="/account"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-[hsl(var(--surface-dark))] text-[hsl(var(--surface-dark-foreground))] px-4 py-3 text-base font-bold hover:opacity-90 transition-opacity"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <User size={20} />
+                    {isAuthenticated ? accountLabel : "Login"}
+                  </Link>
+                  </div>
                 </div>
               </div>
             </div>

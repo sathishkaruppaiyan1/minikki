@@ -13,6 +13,12 @@ const NON_PERSISTABLE_PREFIXES = [
   'woocommerce-product-id-fast',
   'woocommerce-product-gallery',
   'woocommerce-products-infinite',
+  'woocommerce-products-by-ids',
+  // Homepage config resolves to null when the WordPress plugin is unreachable.
+  // Persisting that null would restore it as *fresh* on every load — and because
+  // the cache timestamp is rewritten on each persist, it would never expire and
+  // the app would stop asking WordPress entirely. Always fetch this one.
+  'minikki-home-config',
 ];
 
 interface CacheData {
