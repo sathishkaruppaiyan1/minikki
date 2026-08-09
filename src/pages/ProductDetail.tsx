@@ -104,6 +104,8 @@ const ProductDetail = () => {
 
   const { data: reviews, isLoading: isLoadingReviews, refetch: refetchReviews } = useWooCommerceReviews(product?.id || "");
   const submitReview = useSubmitWooCommerceReview();
+  // Toggle to temporarily disable reviews display across the product detail page
+  const REVIEWS_ENABLED = false;
 
   // Helper function to get available stock for current selection
   const getAvailableStock = (): number | null => {
@@ -989,6 +991,7 @@ const ProductDetail = () => {
         </div>
 
         {/* Customer Reviews Section — compact dropdowns */}
+        {REVIEWS_ENABLED && (
         <section className="border-t border-border pt-4 pb-2">
           <div className="max-w-4xl mx-auto">
             <Accordion type="single" collapsible className="w-full">
@@ -1243,6 +1246,7 @@ const ProductDetail = () => {
             </Accordion>
           </div>
         </section>
+        )}
 
         {/* Trust Badges */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 py-8 border-t border-b border-border">
