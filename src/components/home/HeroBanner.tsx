@@ -22,6 +22,18 @@ interface HeroBannerProps {
   placement?: "hero" | "below_hero";
 }
 
+/**
+ * Fixed banner box: 1:1 on phones, 4:3 from md up.
+ *
+ * The height comes from padding-top (percentage of the width) instead of
+ * `aspect-ratio` because older mobile browsers ignore `aspect-ratio` and let the
+ * box collapse to the image's natural height - which is why banners of different
+ * ratios rendered at different sizes on real phones while desktop dev-tools
+ * "mobile view" looked fine. Padding-top works everywhere, so every slide is the
+ * same size no matter what ratio is uploaded.
+ */
+const BANNER_BOX = "relative w-full pt-[100%] md:pt-[75%] overflow-hidden bg-muted";
+
 const HeroBanner = ({ placement = "hero" }: HeroBannerProps) => {
   const { data: supabaseBanners = [], isLoading: supabaseLoading } = useHomeBanners();
   const { data: config, isLoading: configLoading } = useHomeConfig();
@@ -70,25 +82,23 @@ const HeroBanner = ({ placement = "hero" }: HeroBannerProps) => {
   } else {
     // Loading skeleton
     if (isLoading) {
-      return (
-        <div className="w-full aspect-[1/1] md:aspect-[4/3] lg:aspect-[4/3] bg-muted animate-pulse" />
-      );
+      return <div className={`${BANNER_BOX} animate-pulse`} />;
     }
 
     // Fallback if no banners configured anywhere
     if (banners.length === 0) {
       return (
         <div className="w-full">
-            <Link to="/collections/all">
-              <div className="w-full aspect-[1/1] md:aspect-[4/3] lg:aspect-[4/3] overflow-hidden">
-                <img
-                  src="/banner-fallback.png"
-                  alt="Shop Now"
-                  className="w-full h-full object-cover object-top"
-                />
-              </div>
-            </Link>
-          </div>
+          <Link to="/collections/all" className="block w-full">
+            <div className={BANNER_BOX}>
+              <img
+                src="/banner-fallback.png"
+                alt="Shop Now"
+                className="absolute inset-0 block w-full h-full object-cover object-top"
+              />
+            </div>
+          </Link>
+        </div>
       );
     }
   }
@@ -105,37 +115,38 @@ const HeroBanner = ({ placement = "hero" }: HeroBannerProps) => {
   // Multiple banners - carousel
   return (
     <div className="w-full relative group">
-      <div className="overflow-hidden">
+      <div className="w-full overflow-hidden">
         <div
-          className="flex transition-transform duration-500 ease-in-out"
+          className="flex w-full transition-transform duration-500 ease-in-out"
           style={{ transform: `translateX(-${current * 100}%)` }}
         >
           {banners.map((banner) => (
-            <div key={banner.id} className="w-full flex-shrink-0">
+            <div key={banner.id} className="w-full min-w-full flex-shrink-0">
               <BannerSlide banner={banner} />
             </div>
           ))}
         </div>
       </div>
 
-      {/* Navigation Arrows */}
+      {/* Navigation Arrows. Touch devices have no hover, so the arrows stay
+          visible below md and only fade in on hover from md up. */}
       <button
         onClick={goPrev}
-        className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-1.5 md:p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute z-10 left-2 md:left-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-2 md:p-2 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
         aria-label="Previous banner"
       >
-        <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+        <ChevronLeft className="w-5 h-5" />
       </button>
       <button
         onClick={goNext}
-        className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-1.5 md:p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute z-10 right-2 md:right-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-2 md:p-2 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
         aria-label="Next banner"
       >
-        <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+        <ChevronRight className="w-5 h-5" />
       </button>
 
       {/* Dots indicator */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+      <div className="absolute z-10 bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
         {banners.map((_, idx) => (
           <button
             key={idx}
@@ -155,15 +166,18 @@ const BannerSlide = ({ banner }: { banner: HomeBanner }) => {
   const isExternal = banner.redirect_link.startsWith("http");
 
   const image = (
-    <div className="w-full aspect-[1/1] md:aspect-[4/3] lg:aspect-[4/3] overflow-hidden">
-      <picture>
+    <div className={BANNER_BOX}>
+      {/* `picture` is inline by default, which makes the image's 100% height
+          resolve inconsistently across mobile browsers - force it to be the
+          block that fills the box. */}
+      <picture className="absolute inset-0 block w-full h-full">
         {banner.mobile_image_url && (
           <source media="(max-width: 768px)" srcSet={banner.mobile_image_url} />
         )}
         <img
           src={banner.image_url}
           alt={banner.alt_text || "Banner"}
-          className="w-full h-full object-cover object-top"
+          className="block w-full h-full object-cover object-top"
           loading="eager"
           fetchPriority="high"
           decoding="sync"
@@ -174,13 +188,22 @@ const BannerSlide = ({ banner }: { banner: HomeBanner }) => {
 
   if (isExternal) {
     return (
-      <a href={banner.redirect_link} target="_blank" rel="noopener noreferrer">
+      <a
+        href={banner.redirect_link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block w-full"
+      >
         {image}
       </a>
     );
   }
 
-  return <Link to={banner.redirect_link}>{image}</Link>;
+  return (
+    <Link to={banner.redirect_link} className="block w-full">
+      {image}
+    </Link>
+  );
 };
 
 export default HeroBanner;

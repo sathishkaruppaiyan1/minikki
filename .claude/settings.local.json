@@ -86,7 +86,8 @@
       "Bash(cp /c/Users/sathi/Downloads/minikki/src/lib/tax.ts ./tax.ts)",
       "Bash(npx --yes esbuild tax.ts --format=esm --outfile=tax.mjs --log-level=error)",
       "Bash(npx --yes supabase@latest projects list)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.app.json)"
     ]
   }
 }
