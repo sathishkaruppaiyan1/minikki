@@ -57,7 +57,7 @@ serve(async (req) => {
 
     const url = new URL(req.url);
     const productId = url.searchParams.get('id');
-    const categoryId = url.searchParams.get('category');
+    let categoryId = url.searchParams.get('category');
     const perPage = url.searchParams.get('per_page') || '20';
     const page = url.searchParams.get('page') || '1';
     const search = url.searchParams.get('search') || '';
@@ -71,6 +71,48 @@ serve(async (req) => {
       .map((value) => value.trim())
       .filter((value) => /^\d+$/.test(value))
       .join(',');
+
+    // WooCommerce product filtering requires a numeric category ID. The
+    // frontend may only have a slug when an empty category is hidden from the
+    // categories endpoint, so resolve slugs here before building the product URL.
+    if (categoryId && categoryId !== 'all' && !/^\d+$/.test(categoryId)) {
+      const categorySlug = categoryId;
+      const categoryUrl = `${storeUrl}/wp-json/wc/v3/products/categories?slug=${encodeURIComponent(categorySlug)}&per_page=1&hide_empty=false`;
+
+      console.log(`Resolving category slug "${categorySlug}" from: ${categoryUrl}`);
+
+      const categoryResponse = await fetch(categoryUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!categoryResponse.ok) {
+        const categoryError = await categoryResponse.text();
+        console.error('WooCommerce category lookup error:', categoryResponse.status, categoryError);
+        throw new Error(`WooCommerce category lookup error: ${categoryResponse.status}`);
+      }
+
+      const matchingCategories = await categoryResponse.json();
+
+      if (!Array.isArray(matchingCategories) || matchingCategories.length === 0) {
+        const responseBody = JSON.stringify({
+          products: [],
+          total: 0,
+          totalPages: 0,
+          currentPage: parseInt(page),
+        });
+
+        return new Response(responseBody, {
+          headers: { ...listCacheHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      categoryId = matchingCategories[0].id?.toString() || '';
+      console.log(`Resolved category slug "${categorySlug}" to ID ${categoryId}`);
+    }
 
     // Build cache key from all query parameters
     const cacheKey = `${productId || 'list'}:${categoryId}:${page}:${perPage}:${search}:${tag}:${skipVariations}:${status}:${include}`;

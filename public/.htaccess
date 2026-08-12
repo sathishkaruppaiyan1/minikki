@@ -1,12 +1,54 @@
+# SPA fallback for Apache / LiteSpeed (Hostinger hPanel, cPanel).
+#
+# Nginx-based panels (CloudPanel, plain Nginx) IGNORE this file completely —
+# see deploy/README.md for the vhost change those need instead.
+#
+# Goal: any URL that is not a real file or folder must return index.html with
+# HTTP 200, so /checkout, /product/123 and shared links survive a refresh.
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
+
+  # No RewriteBase: the relative target below resolves against this file's
+  # directory, so the app works at the domain root or in a subfolder.
+
+  # Leave real files and directories alone (JS, CSS, images, robots.txt).
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Everything else hands over to the SPA, with a 200.
   RewriteRule ^ index.html [L]
 </IfModule>
 
-# Modern Apache fallback
-FallbackResource /index.html
+# Fallback when mod_rewrite is unavailable. Also serves a 200.
+<IfModule !mod_rewrite.c>
+  <IfModule mod_dir.c>
+    FallbackResource /index.html
+  </IfModule>
+</IfModule>
 
-# Fallback for some server configurations
+# Last resort on locked-down hosts where neither of the above is permitted.
+# This renders the app but returns HTTP 404, so it is a safety net rather than
+# a fix — crawlers and monitoring will still see an error.
 ErrorDocument 404 /index.html
+
+# Hashed build assets are immutable; index.html must never be cached or users
+# keep loading a stale bundle reference after a redeploy.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  <FilesMatch "\.(js|css|woff2|webp|jpg|jpeg|png|svg)$">
+    ExpiresDefault "access plus 1 year"
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "index\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>

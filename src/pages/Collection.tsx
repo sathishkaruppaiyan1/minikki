@@ -31,10 +31,11 @@ const Collection = () => {
   // Find the category ID from slug - WooCommerce API requires ID, not slug
   const currentCategory = categories.find(c => c.slug === slug);
   const categoryId = currentCategory?.id?.toString();
+  const productCategory = slug === "all" ? undefined : categoryId || slug;
 
   // Skip variations for collection list view - only load when viewing product detail
   // Wait for categories to load before fetching products if we need a category filter
-  const shouldFetchProducts = slug === "all" || !!categoryId || !categoriesLoading;
+  const shouldFetchProducts = slug === "all" || !!categoryId || (!categoriesLoading && !!slug);
   const {
     data: productsPages,
     isLoading: productsLoading,
@@ -42,7 +43,7 @@ const Collection = () => {
     fetchNextPage,
     isFetchingNextPage,
   } = useWooCommerceProductsInfinite({
-    category: slug === "all" ? undefined : categoryId,
+    category: productCategory,
     search: searchQuery,
     perPage: 24, // Load 24 products per page for fast initial load
     skipVariations: true, // Skip variations for faster list loading

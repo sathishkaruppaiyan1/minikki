@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
-import { useWooCommercePaymentGateways, useCreateOrder } from "@/hooks/useWooCommerce";
+import { useWooCommercePaymentGateways, useCreateOrder, useWooCommerceTaxConfig } from "@/hooks/useWooCommerce";
+import { calculateTax, formatTaxLabel } from "@/lib/tax";
+import { toIndiaStateCode, toCountryCode } from "@/lib/indiaStates";
 import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
@@ -25,6 +27,7 @@ const Checkout = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { data: paymentGateways, isLoading: isLoadingGateways } = useWooCommercePaymentGateways();
+  const { data: taxConfig, isError: taxConfigFailed, isLoading: isLoadingTax } = useWooCommerceTaxConfig();
   const createOrder = useCreateOrder();
 
   const [formData, setFormData] = useState({
@@ -89,8 +92,24 @@ const Checkout = () => {
   const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
   const formatCheckoutPrice = (price: number) =>
     `Rs. ${price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const gstAmount = totalPrice * 0.05;
-  const checkoutTotal = totalPrice + gstAmount;
+  // Tax comes from the store's WooCommerce configuration — rate, label, and
+  // whether catalogue prices are already tax-inclusive. If tax is disabled or
+  // no rate matches the address, `applies` is false and nothing is shown.
+  // This is a preview: the amount actually charged is the total WooCommerce
+  // returns on the created order (see `authoritativeTotal` below).
+  const taxBreakdown = calculateTax(taxConfig ?? undefined, totalPrice, {
+    country: toCountryCode(formData.country),
+    state: toIndiaStateCode(formData.state),
+    postcode: formData.pincode,
+    city: formData.city,
+  });
+  const checkoutTotal = taxBreakdown.grossAmount;
+
+  // If the tax config can't be read we cannot preview a trustworthy total:
+  // WooCommerce will still add its own tax to the order, so quoting the bare
+  // subtotal here would understate what the customer is about to be charged.
+  // Say "calculated at checkout" rather than silently showing no tax.
+  const taxUnknown = taxConfigFailed || (isLoadingTax && !taxConfig);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -248,7 +267,21 @@ const Checkout = () => {
       }
       // Find selected payment gateway details
       const selectedGateway = paymentGateways?.find(g => g.id === paymentMethod);
-          const totalAmount = checkoutTotal;
+
+      // WooCommerce matches tax rates on the ISO country + state code. Sending
+      // "Tamil Nadu" instead of "TN" means no state rate matches and the order
+      // comes back untaxed.
+      const stateCode = toIndiaStateCode(formData.state);
+      const countryCode = toCountryCode(formData.country);
+
+      // The REST API always treats line_items.total as tax-EXCLUSIVE and adds
+      // tax itself. So when the catalogue price is already GST-inclusive we
+      // must strip the tax out before sending, or WooCommerce taxes an
+      // already-taxed price and the order comes back inflated.
+      const lineItemTotal = (gross: number): string =>
+        taxBreakdown.applies && taxBreakdown.inclusive
+          ? (gross / (1 + taxBreakdown.ratePercent / 100)).toFixed(2)
+          : String(gross);
 
       const orderData = {
         payment_method: paymentMethod || "cod",
@@ -261,9 +294,9 @@ const Checkout = () => {
           address_1: `${formData.houseNo}, ${formData.street}`,
           address_2: formData.landmark,
           city: formData.city,
-          state: formData.state,
+          state: stateCode,
           postcode: formData.pincode,
-          country: formData.country,
+          country: countryCode,
           email: formData.email,
           phone: formData.phone
         },
@@ -273,16 +306,16 @@ const Checkout = () => {
           address_1: `${formData.houseNo}, ${formData.street}`,
           address_2: formData.landmark,
           city: formData.city,
-          state: formData.state,
+          state: stateCode,
           postcode: formData.pincode,
-          country: formData.country
+          country: countryCode
         },
         line_items: items.map(item => ({
           product_id: parseInt(item.product.id),
           variation_id: item.variationId,
           quantity: item.quantity,
-          subtotal: String(item.product.price * item.quantity),
-          total: String(item.product.price * item.quantity),
+          subtotal: lineItemTotal(item.product.price * item.quantity),
+          total: lineItemTotal(item.product.price * item.quantity),
           meta_data: [
             ...(item.size ? [{ key: "Size", value: item.size }] : []),
             ...(item.color ? [{ key: "Color", value: item.color }] : [])
@@ -296,77 +329,36 @@ const Checkout = () => {
 
       const response = await createOrder(orderData);
 
-      // Safety check: verify WooCommerce order total matches expected total
-      const wooTotal = parseFloat(response.total);
-      if (!wooTotal || Math.abs(wooTotal - totalAmount) > 1) {
-        console.error("WooCommerce order total mismatch!", {
-          expected: totalAmount,
-          woocommerce_total: wooTotal,
+      // WooCommerce is the single source of truth for what this order costs:
+      // it applied the store's own tax rules to the line items we sent. Charge
+      // exactly that figure so the payment can never disagree with the order
+      // record — previously the client charged its own subtotal + 5% guess.
+      const totalAmount = parseFloat(response.total);
+
+      if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+        console.error("WooCommerce returned no usable order total", {
+          order_id: response.id,
+          total: response.total,
+        });
+        toast({
+          variant: "destructive",
+          title: "Order Error",
+          description: "Could not confirm the order total. Please try again or contact support.",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // The on-screen preview and the real total should agree. A gap means the
+      // store's tax setup differs from what /woocommerce-taxes reported — worth
+      // knowing about, but WooCommerce's figure still wins.
+      if (Math.abs(totalAmount - checkoutTotal) > 1) {
+        console.warn("Checkout preview differs from the WooCommerce order total", {
+          preview: checkoutTotal,
+          woocommerce_total: totalAmount,
+          woocommerce_tax: response.total_tax,
           order_id: response.id,
         });
-
-        // Attempt to fix the order total via update
-        try {
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-          const fixResponse = await fetch(
-            `${supabaseUrl}/functions/v1/woocommerce-orders?id=${response.id}`,
-            {
-              method: "PUT",
-              headers: {
-                "apikey": supabaseKey,
-                "Authorization": `Bearer ${supabaseKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                id: response.id,
-                order_key: response.order_key,
-                line_items: items.map(item => ({
-                  id: response.line_items?.find((li: any) =>
-                    li.product_id === parseInt(item.product.id)
-                  )?.id,
-                  product_id: parseInt(item.product.id),
-                  variation_id: item.variationId,
-                  quantity: item.quantity,
-                  subtotal: String(item.product.price * item.quantity),
-                  total: String(item.product.price * item.quantity),
-                })),
-              }),
-            }
-          );
-          if (fixResponse.ok) {
-            const fixedOrder = await fixResponse.json();
-            const fixedTotal = parseFloat(fixedOrder.total);
-            console.log("Order total corrected:", { order_id: response.id, corrected_total: fixedTotal });
-            if (!fixedTotal || Math.abs(fixedTotal - totalAmount) > 1) {
-              toast({
-                variant: "destructive",
-                title: "Order Error",
-                description: "Could not set correct order total. Please try again or contact support.",
-              });
-              setIsProcessing(false);
-              return;
-            }
-          } else {
-            console.error("Failed to fix order total:", await fixResponse.text());
-            toast({
-              variant: "destructive",
-              title: "Order Error",
-              description: "Order total mismatch detected. Please try again or contact support.",
-            });
-            setIsProcessing(false);
-            return;
-          }
-        } catch (fixError) {
-          console.error("Error fixing order total:", fixError);
-          toast({
-            variant: "destructive",
-            title: "Order Error",
-            description: "Order total mismatch detected. Please try again or contact support.",
-          });
-          setIsProcessing(false);
-          return;
-        }
       }
 
       if (paymentMethod === "razorpay") {
@@ -385,6 +377,13 @@ const Checkout = () => {
             throw new Error(razorpayError?.message || "Failed to create Razorpay order");
           }
 
+          // Razorpay keeps the modal open after a declined attempt so the
+          // customer can retry with another method. Track the outcome across
+          // attempts instead of writing to WooCommerce on the first failure —
+          // that write used to race with the success that followed it.
+          let paymentSucceeded = false;
+          let lastFailure: { code?: string; description?: string } | null = null;
+
           const options = {
             key: import.meta.env.VITE_RAZORPAY_KEY_ID, // Enter the Key ID generated from the Dashboard
             amount: razorpayOrder.amount,
@@ -395,6 +394,7 @@ const Checkout = () => {
             order_id: razorpayOrder.id,
             handler: async function (response_razorpay: any) {
               // Payment Success Handler — verify signature server-side
+              paymentSucceeded = true;
               try {
                 const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-razorpay-payment", {
                   body: {
@@ -489,60 +489,62 @@ const Checkout = () => {
             },
             modal: {
               ondismiss: async function () {
-                // Update WooCommerce order to cancelled/failed when user dismisses payment
+                // The customer closed the modal. Only now do we know the
+                // attempt is really over — a payment that succeeded (or is
+                // being verified) must never be cancelled from here.
+                if (paymentSucceeded) return;
+
+                const finalStatus = lastFailure ? "failed" : "cancelled";
                 try {
                   const { error: cancelError } = await supabase.functions.invoke("woocommerce-orders", {
                     method: "PUT",
-                    body: { id: response.id, order_key: response.order_key, status: "cancelled" },
+                    body: {
+                      id: response.id,
+                      order_key: response.order_key,
+                      status: finalStatus,
+                      ...(lastFailure && {
+                        meta_data: [
+                          { key: "_razorpay_failure_reason", value: lastFailure.description || "Payment failed" },
+                          { key: "_razorpay_failure_code", value: lastFailure.code || "unknown" },
+                        ],
+                      }),
+                    },
                   });
                   if (cancelError) {
-                    console.error("Failed to cancel order in WooCommerce:", cancelError);
+                    console.error(`Failed to mark order ${finalStatus} in WooCommerce:`, cancelError);
                   } else {
-                    console.log("Order cancelled in WooCommerce:", response.id);
+                    console.log(`Order marked ${finalStatus} in WooCommerce:`, response.id);
                   }
                 } catch (err) {
-                  console.error("Error cancelling order:", err);
+                  console.error("Error closing out order:", err);
                 }
                 setIsProcessing(false);
                 toast({
-                  title: "Payment Cancelled",
-                  description: "Your order has been cancelled. No payment was charged.",
+                  title: lastFailure ? "Payment Failed" : "Payment Cancelled",
+                  description: lastFailure
+                    ? lastFailure.description || "Your payment was declined. No amount was charged."
+                    : "Your order has been cancelled. No payment was charged.",
+                  ...(lastFailure && { variant: "destructive" as const }),
                 });
               }
             }
           };
 
-          const rzp1 = (window as any).Razorpay(options);
+          const rzp1 = new (window as any).Razorpay(options);
 
-          // Handle payment failure (bank decline, network error, etc.)
-          rzp1.on("payment.failed", async function (failResponse: any) {
-            console.error("Razorpay payment failed:", failResponse.error);
-            try {
-              const { error: failError } = await supabase.functions.invoke("woocommerce-orders", {
-                method: "PUT",
-                body: {
-                  id: response.id,
-                  order_key: response.order_key,
-                  status: "failed",
-                  meta_data: [
-                    { key: "_razorpay_failure_reason", value: failResponse.error?.description || "Payment failed" },
-                    { key: "_razorpay_failure_code", value: failResponse.error?.code || "unknown" },
-                  ],
-                },
-              });
-              if (failError) {
-                console.error("Failed to update order status to failed:", failError);
-              } else {
-                console.log("Order marked as failed in WooCommerce:", response.id);
-              }
-            } catch (err) {
-              console.error("Error updating failed order:", err);
-            }
-            setIsProcessing(false);
+          // A declined attempt (bank decline, wrong OTP, expired UPI request).
+          // Recorded locally only — the modal stays open for a retry, and the
+          // razorpay-webhook function persists the attempt server-side.
+          rzp1.on("payment.failed", function (failResponse: any) {
+            console.error("Razorpay payment attempt failed:", failResponse.error);
+            lastFailure = {
+              code: failResponse.error?.code || "unknown",
+              description: failResponse.error?.description || "Payment failed",
+            };
             toast({
               variant: "destructive",
               title: "Payment Failed",
-              description: failResponse.error?.description || "Your payment was declined. Please try again.",
+              description: `${lastFailure.description}. You can try another payment method.`,
             });
           });
 
@@ -1080,10 +1082,22 @@ const Checkout = () => {
                       <span className="text-muted-foreground">Shipping</span>
                       <span className="font-bold text-green-600">FREE</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">GST (5%)</span>
-                      <span className="font-bold">{formatCheckoutPrice(gstAmount)}</span>
-                    </div>
+                    {taxUnknown ? (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Tax</span>
+                        <span className="font-bold">Calculated at checkout</span>
+                      </div>
+                    ) : taxBreakdown.applies ? (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          {formatTaxLabel(taxBreakdown)}
+                          {taxBreakdown.inclusive && (
+                            <span className="text-xs ml-1">(included)</span>
+                          )}
+                        </span>
+                        <span className="font-bold">{formatCheckoutPrice(taxBreakdown.taxAmount)}</span>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="mt-6 pt-6 border-t border-border">
@@ -1091,6 +1105,15 @@ const Checkout = () => {
                       <span className="font-bold">Total</span>
                       <span className="font-bold">{formatCheckoutPrice(checkoutTotal)}</span>
                     </div>
+                    {taxUnknown ? (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Any applicable tax is added when the order is placed.
+                      </p>
+                    ) : taxBreakdown.applies && taxBreakdown.inclusive ? (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Inclusive of {taxBreakdown.label}
+                      </p>
+                    ) : null}
                   </div>
 
                   {/* Place Order Button */}

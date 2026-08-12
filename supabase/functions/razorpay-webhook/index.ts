@@ -1,15 +1,26 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Razorpay Webhook Handler
-// This is the safety net for orders where client-side verification failed.
-// Razorpay sends webhooks for payment.captured events — we verify the signature
-// and update WooCommerce order status to "processing" + mark as paid.
 //
-// Setup in Razorpay Dashboard:
-//   Settings → Webhooks → Add New Webhook
-//   URL: https://dashboard.blacklovers.in/functions/v1/razorpay-webhook
-//   Secret: (use RAZORPAY_WEBHOOK_SECRET env var)
-//   Events: payment.captured, payment.authorized
+// Two jobs:
+//   1. Record EVERY payment attempt (failed ones included) in payment_attempts,
+//      so a customer who fails once and retries successfully leaves a full trail.
+//   2. Act as the safety net when client-side verification never ran (browser
+//      closed, network dropped) — promote the WooCommerce order to processing.
+//
+// Setup in Razorpay Dashboard → Settings → Webhooks → Add New Webhook
+//   URL:    https://<project-ref>.supabase.co/functions/v1/razorpay-webhook
+//   Secret: same value as the RAZORPAY_WEBHOOK_SECRET function secret
+//   Events: payment.captured, payment.authorized, payment.failed, order.paid
+//
+// NOTE: this function must run with verify_jwt = false (see supabase/config.toml).
+// Razorpay cannot send a Supabase JWT, so JWT verification would 401 every event.
+
+// Statuses we are willing to promote to "processing" on a confirmed payment.
+// "failed" and "cancelled" are included on purpose: the first attempt may have
+// marked the order failed, and the retry must still be able to recover it.
+const RECOVERABLE_STATUSES = new Set(["pending", "on-hold", "failed", "cancelled"]);
 
 // HMAC-SHA256 using Web Crypto API (same as verify-razorpay-payment)
 async function hmacSha256Hex(secret: string, message: string): Promise<string> {
@@ -36,6 +47,59 @@ function secureCompare(a: string, b: string): boolean {
   }
   return result === 0;
 }
+
+const getSupabaseClient = () => {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return null;
+  return createClient(url, key);
+};
+
+// Upsert on (provider, gateway_payment_id) so duplicate webhook deliveries and
+// an authorized→captured progression collapse into a single row.
+const recordAttempt = async (
+  payment: Record<string, any>,
+  wooOrderId: string | null,
+  recordedVia = "webhook"
+) => {
+  try {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      console.warn("Supabase service role not configured; payment attempt not recorded");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("payment_attempts")
+      .upsert(
+        {
+          provider: "razorpay",
+          gateway_order_id: payment.order_id || null,
+          gateway_payment_id: payment.id,
+          woocommerce_order_id: wooOrderId ? Number(wooOrderId) : null,
+          status: payment.status || "unknown",
+          method: payment.method || null,
+          amount: typeof payment.amount === "number" ? payment.amount / 100 : null,
+          currency: payment.currency || "INR",
+          customer_email: payment.email || null,
+          customer_phone: payment.contact || null,
+          error_code: payment.error_code || null,
+          error_description: payment.error_description || null,
+          error_source: payment.error_source || null,
+          error_step: payment.error_step || null,
+          error_reason: payment.error_reason || null,
+          recorded_via: recordedVia,
+          raw_payload: payment,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "provider,gateway_payment_id" }
+      );
+
+    if (error) console.error("Failed to record payment attempt:", error);
+  } catch (error) {
+    console.error("Unexpected payment attempt logging error:", error);
+  }
+};
 
 serve(async (req) => {
   // Webhooks are always POST — no CORS needed (server-to-server)
@@ -71,11 +135,17 @@ serve(async (req) => {
 
     console.log(`Webhook received: ${eventType}`, {
       payment_id: event.payload?.payment?.entity?.id,
-      order_id: event.payload?.payment?.entity?.order_id,
+      order_id: event.payload?.payment?.entity?.order_id ?? event.payload?.order?.entity?.id,
     });
 
-    // Only process payment.captured and payment.authorized events
-    if (eventType !== "payment.captured" && eventType !== "payment.authorized") {
+    const HANDLED_EVENTS = new Set([
+      "payment.captured",
+      "payment.authorized",
+      "payment.failed",
+      "order.paid",
+    ]);
+
+    if (!HANDLED_EVENTS.has(eventType)) {
       console.log(`Ignoring event type: ${eventType}`);
       return new Response(JSON.stringify({ status: "ignored", event: eventType }), {
         status: 200,
@@ -91,7 +161,7 @@ serve(async (req) => {
 
     const razorpayPaymentId = payment.id;
     const razorpayOrderId = payment.order_id;
-    const paymentStatus = payment.status; // "captured" or "authorized"
+    const paymentStatus = payment.status; // "captured" | "authorized" | "failed"
     const receiptId = payment.notes?.receipt || "";
 
     // Extract WooCommerce order ID from receipt (format: "order_XXXX")
@@ -100,16 +170,22 @@ serve(async (req) => {
 
     // Method 1: From payment notes
     if (payment.notes?.woocommerce_order_id) {
-      wooOrderId = payment.notes.woocommerce_order_id;
+      wooOrderId = String(payment.notes.woocommerce_order_id);
     }
 
     // Method 2: From receipt field (set during create-razorpay-order as "order_XXXX")
     if (!wooOrderId && receiptId) {
-      const match = receiptId.match(/^order_(\d+)$/);
+      const match = String(receiptId).match(/^order_(\d+)$/);
       if (match) wooOrderId = match[1];
     }
 
-    // Method 3: Fetch from Razorpay order API to get receipt
+    // Method 3: The order.paid event carries the order entity (with its receipt)
+    if (!wooOrderId && event.payload?.order?.entity?.receipt) {
+      const match = String(event.payload.order.entity.receipt).match(/^order_(\d+)$/);
+      if (match) wooOrderId = match[1];
+    }
+
+    // Method 4: Fetch from Razorpay order API to get receipt
     if (!wooOrderId && razorpayOrderId) {
       try {
         const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
@@ -132,6 +208,10 @@ serve(async (req) => {
       }
     }
 
+    // Record the attempt before anything else, so failed attempts and
+    // unmappable payments are still visible in the database.
+    await recordAttempt(payment, wooOrderId);
+
     if (!wooOrderId) {
       console.error("Could not determine WooCommerce order ID from webhook", {
         razorpay_order_id: razorpayOrderId,
@@ -139,11 +219,26 @@ serve(async (req) => {
         receipt: receiptId,
         notes: payment.notes,
       });
-      // Return 200 so Razorpay doesn't keep retrying — we log the error for manual review
+      // Return 200 so Razorpay doesn't keep retrying — the attempt row above
+      // preserves the payment for manual reconciliation.
       return new Response(JSON.stringify({ status: "error", message: "Could not map to WooCommerce order" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    // A failed attempt is recorded but never changes the WooCommerce order.
+    // The customer is usually still in the Razorpay modal retrying; marking the
+    // order failed here would race with the success that follows seconds later.
+    if (eventType === "payment.failed" || paymentStatus === "failed") {
+      console.log(`Recorded failed attempt ${razorpayPaymentId} for order ${wooOrderId}`, {
+        error_code: payment.error_code,
+        error_description: payment.error_description,
+      });
+      return new Response(
+        JSON.stringify({ status: "recorded", outcome: "failed", order_id: wooOrderId }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     console.log(`Processing webhook for WooCommerce order ${wooOrderId}`, {
@@ -184,15 +279,17 @@ serve(async (req) => {
     const currentOrder = await getResponse.json();
     const currentStatus = currentOrder.status;
 
-    // Only update if order is still "pending" or "on-hold"
-    // Don't overwrite "processing", "completed", "cancelled", "refunded"
-    if (currentStatus !== "pending" && currentStatus !== "on-hold") {
+    // Recover the order from pending/on-hold *and* from failed/cancelled — the
+    // retry-after-failure case. Never touch processing/completed/refunded.
+    if (!RECOVERABLE_STATUSES.has(currentStatus)) {
       console.log(`Order ${wooOrderId} already has status "${currentStatus}" — skipping webhook update`);
       return new Response(
         JSON.stringify({ status: "skipped", order_id: wooOrderId, current_status: currentStatus }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
     }
+
+    const recoveredFromFailure = currentStatus === "failed" || currentStatus === "cancelled";
 
     // Update order to processing + mark as paid
     const updateResponse = await fetch(
@@ -208,6 +305,7 @@ serve(async (req) => {
             { key: "_razorpay_payment_id", value: razorpayPaymentId },
             { key: "_razorpay_order_id", value: razorpayOrderId },
             { key: "_payment_verified_via", value: "webhook" },
+            { key: "_payment_recovered_from", value: recoveredFromFailure ? currentStatus : "" },
           ],
         }),
       }
@@ -223,7 +321,14 @@ serve(async (req) => {
     const updatedOrder = await updateResponse.json();
     console.log(`Webhook: Order ${wooOrderId} updated from "${currentStatus}" to "processing"`, {
       razorpay_payment_id: razorpayPaymentId,
+      recovered_from_failure: recoveredFromFailure,
     });
+
+    if (recoveredFromFailure) {
+      // Cancelling an order restores stock in WooCommerce; moving it back to
+      // processing re-reduces it. Flagged here so it is greppable in the logs.
+      console.warn(`Order ${wooOrderId} recovered from "${currentStatus}" — verify stock levels`);
+    }
 
     return new Response(
       JSON.stringify({
@@ -231,6 +336,7 @@ serve(async (req) => {
         order_id: updatedOrder.id,
         previous_status: currentStatus,
         new_status: updatedOrder.status,
+        recovered_from_failure: recoveredFromFailure,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );

@@ -2,7 +2,8 @@ import { Link, useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Home, User, Heart, ShoppingBag, Package } from "@/lib/icons";
+import { useSearch } from "@/contexts/SearchContext";
+import { Home, User, Heart, ShoppingBag, Package, Search } from "@/lib/icons";
 
 // Bottom-nav icons (Phosphor)
 const AdornHome = () => <Home size={24} />;
@@ -10,21 +11,33 @@ const AdornUser = () => <User size={24} />;
 const AdornHeart = () => <Heart size={24} />;
 const AdornCart = () => <ShoppingBag size={24} />;
 const AdornOrders = () => <Package size={24} />;
+const AdornSearch = () => <Search size={24} />;
+
+interface NavItem {
+  icon: () => JSX.Element;
+  label: string;
+  href?: string;
+  onClick?: () => void;
+  count?: number;
+}
 
 const MobileNav = () => {
   const location = useLocation();
   const { totalItems: cartItems } = useCart();
   const { totalItems: wishlistItems } = useWishlist();
   const { isAuthenticated, user } = useAuth();
+  const { openSearch } = useSearch();
 
   // Show login state on the account tab: first name when logged in, otherwise "Login"
   const accountLabel = isAuthenticated
     ? (user?.name?.trim().split(" ")[0] || "Account")
     : "Login";
 
-  const navItems = [
+  // Search opens the same modal the header uses, so it has no route of its own.
+  const navItems: NavItem[] = [
     { icon: AdornHome, label: "Home", href: "/" },
-    { icon: AdornOrders, label: "Orders", href: "/orders" }, 
+    { icon: AdornSearch, label: "Search", onClick: openSearch },
+    { icon: AdornOrders, label: "Orders", href: "/orders" },
     { icon: AdornCart, label: "Cart", href: "/cart", count: cartItems },
     { icon: AdornUser, label: accountLabel, href: "/account" },
   ];
@@ -36,13 +49,13 @@ const MobileNav = () => {
           const Icon = item.icon;
           const isActive = item.href ? location.pathname === item.href : false;
 
-          return (
-            <Link
-              key={item.label}
-              to={item.href!}
-              className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative ${isActive ? "text-secondary font-bold" : "text-black"
-                }`}
-            >
+          // flex-1 + min-w-0 keeps all five tabs evenly spaced and lets the
+          // label truncate instead of overflowing on 320px-wide screens.
+          const className = `flex-1 min-w-0 flex flex-col items-center gap-1 px-1 py-1 transition-colors relative ${isActive ? "text-secondary font-bold" : "text-black"
+            }`;
+
+          const content = (
+            <>
               <div className="relative -mt-0.5">
                 <Icon />
                 {item.count !== undefined && item.count > 0 && (
@@ -51,7 +64,27 @@ const MobileNav = () => {
                   </span>
                 )}
               </div>
-              <span className="text-[11px] font-bold uppercase tracking-wide max-w-[56px] truncate">{item.label}</span>
+              <span className="text-[11px] font-bold uppercase tracking-wide max-w-full truncate">{item.label}</span>
+            </>
+          );
+
+          if (item.onClick) {
+            return (
+              <button
+                key={item.label}
+                type="button"
+                onClick={item.onClick}
+                aria-label={item.label}
+                className={className}
+              >
+                {content}
+              </button>
+            );
+          }
+
+          return (
+            <Link key={item.label} to={item.href!} className={className}>
+              {content}
             </Link>
           );
         })}

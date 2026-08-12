@@ -1,4 +1,7 @@
-project_id = "pwgjbvtvmjbvfdrxgaob"
+# Must match the project the app actually talks to (VITE_SUPABASE_URL in .env).
+# The previous value pointed at a project with no functions deployed, so CLI
+# deploys from this repo silently landed nowhere.
+project_id = "qksewiceckymrsvgxkfg"
 
 [functions.woocommerce-products]
 verify_jwt = false
@@ -7,6 +10,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.woocommerce-reviews]
+verify_jwt = false
+
+[functions.woocommerce-taxes]
 verify_jwt = false
 
 [functions.woocommerce-variation-gallery]
@@ -31,4 +37,22 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.verify-easebuzz-payment]
+verify_jwt = false
+
+# Called from the guest checkout (no Supabase user session exists).
+[functions.create-razorpay-order]
+verify_jwt = false
+
+# Guest checkout too; authenticity comes from the HMAC signature it verifies,
+# not from the caller's token.
+[functions.verify-razorpay-payment]
+verify_jwt = false
+
+# MUST be false: Razorpay sends no Supabase credentials. The request is
+# authenticated by the x-razorpay-signature HMAC instead.
+[functions.razorpay-webhook]
+verify_jwt = false
+
+# Checks the service-role bearer token itself (see the function source).
+[functions.razorpay-reconcile]
 verify_jwt = false

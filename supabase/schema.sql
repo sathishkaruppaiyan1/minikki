@@ -89,3 +89,94 @@ ON CONFLICT (id) DO NOTHING;
 CREATE POLICY "Public read access for review media"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'review-media');
+
+-- Payment initiation logs (server-side audit trail for gateway order creation)
+
+CREATE TABLE IF NOT EXISTS public.payment_initiation_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider TEXT NOT NULL,
+  status TEXT NOT NULL,
+  woocommerce_order_id BIGINT,
+  gateway_order_id TEXT,
+  amount NUMERIC(12, 2),
+  currency TEXT DEFAULT 'INR',
+  customer_name TEXT,
+  customer_email TEXT,
+  customer_phone TEXT,
+  request_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  response_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  error_message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_initiation_logs_provider
+  ON public.payment_initiation_logs(provider);
+CREATE INDEX IF NOT EXISTS idx_payment_initiation_logs_woocommerce_order_id
+  ON public.payment_initiation_logs(woocommerce_order_id);
+CREATE INDEX IF NOT EXISTS idx_payment_initiation_logs_created_at
+  ON public.payment_initiation_logs(created_at DESC);
+
+-- RLS on, NO policies: only the service role (edge functions) can write/read logs.
+ALTER TABLE public.payment_initiation_logs ENABLE ROW LEVEL SECURITY;
+
+-- Payment attempts (one row per attempt at the gateway, failures included).
+-- A customer who fails on UPI then succeeds on card leaves two rows sharing
+-- the same gateway_order_id.
+
+CREATE TABLE IF NOT EXISTS public.payment_attempts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider TEXT NOT NULL DEFAULT 'razorpay',
+  gateway_order_id TEXT,
+  gateway_payment_id TEXT NOT NULL,
+  woocommerce_order_id BIGINT,
+  status TEXT NOT NULL,            -- created | authorized | captured | failed | refunded
+  method TEXT,                     -- upi | card | netbanking | wallet ...
+  amount NUMERIC(12, 2),
+  currency TEXT DEFAULT 'INR',
+  customer_email TEXT,
+  customer_phone TEXT,
+  error_code TEXT,
+  error_description TEXT,
+  error_source TEXT,
+  error_step TEXT,
+  error_reason TEXT,
+  recorded_via TEXT NOT NULL DEFAULT 'webhook',  -- webhook | client_verify | reconcile
+  raw_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- Idempotency key: Razorpay retries a webhook up to 5 times.
+  CONSTRAINT payment_attempts_provider_payment_id_key
+    UNIQUE (provider, gateway_payment_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_attempts_gateway_order_id
+  ON public.payment_attempts(gateway_order_id);
+CREATE INDEX IF NOT EXISTS idx_payment_attempts_woocommerce_order_id
+  ON public.payment_attempts(woocommerce_order_id);
+CREATE INDEX IF NOT EXISTS idx_payment_attempts_status
+  ON public.payment_attempts(status);
+CREATE INDEX IF NOT EXISTS idx_payment_attempts_created_at
+  ON public.payment_attempts(created_at DESC);
+
+ALTER TABLE public.payment_attempts ENABLE ROW LEVEL SECURITY;
+
+-- `paid` is true if ANY attempt succeeded, no matter how many failed first.
+-- security_invoker + REVOKE keep this out of reach of the anon key: a plain
+-- view in the public schema runs as its owner and would bypass the RLS above.
+CREATE OR REPLACE VIEW public.payment_attempt_summary
+WITH (security_invoker = true) AS
+SELECT
+  gateway_order_id,
+  MAX(woocommerce_order_id)                                        AS woocommerce_order_id,
+  COUNT(*)                                                         AS total_attempts,
+  COUNT(*) FILTER (WHERE status = 'failed')                        AS failed_attempts,
+  bool_or(status IN ('captured', 'authorized'))                    AS paid,
+  MAX(amount) FILTER (WHERE status IN ('captured', 'authorized'))  AS paid_amount,
+  (ARRAY_AGG(gateway_payment_id ORDER BY created_at DESC)
+     FILTER (WHERE status IN ('captured', 'authorized')))[1]       AS successful_payment_id,
+  MIN(created_at)                                                  AS first_attempt_at,
+  MAX(created_at)                                                  AS last_attempt_at
+FROM public.payment_attempts
+GROUP BY gateway_order_id;
+
+REVOKE ALL ON public.payment_attempt_summary FROM anon, authenticated;

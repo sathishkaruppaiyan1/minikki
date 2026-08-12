@@ -2,6 +2,7 @@ import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionToken } from "@/contexts/AuthContext";
 import type { Product, Category } from "@/types/product";
+import type { WooTaxConfig } from "@/lib/tax";
 
 interface ProductsResponse {
   products: Product[];
@@ -349,6 +350,42 @@ export const useWooCommercePaymentGateways = () => {
     staleTime: 0, // Always fetch fresh
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+  });
+};
+
+// Store tax configuration — rates, and whether catalogue prices already
+// include tax. Used for display; the charged amount comes from the order.
+export const useWooCommerceTaxConfig = () => {
+  return useQuery({
+    queryKey: ["woocommerce-tax-config"],
+    queryFn: async (): Promise<WooTaxConfig | null> => {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/woocommerce-taxes`,
+        {
+          method: "GET",
+          headers: {
+            "apikey": supabaseKey,
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Tax config fetch error:", response.status, errorText);
+        throw new Error(`Failed to fetch tax config: ${response.status}`);
+      }
+
+      return await response.json();
+    },
+    // Tax setup changes rarely — cache hard, but never block checkout on it.
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 1,
   });
 };
 

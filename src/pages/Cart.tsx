@@ -4,12 +4,19 @@ import { Minus, Plus, ShoppingBag, ArrowLeft, Trash2, Loader2, AlertTriangle, Sh
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { useCart, type StockIssue } from "@/contexts/CartContext";
+import { useWooCommerceTaxConfig } from "@/hooks/useWooCommerce";
+import { calculateTax, formatTaxLabel } from "@/lib/tax";
 import { toast } from "sonner";
 
 const Cart = () => {
   const { items, removeFromCart, updateQuantity, totalPrice, clearCart, validateCartStock } = useCart();
   const [isValidating, setIsValidating] = useState(false);
   const [stockIssues, setStockIssues] = useState<StockIssue[]>([]);
+  const { data: taxConfig } = useWooCommerceTaxConfig();
+
+  // No address yet, so only a country-wide rate can be resolved here. Anything
+  // state-specific still resolves at checkout.
+  const cartTax = calculateTax(taxConfig ?? undefined, totalPrice, { country: "IN" });
 
   // Validate cart stock on page load
   useEffect(() => {
@@ -268,16 +275,29 @@ const Cart = () => {
                   <span className="font-bold text-green-600">FREE</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tax</span>
-                  <span className="font-bold">Calculated at checkout</span>
+                  <span className="text-muted-foreground">
+                    {cartTax.applies ? formatTaxLabel(cartTax) : "Tax"}
+                  </span>
+                  <span className="font-bold">
+                    {cartTax.applies
+                      ? cartTax.inclusive
+                        ? "Included"
+                        : formatPrice(cartTax.taxAmount)
+                      : "Calculated at checkout"}
+                  </span>
                 </div>
               </div>
 
               <div className="border-t border-border mt-6 pt-6">
                 <div className="flex justify-between text-lg">
                   <span className="font-bold">Total</span>
-                  <span className="font-bold">{formatPrice(totalPrice)}</span>
+                  <span className="font-bold">{formatPrice(cartTax.grossAmount)}</span>
                 </div>
+                {cartTax.applies && cartTax.inclusive && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Inclusive of {cartTax.label}
+                  </p>
+                )}
               </div>
 
               <Link to="/checkout" className="block mt-6">
