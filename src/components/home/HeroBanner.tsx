@@ -71,7 +71,7 @@ const HeroBanner = ({ placement = "hero" }: HeroBannerProps) => {
     // Loading skeleton
     if (isLoading) {
       return (
-        <div className="w-full aspect-[16/7] md:aspect-[16/5] bg-muted animate-pulse" />
+        <div className="w-full aspect-[1/1] md:aspect-[4/3] lg:aspect-[4/3] bg-muted animate-pulse" />
       );
     }
 
@@ -79,14 +79,16 @@ const HeroBanner = ({ placement = "hero" }: HeroBannerProps) => {
     if (banners.length === 0) {
       return (
         <div className="w-full">
-          <Link to="/collections/all">
-            <img
-              src="/banner-fallback.png"
-              alt="Shop Now"
-              className="w-full h-auto object-cover"
-            />
-          </Link>
-        </div>
+            <Link to="/collections/all">
+              <div className="w-full aspect-[1/1] md:aspect-[4/3] lg:aspect-[4/3] overflow-hidden">
+                <img
+                  src="/banner-fallback.png"
+                  alt="Shop Now"
+                  className="w-full h-full object-cover object-top"
+                />
+              </div>
+            </Link>
+          </div>
       );
     }
   }
@@ -153,19 +155,21 @@ const BannerSlide = ({ banner }: { banner: HomeBanner }) => {
   const isExternal = banner.redirect_link.startsWith("http");
 
   const image = (
-    <picture>
-      {banner.mobile_image_url && (
-        <source media="(max-width: 768px)" srcSet={banner.mobile_image_url} />
-      )}
-      <img
-        src={banner.image_url}
-        alt={banner.alt_text || "Banner"}
-        className="w-full h-auto object-cover"
-        loading="eager"
-        fetchPriority="high"
-        decoding="sync"
-      />
-    </picture>
+    <div className="w-full aspect-[1/1] md:aspect-[4/3] lg:aspect-[4/3] overflow-hidden">
+      <picture>
+        {banner.mobile_image_url && (
+          <source media="(max-width: 768px)" srcSet={banner.mobile_image_url} />
+        )}
+        <img
+          src={banner.image_url}
+          alt={banner.alt_text || "Banner"}
+          className="w-full h-full object-cover object-top"
+          loading="eager"
+          fetchPriority="high"
+          decoding="sync"
+        />
+      </picture>
+    </div>
   );
 
   if (isExternal) {
