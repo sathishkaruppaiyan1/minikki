@@ -87,7 +87,12 @@
       "Bash(npx --yes esbuild tax.ts --format=esm --outfile=tax.mjs --log-level=error)",
       "Bash(npx --yes supabase@latest projects list)",
       "Bash(python -c ' *)",
-      "PowerShell(npx tsc --noEmit -p tsconfig.app.json)"
+      "PowerShell(npx tsc --noEmit -p tsconfig.app.json)",
+      "PowerShell($c = Get-Content 'C:\\\\Users\\\\sathi\\\\Downloads\\\\minikki\\\\dist\\\\assets\\\\index-Bn96KwQc.css' -Raw; \"padding-top:100% -> \" + $c.Contains\\('padding-top:100%'\\); \"padding-top:75% -> \" + $c.Contains\\('padding-top:75%'\\))",
+      "PowerShell(Get-ChildItem 'C:\\\\Users\\\\sathi\\\\Downloads\\\\minikki' -Force | Select-Object Name; \"--- public ---\"; Get-ChildItem 'C:\\\\Users\\\\sathi\\\\Downloads\\\\minikki\\\\public' -Force | Select-Object Name; \"--- dist ---\"; Get-ChildItem 'C:\\\\Users\\\\sathi\\\\Downloads\\\\minikki\\\\dist' -Force | Select-Object Name)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri 'https://app.minikki.in/product/3519' -MaximumRedirection 0 -ErrorAction Stop; \"STATUS: $\\($r.StatusCode\\)\"; $r.Headers.GetEnumerator\\(\\) | ForEach-Object { \"$\\($_.Key\\): $\\($_.Value\\)\" } } catch { \"STATUS: $\\($_.Exception.Response.StatusCode.value__\\)\"; $_.Exception.Response.Headers | ForEach-Object { $_ } })",
+      "PowerShell($req = [System.Net.HttpWebRequest]::Create\\('https://app.minikki.in/product/3519'\\); $req.AllowAutoRedirect=$false; try { $resp = $req.GetResponse\\(\\) } catch [System.Net.WebException] { $resp = $_.Exception.Response }; \"STATUS: \" + [int]$resp.StatusCode; foreach \\($k in $resp.Headers.AllKeys\\) { \"$k`: \" + $resp.Headers[$k] }; $sr = New-Object System.IO.StreamReader\\($resp.GetResponseStream\\(\\)\\); $body = $sr.ReadToEnd\\(\\); \"--- BODY \\(first 800 chars\\) ---\"; $body.Substring\\(0, [Math]::Min\\(800, $body.Length\\)\\))",
+      "PowerShell(foreach \\($u in @\\('https://app.minikki.in/','https://app.minikki.in/index.html','https://app.minikki.in/checkout','https://app.minikki.in/robots.txt','https://app.minikki.in/.htaccess'\\)\\) { $req=[System.Net.HttpWebRequest]::Create\\($u\\); $req.AllowAutoRedirect=$false; try { $resp=$req.GetResponse\\(\\) } catch [System.Net.WebException] { $resp=$_.Exception.Response }; \"{0,-45} {1}\" -f $u, [int]$resp.StatusCode; $resp.Close\\(\\) })"
     ]
   }
 }

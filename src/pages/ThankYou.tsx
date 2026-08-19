@@ -79,7 +79,7 @@ const ThankYou = () => {
                   <p className="text-sm text-muted-foreground">
                     You will receive order confirmation to your WhatsApp from our number:
                   </p>
-                  <p className="font-bold text-lg">7990190234</p>
+                  <p className="font-bold text-lg">+91 73387 33187</p>
                 </div>
               </div>
 
@@ -97,7 +97,7 @@ const ThankYou = () => {
                   <p className="text-sm text-muted-foreground">
                     For any enquiries kindly WhatsApp to this number only:
                   </p>
-                  <p className="font-bold text-lg">7990190234</p>
+                  <p className="font-bold text-lg">+91 73387 33187</p>
                 </div>
               </div>
             </div>

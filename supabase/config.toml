@@ -56,3 +56,11 @@ verify_jwt = false
 # Checks the service-role bearer token itself (see the function source).
 [functions.razorpay-reconcile]
 verify_jwt = false
+
+# WhatsApp OTP login (Meta Cloud API). Called from the login screen before any
+# Supabase session exists.
+[functions.whatsapp-send-otp]
+verify_jwt = false
+
+[functions.verify-otp]
+verify_jwt = false

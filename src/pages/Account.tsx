@@ -17,6 +17,21 @@ import { Badge } from "@/components/ui/badge";
 type Step = "phone" | "otp" | "success";
 type AccountTab = "orders" | "addresses" | "details";
 
+// supabase.functions.invoke() collapses any non-2xx into a generic
+// "non-2xx status code" message, so dig the real reason out of the response.
+const edgeFunctionError = async (error: any, fallback: string) => {
+  const response = error?.context;
+  if (response && typeof response.json === "function") {
+    try {
+      const body = await response.json();
+      if (body?.error) return new Error(body.error);
+    } catch {
+      // body was not JSON — fall through
+    }
+  }
+  return new Error(error?.message || fallback);
+};
+
 const Account = () => {
   const navigate = useNavigate();
   const { user, login, logout, isAuthenticated } = useAuth();
@@ -425,12 +440,12 @@ const Account = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("wati-send-otp", {
+      const { data, error } = await supabase.functions.invoke("whatsapp-send-otp", {
         body: { phoneNumber, countryCode: "+91" },
       });
 
       if (error) {
-        throw error;
+        throw await edgeFunctionError(error, "Failed to send OTP");
       }
 
       if (data?.success) {
@@ -486,7 +501,7 @@ const Account = () => {
       });
 
       if (error) {
-        throw error;
+        throw await edgeFunctionError(error, "Invalid OTP");
       }
 
       if (data?.success) {
