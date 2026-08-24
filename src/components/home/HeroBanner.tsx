@@ -39,16 +39,25 @@ const HeroBanner = ({ placement = "hero" }: HeroBannerProps) => {
   const { data: config, isLoading: configLoading } = useHomeConfig();
   const [current, setCurrent] = useState(0);
 
+  // Whole-strip switch from the plugin's Banners tab. Absent means on, so a
+  // storefront talking to an older plugin keeps its banners.
+  const slotEnabled =
+    placement === "hero"
+      ? config?.banners?.hero_enabled !== false
+      : config?.banners?.below_hero_enabled !== false;
+
   const configured = (config?.banners?.[placement] || []).map(fromConfig);
 
   // WordPress wins when it has banners for this slot. The main hero still falls
   // back to the Supabase-managed banners so nothing disappears mid-migration;
   // the below-hero slot exists only in WordPress.
-  const banners = configured.length > 0
-    ? configured
-    : placement === "hero"
-      ? supabaseBanners
-      : [];
+  const banners = !slotEnabled
+    ? []
+    : configured.length > 0
+      ? configured
+      : placement === "hero"
+        ? supabaseBanners
+        : [];
 
   const isLoading = configLoading || (placement === "hero" && configured.length === 0 && supabaseLoading);
 
@@ -73,6 +82,12 @@ const HeroBanner = ({ placement = "hero" }: HeroBannerProps) => {
       setCurrent(0);
     }
   }, [banners.length, current]);
+
+  // Hidden in the plugin means gone — before the hero's fallback image gets a
+  // chance to stand in for the empty list.
+  if (!slotEnabled) {
+    return null;
+  }
 
   // The below-hero strip is purely optional: nothing configured, nothing rendered.
   if (placement === "below_hero") {

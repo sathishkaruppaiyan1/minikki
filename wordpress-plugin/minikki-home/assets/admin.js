@@ -83,8 +83,16 @@
 			'" value="' + attr(get(path)) + '" placeholder="' + attr(placeholder || '') + '" />';
 	}
 
-	function checkbox(path, label) {
+	/**
+	 * @param {string}  path     Config path to bind.
+	 * @param {string}  label    Visible label.
+	 * @param {boolean} redraw   Re-render the panel on change. Use it when the
+	 *                           checkbox changes what the panel *shows* (a hint,
+	 *                           a disabled state) rather than just storing a flag.
+	 */
+	function checkbox(path, label, redraw) {
 		return '<label class="mk-check"><input type="checkbox" data-path="' + attr(path) + '"' +
+			(redraw ? ' data-redraw="1"' : '') +
 			(get(path) ? ' checked' : '') + ' /> ' + esc(label) + '</label>';
 	}
 
@@ -205,12 +213,29 @@
 	function renderBannerList(placement, heading, description) {
 		var listPath = 'banners.' + placement;
 		var banners = get(listPath) || [];
+		var enabledPath = 'banners.' + placement + '_enabled';
+
+		// Configs saved before this switch existed have no flag; treat that as on
+		// so upgrading the plugin never blanks a live banner strip.
+		if (get(enabledPath) === undefined) {
+			set(enabledPath, true);
+		}
+		var sectionOn = get(enabledPath) !== false;
 
 		var html =
 			'<div class="mk-card">' +
 			'<h3>' + esc(heading) + '</h3>' +
 			'<p class="description">' + esc(description) + '</p>' +
-			'<div class="mk-list" data-sortable="' + attr(listPath) + '">';
+			'<div class="mk-row-inline">' +
+			checkbox(enabledPath, 'Show this section', true) +
+			'</div>';
+
+		if (!sectionOn) {
+			html += '<p class="mk-hint">This banner strip is hidden on the storefront. ' +
+				'The banners below are kept — tick <strong>Show this section</strong> to bring them back.</p>';
+		}
+
+		html += '<div class="mk-list" data-sortable="' + attr(listPath) + '">';
 
 		banners.forEach(function (banner, index) {
 			var base = listPath + '.' + index;
@@ -732,6 +757,9 @@
 			var path = $(this).data('path');
 			if (path) {
 				set(path, $(this).is(':checked'));
+			}
+			if ($(this).data('redraw')) {
+				render();
 			}
 		})
 

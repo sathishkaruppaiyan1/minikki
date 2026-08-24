@@ -1,5 +1,6 @@
 import Layout from "@/components/layout/Layout";
 
+import CategoryCarousel from "@/components/home/CategoryCarousel";
 import HeroBanner from "@/components/home/HeroBanner";
 import HomeProductRow from "@/components/home/HomeProductRow";
 import ReviewsSlider from "@/components/home/ReviewsSlider";
@@ -59,6 +60,10 @@ const Index = () => {
 
   return (
     <Layout>
+      {/* Story-style category strip directly under the header. Selection,
+          order and visibility come from the WordPress plugin. */}
+      <CategoryCarousel />
+
       <HeroBanner />
 
       {/* Optional banner strip below the hero, managed in WordPress */}

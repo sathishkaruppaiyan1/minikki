@@ -102,10 +102,7 @@ class Minikki_Home_Rest {
 			'topbar'            => $config['topbar'],
 			'circle_categories' => self::expand_category_section( $config['circle_categories'] ),
 			'shop_by_category'  => self::expand_category_section( $config['shop_by_category'] ),
-			'banners'           => array(
-				'hero'       => self::expand_banners( $config['banners']['hero'] ),
-				'below_hero' => self::expand_banners( $config['banners']['below_hero'] ),
-			),
+			'banners'           => self::expand_banner_slots( $config['banners'] ),
 			'sections'          => $sections,
 			// Legacy mirrors so an older storefront build keeps rendering.
 			'new_arrivals'      => self::find_section( $sections, 'new_arrivals' ),
@@ -180,6 +177,33 @@ class Minikki_Home_Rest {
 	}
 
 	/**
+	 * Both banner slots, each gated by its own switch.
+	 *
+	 * A hidden slot ships as an EMPTY list as well as `*_enabled: false`. The
+	 * flags are what a current storefront reads, but emptying the list is what
+	 * makes an older build — which knows nothing about the flags — hide the
+	 * strip too. Absent flag means ON, matching the sanitiser.
+	 *
+	 * @param array $banners Config `banners` node.
+	 * @return array
+	 */
+	private static function expand_banner_slots( $banners ) {
+		$out = array();
+
+		foreach ( array( 'hero', 'below_hero' ) as $slot ) {
+			$flag    = $slot . '_enabled';
+			$enabled = array_key_exists( $flag, $banners ) ? (bool) $banners[ $flag ] : true;
+
+			$out[ $flag ] = $enabled;
+			$out[ $slot ] = $enabled ? self::expand_banners( $banners[ $slot ] ?? array() ) : array();
+		}
+
+		return $out;
+	}
+
+	/**
+	 * One slot's banner rows, skipping any row switched off individually.
+	 *
 	 * @param array $banners Config rows.
 	 * @return array
 	 */

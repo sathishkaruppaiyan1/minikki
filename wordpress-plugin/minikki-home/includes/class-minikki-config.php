@@ -45,8 +45,12 @@ class Minikki_Home_Config {
 				'items'   => array(),
 			),
 			'banners'           => array(
-				'hero'       => array(),
-				'below_hero' => array(),
+				// Whole-strip switches. Turning one off hides that slot on the
+				// storefront without deleting the banners inside it.
+				'hero_enabled'       => true,
+				'below_hero_enabled' => true,
+				'hero'               => array(),
+				'below_hero'         => array(),
 			),
 			// Ordered product rows. The first two are the original New Arrivals
 			// and Hot Sellers; any number of extra rows can be added in the
@@ -258,10 +262,20 @@ class Minikki_Home_Config {
 		}
 
 		// --- Banners ---------------------------------------------------------
-		$banners        = isset( $raw['banners'] ) && is_array( $raw['banners'] ) ? $raw['banners'] : array();
+		$banners = isset( $raw['banners'] ) && is_array( $raw['banners'] ) ? $raw['banners'] : array();
+
+		// The two *_enabled flags were added after the first release. A config
+		// saved before then has neither key, and treating "absent" as false
+		// would silently hide every banner on upgrade — so absent means ON.
+		$slot_enabled = static function ( $key ) use ( $banners ) {
+			return array_key_exists( $key, $banners ) ? (bool) $banners[ $key ] : true;
+		};
+
 		$out['banners'] = array(
-			'hero'       => self::sanitize_banner_items( $banners['hero'] ?? array() ),
-			'below_hero' => self::sanitize_banner_items( $banners['below_hero'] ?? array() ),
+			'hero_enabled'       => $slot_enabled( 'hero_enabled' ),
+			'below_hero_enabled' => $slot_enabled( 'below_hero_enabled' ),
+			'hero'               => self::sanitize_banner_items( $banners['hero'] ?? array() ),
+			'below_hero'         => self::sanitize_banner_items( $banners['below_hero'] ?? array() ),
 		);
 
 		// --- Product sections ------------------------------------------------

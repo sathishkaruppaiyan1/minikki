@@ -105,6 +105,12 @@ export interface HomeConfig {
   circle_categories: HomeCategorySection;
   shop_by_category: HomeCategorySection;
   banners: {
+    /**
+     * Whole-strip switches, toggled in the plugin's Banners tab. Optional: a
+     * plugin older than these flags omits them, and absent must read as ON.
+     */
+    hero_enabled?: boolean;
+    below_hero_enabled?: boolean;
     hero: HomeBannerItem[];
     below_hero: HomeBannerItem[];
   };

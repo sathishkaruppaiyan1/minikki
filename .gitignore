@@ -58,3 +58,6 @@ LPT9
 
 # Plugin build artifacts (zips are rebuilt from source for WordPress upload)
 wordpress-plugin/**/*.zip
+
+# Recovery script credentials
+scripts/recover.env
