@@ -743,7 +743,7 @@ const ProductDetail = () => {
                   BUY NOW
                 </Button>
                 <a
-                  href={`https://wa.me/917338733187?text=${encodeURIComponent(`Hi, I'm interested in "${product.name}" - ${typeof window !== "undefined" ? window.location.href : ""}`)}`}
+                  href={`https://wa.me/917010350709?text=${encodeURIComponent(`Hi, I'm interested in "${product.name}" - ${typeof window !== "undefined" ? window.location.href : ""}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 flex items-center justify-center bg-[#25D366] hover:bg-[#1DA851] text-white transition-colors"

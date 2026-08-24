@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Minikki Home Builder
- * Description: Controls the Minikki storefront homepage — announcement bar, circle categories, banners, Shop By Category, New Arrivals / Hot Sellers ordering, and photo reviews. Exposes everything on a single REST endpoint the React frontend reads.
- * Version:     1.1.0
+ * Description: Controls the Minikki storefront homepage — announcement bar, circle categories, banners, Shop By Category, unlimited product sections (by tag, by category, or hand-picked, as a slider or a grid), and photo reviews. Exposes everything on a single REST endpoint the React frontend reads.
+ * Version:     1.2.0
  * Author:      Minikki
  * License:     GPL-2.0-or-later
  * Text Domain: minikki-home
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Also used as the cache-buster for admin.js / admin.css — bump on every change
 // to those files or browsers will keep running the old admin screen.
-define( 'MINIKKI_HOME_VERSION', '1.1.0' );
+define( 'MINIKKI_HOME_VERSION', '1.2.0' );
 define( 'MINIKKI_HOME_FILE', __FILE__ );
 define( 'MINIKKI_HOME_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MINIKKI_HOME_URL', plugin_dir_url( __FILE__ ) );

@@ -48,21 +48,12 @@ class Minikki_Home_Config {
 				'hero'       => array(),
 				'below_hero' => array(),
 			),
-			'new_arrivals'      => array(
-				'enabled'       => true,
-				'title'         => 'New Arrivals',
-				'view_all_link' => '/collections/all',
-				'source'        => 'tag', // tag = keep existing "new-arrivals" tag behaviour, manual = exact order below
-				'tag'           => 'new-arrivals',
-				'product_ids'   => array(),
-			),
-			'hot_sellers'       => array(
-				'enabled'       => true,
-				'title'         => 'Hot Sellers',
-				'view_all_link' => '/collections/all',
-				'source'        => 'tag',
-				'tag'           => 'hot-sellers',
-				'product_ids'   => array(),
+			// Ordered product rows. The first two are the original New Arrivals
+			// and Hot Sellers; any number of extra rows can be added in the
+			// admin screen and they all render the same way.
+			'product_sections'  => array(
+				self::default_product_section( 'new_arrivals', 'New Arrivals', 'new-arrivals' ),
+				self::default_product_section( 'hot_sellers', 'Hot Sellers', 'hot-sellers' ),
 			),
 			'reviews'           => array(
 				'enabled'  => true,
@@ -85,6 +76,32 @@ class Minikki_Home_Config {
 	}
 
 	/**
+	 * Blank product row.
+	 *
+	 * @param string $id    Stable key used by the storefront and by the legacy mirrors.
+	 * @param string $title Heading.
+	 * @param string $tag   Default product tag for the automatic source.
+	 * @return array
+	 */
+	public static function default_product_section( $id = '', $title = 'Products', $tag = '' ) {
+		return array(
+			'id'            => '' !== $id ? $id : 'section_' . wp_generate_password( 6, false, false ),
+			'enabled'       => true,
+			'title'         => $title,
+			'view_all_link' => '/collections/all',
+			'layout'        => 'slider', // slider | grid
+			// tag      = every product carrying a tag
+			// category = every product in a WooCommerce category
+			// manual   = exactly the products picked below, in that order
+			'source'        => 'tag',
+			'tag'           => $tag,
+			'category_id'   => 0,
+			'product_ids'   => array(),
+			'limit'         => 12,
+		);
+	}
+
+	/**
 	 * Stored config merged over defaults (so new keys added by an update are
 	 * always present).
 	 *
@@ -100,12 +117,75 @@ class Minikki_Home_Config {
 		$config = self::defaults();
 
 		foreach ( $config as $section => $section_defaults ) {
-			if ( isset( $stored[ $section ] ) && is_array( $stored[ $section ] ) ) {
-				$config[ $section ] = array_merge( $section_defaults, $stored[ $section ] );
+			if ( ! isset( $stored[ $section ] ) || ! is_array( $stored[ $section ] ) ) {
+				continue;
 			}
+
+			// Ordered lists are replaced wholesale — array_merge would append
+			// the stored rows after the defaults instead of replacing them.
+			if ( self::is_list( $section_defaults ) ) {
+				$config[ $section ] = $stored[ $section ];
+				continue;
+			}
+
+			$config[ $section ] = array_merge( $section_defaults, $stored[ $section ] );
 		}
 
+		// Upgrade from the pre-1.2 shape, where the two rows were separate keys.
+		if ( ! isset( $stored['product_sections'] ) && ( isset( $stored['new_arrivals'] ) || isset( $stored['hot_sellers'] ) ) ) {
+			$config['product_sections'] = self::migrate_legacy_sections( $stored );
+		}
+
+		// Always hand back fully-formed rows, even if the option predates a field.
+		$config['product_sections'] = array_map(
+			static function ( $section ) {
+				return array_merge( self::default_product_section(), is_array( $section ) ? $section : array() );
+			},
+			(array) $config['product_sections']
+		);
+
 		return $config;
+	}
+
+	/**
+	 * Turns the old `new_arrivals` / `hot_sellers` option keys into two rows of
+	 * the new ordered list, preserving every setting the store already had.
+	 *
+	 * @param array $stored Raw stored option.
+	 * @return array
+	 */
+	private static function migrate_legacy_sections( $stored ) {
+		$sections = array();
+
+		$legacy = array(
+			'new_arrivals' => array( 'New Arrivals', 'new-arrivals' ),
+			'hot_sellers'  => array( 'Hot Sellers', 'hot-sellers' ),
+		);
+
+		foreach ( $legacy as $key => $meta ) {
+			$base = self::default_product_section( $key, $meta[0], $meta[1] );
+
+			if ( isset( $stored[ $key ] ) && is_array( $stored[ $key ] ) ) {
+				$base = array_merge( $base, $stored[ $key ] );
+				$base['id'] = $key; // Never let a stored value steal the built-in key.
+			}
+
+			$sections[] = $base;
+		}
+
+		return $sections;
+	}
+
+	/**
+	 * @param mixed $value Value to test.
+	 * @return bool True when $value is a zero-indexed list.
+	 */
+	private static function is_list( $value ) {
+		if ( ! is_array( $value ) ) {
+			return false;
+		}
+
+		return array() === $value || array_keys( $value ) === range( 0, count( $value ) - 1 );
 	}
 
 	/**
@@ -185,20 +265,10 @@ class Minikki_Home_Config {
 		);
 
 		// --- Product sections ------------------------------------------------
-		foreach ( array( 'new_arrivals', 'hot_sellers' ) as $key ) {
-			$section = isset( $raw[ $key ] ) && is_array( $raw[ $key ] ) ? $raw[ $key ] : array();
+		$out['product_sections'] = self::sanitize_product_sections( $raw['product_sections'] ?? array() );
 
-			$title = sanitize_text_field( $section['title'] ?? '' );
-			$tag   = sanitize_title( $section['tag'] ?? '' );
-
-			$out[ $key ] = array(
-				'enabled'       => ! empty( $section['enabled'] ),
-				'title'         => '' !== $title ? $title : $defaults[ $key ]['title'],
-				'view_all_link' => self::sanitize_link( $section['view_all_link'] ?? '' ),
-				'source'        => in_array( ( $section['source'] ?? '' ), array( 'tag', 'manual' ), true ) ? $section['source'] : 'tag',
-				'tag'           => '' !== $tag ? $tag : $defaults[ $key ]['tag'],
-				'product_ids'   => self::sanitize_id_list( $section['product_ids'] ?? array() ),
-			);
+		if ( empty( $out['product_sections'] ) ) {
+			$out['product_sections'] = $defaults['product_sections'];
 		}
 
 		// --- Reviews ----------------------------------------------------------
@@ -248,6 +318,59 @@ class Minikki_Home_Config {
 		);
 
 		return $out;
+	}
+
+	/**
+	 * Product rows. Array order is the order the storefront renders them in.
+	 *
+	 * Row ids must be unique — the storefront uses them as React keys and the
+	 * REST layer uses them to build the legacy `new_arrivals` / `hot_sellers`
+	 * mirrors.
+	 *
+	 * @param mixed $sections Raw rows.
+	 * @return array
+	 */
+	private static function sanitize_product_sections( $sections ) {
+		if ( ! is_array( $sections ) ) {
+			return array();
+		}
+
+		$clean = array();
+		$seen  = array();
+
+		foreach ( $sections as $section ) {
+			if ( ! is_array( $section ) ) {
+				continue;
+			}
+
+			$id = sanitize_key( $section['id'] ?? '' );
+
+			if ( '' === $id || in_array( $id, $seen, true ) ) {
+				$id = 'section_' . wp_generate_password( 6, false, false );
+			}
+			$seen[] = $id;
+
+			$title  = sanitize_text_field( $section['title'] ?? '' );
+			$tag    = sanitize_title( $section['tag'] ?? '' );
+			$source = in_array( ( $section['source'] ?? '' ), array( 'tag', 'manual', 'category' ), true )
+				? $section['source']
+				: 'tag';
+
+			$clean[] = array(
+				'id'            => $id,
+				'enabled'       => ! empty( $section['enabled'] ),
+				'title'         => '' !== $title ? $title : 'Products',
+				'view_all_link' => self::sanitize_link( $section['view_all_link'] ?? '' ),
+				'layout'        => in_array( ( $section['layout'] ?? '' ), array( 'slider', 'grid' ), true ) ? $section['layout'] : 'slider',
+				'source'        => $source,
+				'tag'           => $tag,
+				'category_id'   => max( 0, (int) ( $section['category_id'] ?? 0 ) ),
+				'product_ids'   => self::sanitize_id_list( $section['product_ids'] ?? array() ),
+				'limit'         => max( 1, min( 40, (int) ( $section['limit'] ?? 12 ) ) ),
+			);
+		}
+
+		return $clean;
 	}
 
 	/**

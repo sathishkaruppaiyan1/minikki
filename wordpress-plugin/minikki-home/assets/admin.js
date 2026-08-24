@@ -240,48 +240,102 @@
 		return html;
 	}
 
-	function renderProductSection(sectionPath, heading) {
-		var source = get(sectionPath + '.source');
-		var ids = get(sectionPath + '.product_ids') || [];
+	function categorySelect(path, selectedId) {
+		var options = '<option value="0">— choose a category —</option>';
+
+		categories.forEach(function (category) {
+			options += '<option value="' + attr(category.id) + '"' +
+				(String(category.id) === String(selectedId) ? ' selected' : '') + '>' +
+				esc(category.name) + (category.count ? ' (' + category.count + ')' : '') +
+				'</option>';
+		});
+
+		return '<select class="mk-input" data-type="number" data-path="' + attr(path) + '">' + options + '</select>';
+	}
+
+	/**
+	 * One product row. Rows are added, removed and reordered freely; the two
+	 * built-in ids (new_arrivals / hot_sellers) are editable like any other but
+	 * are labelled so they stay recognisable.
+	 */
+	function renderProductSection(section, index, total) {
+		var base = 'product_sections.' + index;
+		var source = section.source || 'tag';
+		var layout = section.layout || 'slider';
+		var ids = section.product_ids || [];
+		var builtIn = section.id === 'new_arrivals' || section.id === 'hot_sellers';
 
 		var html =
-			'<div class="mk-card">' +
-			'<h3>' + esc(heading) + '</h3>' +
+			'<div class="mk-card mk-section-card">' +
+			'<div class="mk-section-head">' +
+			'<h3>' + esc(section.title || 'Untitled section') +
+			(builtIn ? ' <span class="mk-badge">built-in</span>' : '') +
+			'</h3>' +
+			'<div class="mk-section-tools">' +
+			'<button type="button" class="button mk-move-section" data-index="' + index + '" data-dir="-1"' +
+			(index === 0 ? ' disabled' : '') + '>↑</button>' +
+			'<button type="button" class="button mk-move-section" data-index="' + index + '" data-dir="1"' +
+			(index === total - 1 ? ' disabled' : '') + '>↓</button>' +
+			'<button type="button" class="button-link-delete mk-remove-section" data-index="' + index + '">Remove</button>' +
+			'</div>' +
+			'</div>' +
+
 			'<div class="mk-row-inline">' +
-			checkbox(sectionPath + '.enabled', 'Show this section') +
-			'<label class="mk-field">Heading' + textInput(sectionPath + '.title', heading) + '</label>' +
-			'<label class="mk-field">"View all" link' + textInput(sectionPath + '.view_all_link', '/collections/all') + '</label>' +
+			checkbox(base + '.enabled', 'Show this section') +
+			'<label class="mk-field">Heading' + textInput(base + '.title', 'Section heading') + '</label>' +
+			'<label class="mk-field">"View all" link' + textInput(base + '.view_all_link', '/collections/all') + '</label>' +
+			'<label class="mk-field">Layout' +
+			'<select class="mk-input" data-path="' + attr(base + '.layout') + '">' +
+			'<option value="slider"' + (layout === 'slider' ? ' selected' : '') + '>Slider (auto-scrolling)</option>' +
+			'<option value="grid"' + (layout === 'grid' ? ' selected' : '') + '>Grid</option>' +
+			'</select></label>' +
 			'<label class="mk-field">Products' +
-			'<select class="mk-input" data-path="' + attr(sectionPath + '.source') + '">' +
+			'<select class="mk-input" data-path="' + attr(base + '.source') + '">' +
 			'<option value="tag"' + (source === 'tag' ? ' selected' : '') + '>By product tag (automatic)</option>' +
+			'<option value="category"' + (source === 'category' ? ' selected' : '') + '>By category (automatic)</option>' +
 			'<option value="manual"' + (source === 'manual' ? ' selected' : '') + '>Choose and order manually</option>' +
 			'</select></label>';
 
 		if (source === 'tag') {
-			html += '<label class="mk-field">Tag slug' + textInput(sectionPath + '.tag', 'new-arrivals') + '</label>';
+			html += '<label class="mk-field">Tag slug' + textInput(base + '.tag', 'new-arrivals') + '</label>';
+		}
+
+		if (source === 'category') {
+			html += '<label class="mk-field">Category' + categorySelect(base + '.category_id', section.category_id) + '</label>';
+		}
+
+		if (source !== 'manual') {
+			html += '<label class="mk-field mk-field-narrow">How many' +
+				'<input type="number" min="1" max="40" class="mk-input" data-type="number" data-path="' +
+				attr(base + '.limit') + '" value="' + attr(section.limit || 12) + '" /></label>';
 		}
 
 		html += '</div>';
 
-		if (source !== 'manual') {
-			html += '<p class="mk-hint">Switch to <strong>Choose and order manually</strong> to pin exact products in an exact order.</p></div>';
+		if (source === 'tag') {
+			html += '<p class="mk-hint">Every published product carrying this tag.</p></div>';
 			return html;
 		}
 
-		html += '<div class="mk-list mk-product-list" data-sortable="' + attr(sectionPath + '.product_ids') + '">';
+		if (source === 'category') {
+			html += '<p class="mk-hint">Every published product in this category. Switch to <strong>Choose and order manually</strong> to control the exact order.</p></div>';
+			return html;
+		}
 
-		ids.forEach(function (id, index) {
+		html += '<div class="mk-list mk-product-list" data-sortable="' + attr(base + '.product_ids') + '">';
+
+		ids.forEach(function (id, rowIndex) {
 			var product = productCache[id];
 
 			html +=
-				'<div class="mk-row mk-product-row" data-index="' + index + '">' +
+				'<div class="mk-row mk-product-row" data-index="' + rowIndex + '">' +
 				rowHandle() +
 				'<span class="mk-product-thumb">' +
 				(product && product.image ? '<img src="' + attr(product.image) + '" alt="" />' : '') +
 				'</span>' +
 				'<span class="mk-grow">' + esc(product ? product.name : 'Product #' + id) + '</span>' +
 				'<span class="mk-product-meta">' + esc(product ? product.price : '') + '</span>' +
-				removeButton(sectionPath + '.product_ids', index) +
+				removeButton(base + '.product_ids', rowIndex) +
 				'</div>';
 		});
 
@@ -289,12 +343,32 @@
 
 		html +=
 			'<div class="mk-add-row">' +
-			'<input type="search" class="mk-input mk-product-search" placeholder="Search products by name or SKU…" data-target="' + attr(sectionPath + '.product_ids') + '" />' +
+			'<input type="search" class="mk-input mk-product-search" placeholder="Search products by name or SKU…" data-target="' + attr(base + '.product_ids') + '" />' +
 			'<div class="mk-search-results"></div>' +
 			'</div>' +
 			'</div>';
 
 		return html;
+	}
+
+	function renderProductSections() {
+		var sections = get('product_sections') || [];
+
+		var html =
+			'<div class="mk-card mk-intro">' +
+			'<h3>Product sections</h3>' +
+			'<p class="mk-hint">Rows of products on the homepage, shown top to bottom in this order. ' +
+			'Add as many as you like — each one can pull products from a tag, from a category, or from a list you pick by hand.</p>' +
+			'<button type="button" class="button button-secondary mk-add-section">+ Add product section</button>' +
+			'</div>';
+
+		if (!sections.length) {
+			return html + '<div class="mk-card"><p class="mk-hint">No product sections yet.</p></div>';
+		}
+
+		return html + sections.map(function (section, index) {
+			return renderProductSection(section, index, sections.length);
+		}).join('');
 	}
 
 	function renderReviews() {
@@ -484,10 +558,7 @@
 			)
 		);
 
-		$('[data-panel="products"]').html(
-			renderProductSection('new_arrivals', 'New Arrivals') +
-			renderProductSection('hot_sellers', 'Hot Sellers')
-		);
+		$('[data-panel="products"]').html(renderProductSections());
 
 		$('[data-panel="reviews"]').html(renderReviews());
 
@@ -601,10 +672,11 @@
 
 	/** Pull names/thumbs for products already saved in either section. */
 	function loadSavedProducts() {
-		var ids = [].concat(
-			get('new_arrivals.product_ids') || [],
-			get('hot_sellers.product_ids') || []
-		);
+		var ids = [];
+
+		(get('product_sections') || []).forEach(function (section) {
+			ids = ids.concat(section.product_ids || []);
+		});
 
 		if (!ids.length) {
 			return $.Deferred().resolve().promise();
@@ -646,9 +718,13 @@
 
 			set(path, value);
 
-			// Switching auto/manual changes which controls are relevant.
+			// Switching the source changes which controls are relevant. The
+			// heading is re-rendered too so the card title tracks what you type.
 			if (/\.(source)$/.test(path)) {
 				render();
+			} else if (/^product_sections\.\d+\.title$/.test(path)) {
+				$field.closest('.mk-section-card').find('.mk-section-head h3').contents().first()
+					.replaceWith(document.createTextNode($field.val() || 'Untitled section'));
 			}
 		})
 
@@ -745,6 +821,60 @@
 			});
 
 			set('mobile_menu.items', list);
+			render();
+		})
+
+		.on('click', '.mk-add-section', function () {
+			var list = get('product_sections') || [];
+
+			list.push({
+				id: 'section_' + Math.random().toString(36).slice(2, 8),
+				enabled: true,
+				title: 'New section',
+				view_all_link: '/collections/all',
+				layout: 'slider',
+				source: 'tag',
+				tag: '',
+				category_id: 0,
+				product_ids: [],
+				limit: 12
+			});
+
+			set('product_sections', list);
+			render();
+		})
+
+		.on('click', '.mk-remove-section', function () {
+			var index = parseInt($(this).data('index'), 10);
+			var list = get('product_sections') || [];
+			var section = list[index];
+
+			if (!section) {
+				return;
+			}
+
+			if (!window.confirm('Remove "' + (section.title || 'this section') + '" from the homepage?')) {
+				return;
+			}
+
+			list.splice(index, 1);
+			set('product_sections', list);
+			render();
+		})
+
+		.on('click', '.mk-move-section', function () {
+			var index = parseInt($(this).data('index'), 10);
+			var target = index + parseInt($(this).data('dir'), 10);
+			var list = get('product_sections') || [];
+
+			if (target < 0 || target >= list.length) {
+				return;
+			}
+
+			var moved = list.splice(index, 1)[0];
+			list.splice(target, 0, moved);
+
+			set('product_sections', list);
 			render();
 		})
 

@@ -80,8 +80,8 @@ const Contact = () => {
     {
       icon: <Phone className="h-5 w-5" />,
       title: "WhatsApp",
-      lines: ["+91 73387 33187"],
-      link: "https://wa.me/917338733187",
+      lines: ["+91 70103 50709"],
+      link: "https://wa.me/917010350709",
       linkLabel: "Chat on WhatsApp",
     },
     {
@@ -148,7 +148,7 @@ const Contact = () => {
 
               {/* WhatsApp CTA */}
               <a
-                href="https://wa.me/918939048873?text=Hi%2C%20I%20have%20a%20query%20about%20Black%20Lovers%20products"
+                href="https://wa.me/917010350709?text=Hi%2C%20I%20have%20a%20query%20about%20Black%20Lovers%20products"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-[#25D366] text-white rounded-lg font-medium hover:bg-[#1fb855] transition-colors"

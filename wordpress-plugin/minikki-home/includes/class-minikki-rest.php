@@ -90,6 +90,12 @@ class Minikki_Home_Rest {
 	public static function get_home() {
 		$config = Minikki_Home_Config::get();
 
+		$sections = array();
+
+		foreach ( (array) $config['product_sections'] as $section ) {
+			$sections[] = self::expand_product_section( $section );
+		}
+
 		$payload = array(
 			'version'           => MINIKKI_HOME_VERSION,
 			'updated_at'        => (int) get_option( MINIKKI_HOME_OPTION . '_updated_at', 0 ),
@@ -100,8 +106,10 @@ class Minikki_Home_Rest {
 				'hero'       => self::expand_banners( $config['banners']['hero'] ),
 				'below_hero' => self::expand_banners( $config['banners']['below_hero'] ),
 			),
-			'new_arrivals'      => self::expand_product_section( $config['new_arrivals'] ),
-			'hot_sellers'       => self::expand_product_section( $config['hot_sellers'] ),
+			'sections'          => $sections,
+			// Legacy mirrors so an older storefront build keeps rendering.
+			'new_arrivals'      => self::find_section( $sections, 'new_arrivals' ),
+			'hot_sellers'       => self::find_section( $sections, 'hot_sellers' ),
 			'reviews'           => self::expand_reviews( $config['reviews'] ),
 			'mobile_menu'       => self::expand_mobile_menu( $config['mobile_menu'] ),
 		);
@@ -204,9 +212,10 @@ class Minikki_Home_Rest {
 	 * @return array
 	 */
 	private static function expand_product_section( $section ) {
+		$source      = $section['source'] ?? 'tag';
 		$product_ids = array();
 
-		if ( 'manual' === ( $section['source'] ?? 'tag' ) ) {
+		if ( 'manual' === $source ) {
 			foreach ( (array) ( $section['product_ids'] ?? array() ) as $product_id ) {
 				$product_id = (int) $product_id;
 
@@ -217,13 +226,60 @@ class Minikki_Home_Rest {
 			}
 		}
 
+		// The storefront queries Woo by category slug, so resolve the picked
+		// term here rather than making the browser do a second round trip.
+		$category_id   = (int) ( $section['category_id'] ?? 0 );
+		$category_slug = '';
+
+		if ( 'category' === $source && $category_id > 0 ) {
+			$term = get_term( $category_id, 'product_cat' );
+
+			if ( $term && ! is_wp_error( $term ) ) {
+				$category_slug = $term->slug;
+			} else {
+				$category_id = 0; // Category was deleted in Woo.
+			}
+		}
+
 		return array(
+			'id'            => $section['id'] ?? '',
 			'enabled'       => ! empty( $section['enabled'] ),
 			'title'         => $section['title'] ?? '',
 			'view_all_link' => '' !== ( $section['view_all_link'] ?? '' ) ? $section['view_all_link'] : '/collections/all',
-			'source'        => $section['source'] ?? 'tag',
+			'layout'        => in_array( ( $section['layout'] ?? '' ), array( 'slider', 'grid' ), true ) ? $section['layout'] : 'slider',
+			'source'        => $source,
 			'tag'           => $section['tag'] ?? '',
+			'category_id'   => $category_id,
+			'category_slug' => $category_slug,
 			'product_ids'   => $product_ids,
+			'limit'         => max( 1, min( 40, (int) ( $section['limit'] ?? 12 ) ) ),
+		);
+	}
+
+	/**
+	 * @param array  $sections Expanded rows.
+	 * @param string $id       Row id to look for.
+	 * @return array The matching row, or a disabled placeholder.
+	 */
+	private static function find_section( $sections, $id ) {
+		foreach ( $sections as $section ) {
+			if ( ( $section['id'] ?? '' ) === $id ) {
+				return $section;
+			}
+		}
+
+		return array(
+			'id'            => $id,
+			'enabled'       => false,
+			'title'         => '',
+			'view_all_link' => '/collections/all',
+			'layout'        => 'slider',
+			'source'        => 'tag',
+			'tag'           => '',
+			'category_id'   => 0,
+			'category_slug' => '',
+			'product_ids'   => array(),
+			'limit'         => 12,
 		);
 	}
 

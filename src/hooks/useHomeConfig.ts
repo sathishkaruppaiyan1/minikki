@@ -48,12 +48,21 @@ export interface HomeBannerItem {
 }
 
 export interface HomeProductSection {
+  /** Stable key. "new_arrivals" / "hot_sellers" for the two built-in rows. */
+  id: string;
   enabled: boolean;
   title: string;
   view_all_link: string;
-  source: "tag" | "manual";
+  /** How the row is presented on the homepage. */
+  layout: "slider" | "grid";
+  source: "tag" | "manual" | "category";
   tag: string;
+  /** Resolved by the plugin so the storefront can query Woo directly. */
+  category_slug: string;
+  category_id: number;
   product_ids: number[];
+  /** Cap for the automatic sources (tag / category). */
+  limit: number;
 }
 
 export interface HomeReviewItem {
@@ -99,6 +108,12 @@ export interface HomeConfig {
     hero: HomeBannerItem[];
     below_hero: HomeBannerItem[];
   };
+  /**
+   * Ordered product rows, editable in the plugin. Always contains the two
+   * built-in rows first; anything after them was added in WordPress.
+   */
+  sections: HomeProductSection[];
+  /** Legacy mirrors of the two built-in rows, kept for older storefront builds. */
   new_arrivals: HomeProductSection;
   hot_sellers: HomeProductSection;
   reviews: HomeReviewSection;

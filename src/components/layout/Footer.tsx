@@ -64,19 +64,19 @@ const ContactInfo = () => (
   <div className="space-y-3 text-base text-gray-300">
     <p className="font-semibold">
       Phone:{" "}
-      <a href="tel:+917338733187" className="hover:text-white transition-colors">
-        +91 73387 33187
+      <a href="tel:+917010350709" className="hover:text-white transition-colors">
+        +91 70103 50709
       </a>
     </p>
     <p className="font-semibold">
       Whatsapp:{" "}
       <a
-        href="https://wa.me/917338733187"
+        href="https://wa.me/917010350709"
         target="_blank"
         rel="noopener noreferrer"
         className="hover:text-white transition-colors"
       >
-        +91 73387 33187
+        +91 70103 50709
       </a>
     </p>
     <p className="font-semibold break-all">
@@ -103,7 +103,7 @@ const SocialLinks = () => (
       <IconInstagram />
     </a>
     <a
-      href="https://wa.me/917338733187"
+      href="https://wa.me/917010350709"
       target="_blank"
       rel="noopener noreferrer"
       className="hover:text-primary transition-colors"

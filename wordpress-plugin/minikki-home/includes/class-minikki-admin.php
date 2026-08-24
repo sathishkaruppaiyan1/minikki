@@ -83,7 +83,7 @@ class Minikki_Home_Admin {
 			'circle_categories' => __( 'Circle Categories', 'minikki-home' ),
 			'banners'           => __( 'Banners', 'minikki-home' ),
 			'shop_by_category'  => __( 'Shop By Category', 'minikki-home' ),
-			'products'          => __( 'New Arrivals / Hot Sellers', 'minikki-home' ),
+			'products'          => __( 'Product Sections', 'minikki-home' ),
 			'reviews'           => __( 'Reviews', 'minikki-home' ),
 			'mobile_menu'       => __( 'Mobile Menu', 'minikki-home' ),
 		);
