@@ -13,6 +13,12 @@ interface HomeProductRowProps {
   section: HomeProductSection;
   /** Preload this row's first images — set on the topmost row only. */
   priority?: boolean;
+  /**
+   * `home_config.updated_at`, bumped by WordPress on every Home Builder save.
+   * Pins this row's data to the config version so visitors re-fetch only after
+   * the carousel is actually edited, rather than on a timer.
+   */
+  configVersion?: number | string;
 }
 
 const RowSkeleton = () => (
@@ -35,24 +41,29 @@ const RowSkeleton = () => (
  * Each row owns its own data fetching so the plugin can add or remove rows
  * without changing the number of hooks the page runs.
  */
-const HomeProductRow = ({ section, priority = false }: HomeProductRowProps) => {
+const HomeProductRow = ({ section, priority = false, configVersion }: HomeProductRowProps) => {
   const limit = section.limit > 0 ? section.limit : 8;
 
   // Each source is mutually exclusive. A row whose source is not usable yet
   // (manual with nothing picked, category with no category) renders nothing
   // rather than silently falling back to another row's products.
-  const manualIds = section.source === "manual" ? section.product_ids : [];
-  const useManual = section.source === "manual" && manualIds.length > 0;
-  const useCategory = section.source === "category" && !!section.category_slug;
-  const useTag = section.source === "tag" && !!section.tag;
+  // Nothing fetches until the homepage config has settled and handed us a
+  // version; see the configVersion comment in Index.tsx.
+  const versionReady = configVersion !== undefined;
 
-  const manual = useWooCommerceProductsByIds(manualIds, useManual);
+  const manualIds = section.source === "manual" ? section.product_ids : [];
+  const useManual = versionReady && section.source === "manual" && manualIds.length > 0;
+  const useCategory = versionReady && section.source === "category" && !!section.category_slug;
+  const useTag = versionReady && section.source === "tag" && !!section.tag;
+
+  const manual = useWooCommerceProductsByIds(manualIds, useManual, configVersion);
 
   const byCategory = useWooCommerceProducts({
     perPage: limit,
     category: section.category_slug,
     skipVariations: true,
     enabled: useCategory,
+    homeVersion: configVersion,
   });
 
   const byTag = useWooCommerceProducts({
@@ -60,6 +71,7 @@ const HomeProductRow = ({ section, priority = false }: HomeProductRowProps) => {
     tag: section.tag,
     skipVariations: true,
     enabled: useTag,
+    homeVersion: configVersion,
   });
 
   const active = useManual
@@ -103,7 +115,10 @@ const HomeProductRow = ({ section, priority = false }: HomeProductRowProps) => {
   if (!section.enabled) return null;
 
   if (products.length === 0) {
-    return active.isLoading ? <RowSkeleton /> : null;
+    // While the config version is still resolving the queries are disabled, so
+    // React Query reports isLoading false. Without the versionReady check the
+    // row would render nothing and then pop in, shifting the page.
+    return !versionReady || active.isLoading ? <RowSkeleton /> : null;
   }
 
   if (section.layout === "grid") {

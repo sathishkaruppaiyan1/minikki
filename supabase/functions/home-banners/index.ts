@@ -5,6 +5,9 @@ const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+// This function sent no Cache-Control at all, so every homepage view re-hit it
+// (~22K invocations/day). Banners change when the merchant edits the homepage.
+const cacheHeaders = { ...corsHeaders, 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' };
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -111,7 +114,7 @@ serve(async (req) => {
 
         return new Response(
             JSON.stringify({ banners }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { headers: { ...cacheHeaders, 'Content-Type': 'application/json' } }
         );
 
     } catch (error) {

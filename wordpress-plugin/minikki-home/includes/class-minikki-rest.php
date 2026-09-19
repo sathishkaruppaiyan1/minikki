@@ -99,6 +99,9 @@ class Minikki_Home_Rest {
 		$payload = array(
 			'version'           => MINIKKI_HOME_VERSION,
 			'updated_at'        => (int) get_option( MINIKKI_HOME_OPTION . '_updated_at', 0 ),
+			// Bumped on price edits; the storefront keys its homepage cache on the
+			// later of the two so a price change invalidates cached rows.
+			'catalog_updated_at' => Minikki_Home_Config::catalog_stamp(),
 			'topbar'            => $config['topbar'],
 			'circle_categories' => self::expand_category_section( $config['circle_categories'] ),
 			'shop_by_category'  => self::expand_category_section( $config['shop_by_category'] ),

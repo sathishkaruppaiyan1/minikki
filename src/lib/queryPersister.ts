@@ -13,13 +13,58 @@ const NON_PERSISTABLE_PREFIXES = [
   'woocommerce-product-id-fast',
   'woocommerce-product-gallery',
   'woocommerce-products-infinite',
-  'woocommerce-products-by-ids',
   // Homepage config resolves to null when the WordPress plugin is unreachable.
   // Persisting that null would restore it as *fresh* on every load — and because
   // the cache timestamp is rewritten on each persist, it would never expire and
   // the app would stop asking WordPress entirely. Always fetch this one.
   'minikki-home-config',
 ];
+
+/**
+ * Homepage rows, keyed as [prefix, home_config.updated_at, ...]. These are
+ * invalidated by the version in the key — WordPress bumps updated_at on every
+ * Home Builder save — so MAX_AGE must not apply to them. Ageing them out on a
+ * timer is exactly the per-visitor refetch this is meant to eliminate.
+ */
+const VERSION_PINNED_PREFIXES = ['home-products-by-ids', 'home-row-products'];
+
+const isVersionPinned = (queryKey: unknown): boolean =>
+  Array.isArray(queryKey) && VERSION_PINNED_PREFIXES.includes(String(queryKey[0]));
+
+/**
+ * Keep only the newest version of each pinned row and drop superseded ones, so
+ * localStorage does not accumulate a full set of rows for every past edit.
+ * updated_at is a unix timestamp, so the largest value is the current config.
+ */
+const pruneSupersededVersions = (queries: Record<string, unknown>): Record<string, unknown> => {
+  let newest = -Infinity;
+  for (const keyStr of Object.keys(queries)) {
+    try {
+      const key = JSON.parse(keyStr);
+      if (!isVersionPinned(key)) continue;
+      const version = Number(key[1]);
+      if (Number.isFinite(version) && version > newest) newest = version;
+    } catch {
+      // Unparseable key; left for the caller to skip.
+    }
+  }
+  if (newest === -Infinity) return queries;
+
+  const kept: Record<string, unknown> = {};
+  for (const [keyStr, value] of Object.entries(queries)) {
+    try {
+      const key = JSON.parse(keyStr);
+      if (isVersionPinned(key)) {
+        const version = Number(key[1]);
+        if (Number.isFinite(version) && version !== newest) continue;
+      }
+      kept[keyStr] = value;
+    } catch {
+      // Skip unparseable entries entirely.
+    }
+  }
+  return kept;
+};
 
 interface CacheData {
   queries: Record<string, any>;
@@ -52,7 +97,16 @@ export const persistQueryCache = (queryClient: any) => {
       }
     });
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cacheData));
+    cacheData.queries = pruneSupersededVersions(cacheData.queries);
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cacheData));
+    } catch (quotaError) {
+      // Homepage rows carry full product objects and can be large. If we blow the
+      // quota, drop the persisted cache rather than leaving a half-written blob.
+      console.warn('Query cache too large to persist; clearing.', quotaError);
+      localStorage.removeItem(STORAGE_KEY);
+    }
   } catch (error) {
     console.warn('Failed to persist query cache:', error);
   }
@@ -64,17 +118,24 @@ export const restoreQueryCache = (queryClient: any) => {
     if (!cached) return;
 
     const cacheData: CacheData = JSON.parse(cached);
-    
-    // Check if cache is too old
-    if (cacheData.timestamp && Date.now() - cacheData.timestamp > MAX_AGE) {
-      localStorage.removeItem(STORAGE_KEY);
-      return;
-    }
 
-    // Restore queries
-    Object.entries(cacheData.queries).forEach(([keyStr, value]: [string, any]) => {
+    // MAX_AGE is applied per entry, not to the blob as a whole. The blob-level
+    // timestamp is rewritten on every persist, so a global check expired data
+    // based on when the tab was last open rather than when it was fetched — and
+    // it discarded version-pinned rows that were still perfectly valid.
+    const queries = pruneSupersededVersions(cacheData.queries);
+
+    Object.entries(queries).forEach(([keyStr, value]: [string, any]) => {
       try {
         const queryKey = JSON.parse(keyStr);
+
+        if (!isVersionPinned(queryKey)) {
+          const fetchedAt = Number(value?.dataUpdatedAt);
+          // Unknown age is treated as too old: better one refetch than serving
+          // stock data of unknown vintage.
+          if (!Number.isFinite(fetchedAt) || Date.now() - fetchedAt > MAX_AGE) return;
+        }
+
         queryClient.setQueryData(queryKey, value.data);
       } catch (e) {
         // Skip invalid query keys

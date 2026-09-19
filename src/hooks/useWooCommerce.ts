@@ -24,6 +24,14 @@ interface ProductsParams {
   skipVariations?: boolean; // Skip variation processing for faster list views
   enabled?: boolean; // Whether to enable the query
   status?: string; // Filter by product status (publish, draft, etc.)
+  /**
+   * Homepage rows only. Pass `home_config.updated_at`, which WordPress bumps on
+   * every save of the Minikki Home Builder config. Supplying it switches this
+   * query to change-based invalidation: the data never expires on a timer and is
+   * only refetched when you actually edit the carousel. Leave it undefined
+   * everywhere else (search, recommendations) to keep normal time-based caching.
+   */
+  homeVersion?: number | string;
 }
 
 export interface Review {
@@ -87,10 +95,15 @@ export interface CreateOrderData {
 }
 
 export const useWooCommerceProducts = (params: ProductsParams = {}) => {
-  const { category, perPage = 20, page = 1, search, tag, skipVariations = false, enabled = true, status = 'publish' } = params;
+  const { category, perPage = 20, page = 1, search, tag, skipVariations = false, enabled = true, status = 'publish', homeVersion } = params;
+  const pinned = homeVersion !== undefined;
 
   return useQuery({
-    queryKey: ["woocommerce-products", category, perPage, page, search, tag, skipVariations, status],
+    // A distinct key prefix for homepage rows: it keeps them out of the
+    // persister's stock-sensitive skip list, so they survive reloads too.
+    queryKey: pinned
+      ? ["home-row-products", homeVersion, category, perPage, page, search, tag, skipVariations, status]
+      : ["woocommerce-products", category, perPage, page, search, tag, skipVariations, status],
     enabled,
     queryFn: async (): Promise<ProductsResponse> => {
       const queryParams = new URLSearchParams();
@@ -126,10 +139,11 @@ export const useWooCommerceProducts = (params: ProductsParams = {}) => {
       const jsonData = await response.json();
       return jsonData;
     },
-    staleTime: 10_000, // 10 seconds - matches edge function cache TTL, prevents refetch on every mount
-    refetchOnWindowFocus: true, // Refresh when user returns
-    gcTime: 1000 * 60 * 2, // Keep in cache for 2 min
-    refetchOnMount: true, // Skips refetch if data is fresh (within staleTime)
+    // Pinned rows never go stale on a timer; the key changes when you edit.
+    staleTime: pinned ? Infinity : 1000 * 60 * 5,
+    refetchOnWindowFocus: false, // Mobile fires focus constantly; was a major invocation source
+    gcTime: pinned ? Infinity : 1000 * 60 * 30,
+    refetchOnMount: false,
     notifyOnChangeProps: ['data', 'error'],
   });
 };
@@ -140,11 +154,16 @@ export const useWooCommerceProducts = (params: ProductsParams = {}) => {
  * WordPress "Minikki Home Builder" plugin — WooCommerce ignores the order of
  * `include`, so we re-sort here.
  */
-export const useWooCommerceProductsByIds = (ids: number[], enabled = true) => {
+export const useWooCommerceProductsByIds = (
+  ids: number[],
+  enabled = true,
+  /** `home_config.updated_at` — see ProductsParams.homeVersion. */
+  homeVersion?: number | string,
+) => {
   const idsKey = ids.join(",");
 
   return useQuery({
-    queryKey: ["woocommerce-products-by-ids", idsKey],
+    queryKey: ["home-products-by-ids", homeVersion ?? "fallback", idsKey],
     enabled: enabled && ids.length > 0,
     queryFn: async (): Promise<Product[]> => {
       if (ids.length === 0) return [];
@@ -187,10 +206,17 @@ export const useWooCommerceProductsByIds = (ids: number[], enabled = true) => {
         .map((id) => byId.get(String(id)))
         .filter((product): product is Product => !!product);
     },
-    staleTime: 10_000,
-    gcTime: 1000 * 60 * 2,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    // Drives the homepage product rows (one call per row, ~10 rows per view).
+    // This hook alone was ~228K invocations/day; the old 10s staleTime plus focus
+    // and mount refetching meant each visitor re-fetched every row ~5.7 times.
+    //
+    // Now the row is pinned to the homepage config version, so it is fetched once
+    // per visitor per edit and then served from cache (including across reloads,
+    // via the localStorage persister) until the carousel actually changes.
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 };
 
@@ -240,10 +266,10 @@ export const useWooCommerceProductsInfinite = (params: Omit<ProductsParams, 'pag
       return undefined; // No more pages
     },
     initialPageParam: 1,
-    staleTime: 10_000, // 10 seconds - matches edge function cache TTL
-    refetchOnWindowFocus: true, // Refresh when user returns
-    gcTime: 1000 * 60 * 2, // Keep in cache for 2 min
-    refetchOnMount: true, // Skips refetch if data is fresh (within staleTime)
+    staleTime: 1000 * 60 * 5, // 5 min
+    refetchOnWindowFocus: false,
+    gcTime: 1000 * 60 * 30, // Keep in cache for 30 min
+    refetchOnMount: false,
   });
 };
 
@@ -347,9 +373,10 @@ export const useWooCommercePaymentGateways = () => {
       console.log("Payment gateways response:", data);
       return data.gateways || [];
     },
-    staleTime: 0, // Always fetch fresh
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    // Enabled gateways change when you reconfigure WooCommerce, not per checkout.
+    staleTime: 1000 * 60 * 10, // 10 min
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -433,10 +460,13 @@ export const useWooCommerceProductById = (id: string) => {
       return product;
     },
     enabled: !!id,
-    staleTime: 0, // Always stale - refetch for fresh stock data
-    gcTime: 1000 * 60 * 2, // Keep in cache 2 min
+    // Product detail stays freshness-sensitive: this is where someone decides to
+    // add to cart. staleTime 30s only collapses the duplicate burst on mount;
+    // returning to the tab still revalidates stock.
+    staleTime: 30_000,
+    gcTime: 1000 * 60 * 10, // Keep in cache 10 min
     refetchOnWindowFocus: true, // Refresh when user returns
-    refetchOnMount: 'always', // Always refetch on mount for fresh stock
+    refetchOnMount: true,
   });
 };
 
@@ -473,10 +503,12 @@ export const useWooCommerceProductGallery = (id: string, productType?: string) =
     },
     // Only fetch gallery for variable products
     enabled: !!id && productType === 'variable',
-    staleTime: 0, // Always stale - refetch for fresh stock data
-    gcTime: 1000 * 60 * 2, // Keep in cache 2 min
-    refetchOnWindowFocus: true, // Refresh when user returns
-    refetchOnMount: 'always', // Always refetch for fresh stock
+    // Variation images rarely change; the stock that matters is on the parent
+    // product query above, which still revalidates.
+    staleTime: 1000 * 60 * 5, // 5 min
+    gcTime: 1000 * 60 * 30, // Keep in cache 30 min
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 };
 
@@ -519,10 +551,12 @@ export const useWooCommerceReviews = (productId: string | number) => {
       }
     },
     enabled: !!productId,
-    staleTime: 0, // Always refetch for fresh reviews
-    gcTime: 1000 * 60 * 5, // Keep in cache 5 min
-    refetchOnWindowFocus: true, // Refresh when user returns
-    refetchOnMount: true, // Always refetch for latest approved reviews
+    // Reviews need moderation approval before they appear, so sub-minute
+    // freshness was never achievable anyway.
+    staleTime: 1000 * 60 * 5, // 5 min
+    gcTime: 1000 * 60 * 30, // Keep in cache 30 min
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     placeholderData: (previousData) => previousData,
   });
 };
@@ -707,10 +741,11 @@ export const useWordPressPage = (slug: string) => {
       return data.pages?.[0] || null;
     },
     enabled: !!slug,
-    staleTime: 0, // Always refetch for fresh content
-    gcTime: 1000 * 60 * 5, // Keep in cache 5 min
-    refetchOnWindowFocus: true, // Refresh when user returns
-    refetchOnMount: true, // Always refetch on mount for latest content
+    // CMS page content changes on publish, not per view.
+    staleTime: 1000 * 60 * 10, // 10 min
+    gcTime: 1000 * 60 * 60, // Keep in cache 1 hour
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     placeholderData: (previousData) => previousData,
   });
 };
@@ -743,10 +778,11 @@ export const useWordPressPages = () => {
       const data = await response.json();
       return data.pages || [];
     },
-    staleTime: 0, // Always refetch for fresh content
-    gcTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    // CMS page content changes on publish, not per view.
+    staleTime: 1000 * 60 * 10, // 10 min
+    gcTime: 1000 * 60 * 60, // Keep in cache 1 hour
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     placeholderData: (previousData) => previousData,
   });
 };
@@ -827,10 +863,11 @@ export const useWordPressPageBySlugs = (slugs: string[]) => {
       return data.pages?.[0] || null;
     },
     enabled: slugs.length > 0,
-    staleTime: 0, // Always refetch for fresh content
-    gcTime: 1000 * 60 * 5, // Keep in cache 5 min
-    refetchOnWindowFocus: true, // Refresh when user returns
-    refetchOnMount: true, // Always refetch on mount for latest content
+    // CMS page content changes on publish, not per view.
+    staleTime: 1000 * 60 * 10, // 10 min
+    gcTime: 1000 * 60 * 60, // Keep in cache 1 hour
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     placeholderData: (previousData) => previousData,
   });
 };
@@ -873,9 +910,10 @@ export const useHomeBanners = () => {
       const data = await response.json();
       return data.banners || [];
     },
-    staleTime: 0, // Always refetch for fresh banner data
+    // Banners change when the merchant edits the homepage config.
+    staleTime: 1000 * 60 * 10, // 10 min
     gcTime: 1000 * 60 * 60, // 1 hour
-    refetchOnMount: true,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
 };

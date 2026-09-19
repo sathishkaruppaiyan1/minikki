@@ -101,6 +101,12 @@ export interface HomeMobileMenu {
 export interface HomeConfig {
   version: string;
   updated_at: number;
+  /**
+   * Bumped by the plugin whenever a product price changes (plugin >= 1.4.0).
+   * Optional: an older plugin omits it, and absent must read as 0 rather than
+   * breaking the version stamp.
+   */
+  catalog_updated_at?: number;
   topbar: HomeTopbar;
   circle_categories: HomeCategorySection;
   shop_by_category: HomeCategorySection;

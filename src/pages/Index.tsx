@@ -42,7 +42,21 @@ const FALLBACK_SECTIONS: HomeProductSection[] = [
 ];
 
 const Index = () => {
-  const { data: config } = useHomeConfig();
+  const { data: config, isLoading: configLoading } = useHomeConfig();
+
+  // Homepage rows are cached until this changes. It has to cover both "the
+  // carousel was edited" (updated_at) and "a price moved" (catalog_updated_at),
+  // because desktop cards reveal the price on hover and would otherwise keep
+  // showing a stale one indefinitely.
+  //
+  // Stays undefined until the config request settles, which holds the rows back
+  // from fetching. Without that they would fetch once against the fallback
+  // sections and again under the real version — two round trips and a content
+  // flash. A null config (WordPress unreachable) still resolves to 0, so the
+  // fallback rows do load.
+  const configVersion = configLoading
+    ? undefined
+    : Math.max(config?.updated_at || 0, config?.catalog_updated_at || 0);
 
   // `sections` is the current shape; fall back to the legacy pair, then to the
   // hardcoded defaults, so older plugin versions keep working.
@@ -69,11 +83,15 @@ const Index = () => {
       {/* Optional banner strip below the hero, managed in WordPress */}
       <HeroBanner placement="below_hero" />
 
+      {/* configVersion pins each row's product data to the WordPress config.
+          Rows are then fetched once per visitor per edit instead of on a timer;
+          saving the Home Builder changes updated_at and invalidates them. */}
       {sections.map((section, index) => (
         <HomeProductRow
           key={section.id || `section-${index}`}
           section={section}
           priority={index === 0}
+          configVersion={configVersion}
         />
       ))}
 

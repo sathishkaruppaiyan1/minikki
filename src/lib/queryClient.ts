@@ -9,11 +9,17 @@ import { restoreQueryCache, persistQueryCache } from './queryPersister';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0, // Always stale - refetch in background for fresh stock/inventory data
-      gcTime: 1000 * 60 * 5, // Keep in cache for 5 min (show cached while refetching)
-      refetchOnWindowFocus: true, // Refetch when user returns for fresh data
-      refetchOnMount: true, // Always refetch on mount for fresh stock
-      refetchOnReconnect: true, // Refetch when internet reconnects
+      // Catalog data is stable between merchant edits, so the default is cached.
+      // Freshness-sensitive queries (product detail, stock, orders) opt back in
+      // individually - see useWooCommerce.ts. Previously these defaults were
+      // staleTime 0 + all three refetch triggers on, which on mobile (app switch,
+      // screen unlock, tower handoff) produced ~5.7 identical fetches per row per
+      // visitor and 82% of all edge function invocations.
+      staleTime: 1000 * 60 * 5, // 5 min
+      gcTime: 1000 * 60 * 30, // Keep in cache 30 min (show cached while revalidating)
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
       retry: 1, // Retry once on failure
       retryDelay: 1000,
     },

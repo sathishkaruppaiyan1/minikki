@@ -6,6 +6,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Cache-Control': 'public, max-age=3600, s-maxage=7200',
 };
+// corsHeaders already carries the 1h Cache-Control above. Found pages use it; a
+// miss stays uncached so a page published in WordPress appears immediately
+// instead of after an hour. Previously every path used noCacheHeaders, so the
+// 1h TTL was dead and every view re-hit the function.
 const noCacheHeaders = { ...corsHeaders, 'Cache-Control': 'no-cache, max-age=0' };
 
 const transformItem = (item: any) => ({
@@ -57,7 +61,7 @@ serve(async (req) => {
         if (!item) item = await fetchBySlug(storeUrl, 'posts', s);
         if (item) {
           return new Response(JSON.stringify({ pages: [transformItem(item)] }), {
-            headers: { ...noCacheHeaders, 'Content-Type': 'application/json' },
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
       }
@@ -72,7 +76,7 @@ serve(async (req) => {
       if (!item) item = await fetchBySlug(storeUrl, 'posts', slug);
       const pages = item ? [transformItem(item)] : [];
       return new Response(JSON.stringify({ pages }), {
-        headers: { ...noCacheHeaders, 'Content-Type': 'application/json' },
+        headers: { ...(item ? corsHeaders : noCacheHeaders), 'Content-Type': 'application/json' },
       });
     }
 
@@ -108,9 +112,11 @@ serve(async (req) => {
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error in woocommerce-pages:', msg);
+    // Must not use corsHeaders here: it carries max-age=3600, which would let a
+    // transient WordPress outage be cached as a 500 for an hour.
     return new Response(JSON.stringify({ error: msg }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...noCacheHeaders, 'Content-Type': 'application/json' },
     });
   }
 });

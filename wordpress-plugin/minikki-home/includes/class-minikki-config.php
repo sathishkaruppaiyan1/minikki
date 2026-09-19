@@ -208,6 +208,52 @@ class Minikki_Home_Config {
 	}
 
 	/**
+	 * Product props that change what a homepage card displays.
+	 *
+	 * The storefront caches each homepage row until the version stamp changes, so
+	 * a price edit has to move that stamp or desktop cards keep showing the old
+	 * price on hover. Stock is deliberately NOT in this list: it changes on every
+	 * order, which would invalidate every visitor's cache several hundred times a
+	 * day to correct a Sold Out badge that the product page already shows
+	 * accurately before anyone can buy.
+	 */
+	const PRICE_PROPS = array( 'price', 'regular_price', 'sale_price', 'date_on_sale_from', 'date_on_sale_to' );
+
+	/**
+	 * Catalog version stamp, exposed to the storefront alongside updated_at.
+	 *
+	 * @return int Unix timestamp, 0 if never bumped.
+	 */
+	public static function catalog_stamp() {
+		return (int) get_option( MINIKKI_HOME_OPTION . '_catalog_updated_at', 0 );
+	}
+
+	/**
+	 * Mark the catalog as changed. Accepts and ignores any hook arguments.
+	 */
+	public static function bump_catalog_stamp() {
+		update_option( MINIKKI_HOME_OPTION . '_catalog_updated_at', time() );
+	}
+
+	/**
+	 * Bump only when a price-affecting prop actually changed.
+	 *
+	 * @param mixed $product       WC_Product (unused; required by the hook).
+	 * @param array $updated_props Names of props WooCommerce just wrote.
+	 */
+	public static function maybe_bump_for_props( $product, $updated_props ) {
+		unset( $product );
+
+		if ( ! is_array( $updated_props ) ) {
+			return;
+		}
+
+		if ( array_intersect( $updated_props, self::PRICE_PROPS ) ) {
+			self::bump_catalog_stamp();
+		}
+	}
+
+	/**
 	 * Sanitise every field. Anything unrecognised is dropped.
 	 *
 	 * @param array $raw Untrusted input.

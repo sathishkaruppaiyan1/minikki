@@ -7,9 +7,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Smart tiered caching: listings get 10s (sufficient for 1000+ concurrent users), detail gets 2s (near-real-time for add-to-cart)
-const listCacheHeaders = { ...corsHeaders, 'Cache-Control': 'public, max-age=10, stale-while-revalidate=5' };
-const detailCacheHeaders = { ...corsHeaders, 'Cache-Control': 'public, max-age=2, stale-while-revalidate=3' };
+// Tiered caching. The previous 10s/2s TTLs were too short to absorb anything:
+// any client refetch more than 10s after the last one went straight to the
+// network, so the browser cache soaked up none of the repeat homepage traffic.
+// Listings are curated ID lists that change on merchant edit; detail stays short
+// because that is where stock accuracy matters for add-to-cart.
+const listCacheHeaders = { ...corsHeaders, 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' };
+const detailCacheHeaders = { ...corsHeaders, 'Cache-Control': 'public, max-age=30, stale-while-revalidate=60' };
 
 // In-memory response cache (persists across requests within the same Deno isolate, typically 30-60s)
 const responseCache = new Map<string, { data: string; timestamp: number }>();
