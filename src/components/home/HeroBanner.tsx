@@ -35,7 +35,6 @@ interface HeroBannerProps {
 const BANNER_BOX = "relative w-full pt-[100%] md:pt-[75%] overflow-hidden bg-muted";
 
 const HeroBanner = ({ placement = "hero" }: HeroBannerProps) => {
-  const { data: supabaseBanners = [], isLoading: supabaseLoading } = useHomeBanners();
   const { data: config, isLoading: configLoading } = useHomeConfig();
   const [current, setCurrent] = useState(0);
 
@@ -48,6 +47,13 @@ const HeroBanner = ({ placement = "hero" }: HeroBannerProps) => {
 
   const configured = (config?.banners?.[placement] || []).map(fromConfig);
 
+  // The Supabase banners are a fallback only: fetched once the config has
+  // settled and turned out to have nothing for the hero slot (plugin missing or
+  // no banners saved). Fetching them unconditionally cost an edge-function
+  // invocation (plus its CORS preflight) on every homepage view.
+  const needSupabase = placement === "hero" && !configLoading && configured.length === 0;
+  const { data: supabaseBanners = [], isLoading: supabaseLoading } = useHomeBanners(needSupabase);
+
   // WordPress wins when it has banners for this slot. The main hero still falls
   // back to the Supabase-managed banners so nothing disappears mid-migration;
   // the below-hero slot exists only in WordPress.
@@ -59,7 +65,7 @@ const HeroBanner = ({ placement = "hero" }: HeroBannerProps) => {
         ? supabaseBanners
         : [];
 
-  const isLoading = configLoading || (placement === "hero" && configured.length === 0 && supabaseLoading);
+  const isLoading = configLoading || (needSupabase && supabaseLoading);
 
   const goNext = useCallback(() => {
     setCurrent((prev) => (prev + 1) % banners.length);

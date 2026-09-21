@@ -51,10 +51,16 @@ const HomeProductRow = ({ section, priority = false, configVersion }: HomeProduc
   // version; see the configVersion comment in Index.tsx.
   const versionReady = configVersion !== undefined;
 
+  // Plugin >= 1.5.0 resolves the row's products inside the config response, so
+  // the row renders with zero Supabase calls. Only when that field is absent
+  // (older plugin) does the row resolve products itself.
+  const fromConfig = Array.isArray(section.products) ? section.products : null;
+  const resolveHere = versionReady && !fromConfig;
+
   const manualIds = section.source === "manual" ? section.product_ids : [];
-  const useManual = versionReady && section.source === "manual" && manualIds.length > 0;
-  const useCategory = versionReady && section.source === "category" && !!section.category_slug;
-  const useTag = versionReady && section.source === "tag" && !!section.tag;
+  const useManual = resolveHere && section.source === "manual" && manualIds.length > 0;
+  const useCategory = resolveHere && section.source === "category" && !!section.category_slug;
+  const useTag = resolveHere && section.source === "tag" && !!section.tag;
 
   const manual = useWooCommerceProductsByIds(manualIds, useManual, configVersion);
 
@@ -74,7 +80,9 @@ const HomeProductRow = ({ section, priority = false, configVersion }: HomeProduc
     homeVersion: configVersion,
   });
 
-  const active = useManual
+  const active = fromConfig
+    ? { products: fromConfig, isLoading: false, error: null }
+    : useManual
     ? { products: manual.data || [], isLoading: manual.isLoading, error: manual.error }
     : useCategory
       ? {
@@ -89,8 +97,9 @@ const HomeProductRow = ({ section, priority = false, configVersion }: HomeProduc
         };
 
   // The limit is a cap for the automatic sources only — a hand-picked list is
-  // shown in full, however long it is.
-  const products = useManual ? active.products : active.products.slice(0, limit);
+  // shown in full, however long it is. WordPress has already applied it to a
+  // pre-resolved row.
+  const products = useManual || fromConfig ? active.products : active.products.slice(0, limit);
 
   // Preload the above-the-fold images of the first row for instant display.
   useEffect(() => {

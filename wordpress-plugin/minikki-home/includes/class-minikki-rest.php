@@ -90,18 +90,17 @@ class Minikki_Home_Rest {
 	public static function get_home() {
 		$config = Minikki_Home_Config::get();
 
-		$sections = array();
+		$updated_at    = (int) get_option( MINIKKI_HOME_OPTION . '_updated_at', 0 );
+		$catalog_stamp = Minikki_Home_Config::catalog_stamp();
 
-		foreach ( (array) $config['product_sections'] as $section ) {
-			$sections[] = self::expand_product_section( $section );
-		}
+		$sections = self::product_sections_with_products( $config, $updated_at . ':' . $catalog_stamp );
 
 		$payload = array(
 			'version'           => MINIKKI_HOME_VERSION,
-			'updated_at'        => (int) get_option( MINIKKI_HOME_OPTION . '_updated_at', 0 ),
+			'updated_at'        => $updated_at,
 			// Bumped on price edits; the storefront keys its homepage cache on the
 			// later of the two so a price change invalidates cached rows.
-			'catalog_updated_at' => Minikki_Home_Config::catalog_stamp(),
+			'catalog_updated_at' => $catalog_stamp,
 			'topbar'            => $config['topbar'],
 			'circle_categories' => self::expand_category_section( $config['circle_categories'] ),
 			'shop_by_category'  => self::expand_category_section( $config['shop_by_category'] ),
@@ -230,10 +229,252 @@ class Minikki_Home_Rest {
 		return $out;
 	}
 
+	/** Transient holding the expanded rows, so products are resolved once per edit, not once per visitor. */
+	const SECTIONS_CACHE_KEY = 'minikki_home_sections';
+
 	/**
-	 * Product sections ship the *ordered* ID list. The storefront resolves those
-	 * IDs through its existing product pipeline and re-sorts to this order, so
-	 * product shaping stays in one place.
+	 * Safety-net TTL for the rows cache. The version stamp already invalidates
+	 * on carousel edits and price changes, but stock is deliberately not in the
+	 * stamp (it moves on every order), so a Sold Out badge can lag by this long.
+	 * Matches the max-age the Supabase list endpoint used to send.
+	 */
+	const SECTIONS_CACHE_TTL = 5 * MINUTE_IN_SECONDS;
+
+	/**
+	 * Every product row with its card data attached.
+	 *
+	 * Resolving products here is what lets the storefront render the homepage
+	 * from this one response instead of one Supabase edge-function call per row
+	 * (ten rows, doubled by CORS preflights, for every visitor). The expansion
+	 * is cached in a transient keyed on the version stamp: a Home Builder save or
+	 * a price change moves the stamp, and the next request rebuilds it.
+	 *
+	 * @param array  $config Stored config.
+	 * @param string $stamp  Version stamp (`updated_at:catalog_updated_at`).
+	 * @return array
+	 */
+	private static function product_sections_with_products( $config, $stamp ) {
+		$cached = get_transient( self::SECTIONS_CACHE_KEY );
+
+		if ( is_array( $cached ) && ( $cached['stamp'] ?? null ) === $stamp && is_array( $cached['sections'] ?? null ) ) {
+			return $cached['sections'];
+		}
+
+		$sections = array();
+
+		foreach ( (array) $config['product_sections'] as $section ) {
+			$expanded = self::expand_product_section( $section );
+
+			// Disabled rows are never rendered, so don't spend queries on them.
+			$expanded['products'] = $expanded['enabled'] ? self::resolve_section_products( $expanded ) : array();
+
+			$sections[] = $expanded;
+		}
+
+		set_transient(
+			self::SECTIONS_CACHE_KEY,
+			array(
+				'stamp'    => $stamp,
+				'sections' => $sections,
+			),
+			self::SECTIONS_CACHE_TTL
+		);
+
+		return $sections;
+	}
+
+	/**
+	 * Drop the rows cache. Called on config save and catalog bumps so a change
+	 * is visible on the very next request rather than after the TTL.
+	 */
+	public static function flush_sections_cache() {
+		delete_transient( self::SECTIONS_CACHE_KEY );
+	}
+
+	/**
+	 * Fetch the products an expanded row should show, in display order.
+	 *
+	 * Mirrors what the storefront asked Supabase for: manual rows keep the
+	 * curated order, tag/category rows are newest-first and capped at `limit`,
+	 * the same ordering the WooCommerce REST list endpoint defaults to.
+	 *
+	 * @param array $section Expanded section (see expand_product_section).
+	 * @return array Card-shaped products.
+	 */
+	private static function resolve_section_products( $section ) {
+		if ( ! function_exists( 'wc_get_products' ) ) {
+			return array();
+		}
+
+		$args = array(
+			'status'  => 'publish',
+			'orderby' => 'date',
+			'order'   => 'DESC',
+			'return'  => 'objects',
+		);
+
+		switch ( $section['source'] ) {
+			case 'manual':
+				if ( empty( $section['product_ids'] ) ) {
+					return array();
+				}
+				$args['include'] = $section['product_ids'];
+				$args['limit']   = count( $section['product_ids'] );
+				break;
+
+			case 'category':
+				if ( '' === $section['category_slug'] ) {
+					return array();
+				}
+				$args['category'] = array( $section['category_slug'] );
+				$args['limit']    = $section['limit'];
+				break;
+
+			default: // tag
+				if ( '' === $section['tag'] ) {
+					return array();
+				}
+				$args['tag']   = array( $section['tag'] );
+				$args['limit'] = $section['limit'];
+				break;
+		}
+
+		$products = wc_get_products( $args );
+
+		if ( empty( $products ) || is_wp_error( $products ) ) {
+			return array();
+		}
+
+		$cards = array();
+
+		foreach ( $products as $product ) {
+			$cards[ $product->get_id() ] = self::format_card_product( $product );
+		}
+
+		if ( 'manual' === $section['source'] ) {
+			// Re-apply the curated order; anything that failed to load is dropped.
+			$ordered = array();
+			foreach ( $section['product_ids'] as $product_id ) {
+				if ( isset( $cards[ $product_id ] ) ) {
+					$ordered[] = $cards[ $product_id ];
+				}
+			}
+			return $ordered;
+		}
+
+		return array_values( $cards );
+	}
+
+	/**
+	 * Shape a product exactly like the Supabase `woocommerce-products`
+	 * skip_variations fast path does, so the storefront card components need
+	 * no changes. Only what a card reads is included: no descriptions, no
+	 * variation data, and at most two images (the card shows the first).
+	 *
+	 * @param WC_Product $product Product.
+	 * @return array
+	 */
+	private static function format_card_product( $product ) {
+		$price   = (float) $product->get_price();
+		$regular = $product->get_regular_price();
+		$regular = '' !== $regular && null !== $regular ? (float) $regular : null;
+
+		$discount = null;
+		if ( $product->is_on_sale() && $regular > 0 ) {
+			$discount = (int) round( ( ( $regular - $price ) / $regular ) * 100 );
+		}
+
+		$images   = array();
+		$image_id = $product->get_image_id();
+		if ( $image_id ) {
+			$images[] = wp_get_attachment_url( (int) $image_id );
+		}
+		foreach ( array_slice( (array) $product->get_gallery_image_ids(), 0, 1 ) as $gallery_id ) {
+			$images[] = wp_get_attachment_url( (int) $gallery_id );
+		}
+		$images = array_values( array_filter( $images ) );
+
+		$category = null;
+		$terms    = get_the_terms( $product->get_id(), 'product_cat' );
+		if ( is_array( $terms ) && ! empty( $terms ) ) {
+			$category = $terms[0];
+		}
+
+		$stock_status = $product->get_stock_status();
+		$stock_qty    = $product->get_stock_quantity();
+
+		$card = array(
+			'id'               => (string) $product->get_id(),
+			'name'             => $product->get_name(),
+			'slug'             => $product->get_slug(),
+			'price'            => $price,
+			'images'           => $images,
+			'colors'           => self::attribute_options( $product, array( 'color', 'colour' ) ),
+			'sizes'            => self::attribute_options( $product, array( 'size' ) ),
+			'category'         => $category ? $category->name : 'Uncategorized',
+			'categorySlug'     => $category ? $category->slug : 'uncategorized',
+			'categoryId'       => $category ? (string) $category->term_id : '',
+			'isNew'            => $product->is_featured(),
+			'isSoldOut'        => 'outofstock' === $stock_status,
+			'inStock'          => 'instock' === $stock_status,
+			'stockQuantity'    => null === $stock_qty ? null : (int) $stock_qty,
+			'description'      => '',
+			'shortDescription' => '',
+			'sku'              => $product->get_sku(),
+			'type'             => $product->get_type(),
+			'averageRating'    => (string) $product->get_average_rating(),
+			'ratingCount'      => (int) $product->get_rating_count(),
+		);
+
+		// Optional on the storefront's Product type: absent, not null, like the
+		// edge function's `undefined`.
+		if ( null !== $regular ) {
+			$card['originalPrice'] = $regular;
+		}
+		if ( null !== $discount ) {
+			$card['discount'] = $discount;
+		}
+
+		return $card;
+	}
+
+	/**
+	 * Option labels of the first attribute whose name matches, e.g. the colour
+	 * swatches or size list. Taxonomy attributes store term IDs, so those are
+	 * resolved to names the same way the WooCommerce REST API does.
+	 *
+	 * @param WC_Product $product Product.
+	 * @param string[]   $names   Lower-case attribute names to accept.
+	 * @return string[]
+	 */
+	private static function attribute_options( $product, $names ) {
+		foreach ( $product->get_attributes() as $attribute ) {
+			if ( ! is_object( $attribute ) ) {
+				continue;
+			}
+
+			$label = strtolower( wc_attribute_label( $attribute->get_name(), $product ) );
+			$raw   = strtolower( str_replace( 'pa_', '', $attribute->get_name() ) );
+
+			if ( ! in_array( $label, $names, true ) && ! in_array( $raw, $names, true ) ) {
+				continue;
+			}
+
+			if ( $attribute->is_taxonomy() ) {
+				$terms = wc_get_product_terms( $product->get_id(), $attribute->get_name(), array( 'fields' => 'names' ) );
+				return is_array( $terms ) ? array_values( $terms ) : array();
+			}
+
+			return array_values( array_map( 'strval', (array) $attribute->get_options() ) );
+		}
+
+		return array();
+	}
+
+	/**
+	 * Product section metadata. Ships the ordered ID list (and the resolved
+	 * category slug) so an older storefront build can keep resolving products
+	 * through Supabase; product_sections_with_products() adds `products` on top.
 	 *
 	 * @param array $section Config section.
 	 * @return array
@@ -307,6 +548,7 @@ class Minikki_Home_Rest {
 			'category_slug' => '',
 			'product_ids'   => array(),
 			'limit'         => 12,
+			'products'      => array(),
 		);
 	}
 

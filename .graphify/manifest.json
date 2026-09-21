@@ -1,0 +1,686 @@
+{
+  "C:/Users/sathi/Downloads/minikki/eslint.config.js": {
+    "mtime": 1785482080754.1633,
+    "hash": "bc484741cdf3591af5da7d9f3da3a647"
+  },
+  "C:/Users/sathi/Downloads/minikki/load_test.py": {
+    "mtime": 1785482080756.1638,
+    "hash": "2c63ec5bab08a77ee201464c7d886030"
+  },
+  "C:/Users/sathi/Downloads/minikki/postcss.config.js": {
+    "mtime": 1785482080759.1624,
+    "hash": "33fad9c02cb0ec6d6030369ef6347d57"
+  },
+  "C:/Users/sathi/Downloads/minikki/scripts/recover-razorpay-orders.py": {
+    "mtime": 1787557831810.0513,
+    "hash": "13dbd28b783d322fa65148a0adf4f806"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/App.tsx": {
+    "mtime": 1785482080806.1958,
+    "hash": "d59fcbcc6d5aa8af8e9cf3ee4e3f262c"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ErrorBoundary.tsx": {
+    "mtime": 1785482080807.1948,
+    "hash": "314f726d81cac6ad5c786a3f21b45298"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/NavLink.tsx": {
+    "mtime": 1785482080808.1943,
+    "hash": "889a81fd2eb948eb406c9ccabe175918"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/cart/CartDrawer.tsx": {
+    "mtime": 1785493836802.316,
+    "hash": "831d1b8a223684f1e2821f02a3505561"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/home/CategoryCarousel.tsx": {
+    "mtime": 1785513636881.4294,
+    "hash": "cceb1da3b407fbf0457552298932bc0c"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/home/CategoryGrid.tsx": {
+    "mtime": 1785513636883.4297,
+    "hash": "e4562db5bd03286d619d9f8ce540466c"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/home/HeroBanner.tsx": {
+    "mtime": 1787566194126.9956,
+    "hash": "ae48d57a011a47af4d5f4b0c08d410ae"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/home/HomeProductRow.tsx": {
+    "mtime": 1787510641059.3809,
+    "hash": "3567ebefe9635c1d6a8aaff9191017ff"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/home/ProductSection.tsx": {
+    "mtime": 1785482080812.1943,
+    "hash": "4bc671db9753b0565e55eb5bf28548e2"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/home/ProductSlider.tsx": {
+    "mtime": 1787510066324.0215,
+    "hash": "71ac0cb9c0bf878e44fc79c98f5313e9"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/home/ReviewsSlider.tsx": {
+    "mtime": 1785513636894.4314,
+    "hash": "33220c10b2e6a07d4af0eb04a4675825"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/home/ShopByReels.tsx": {
+    "mtime": 1785482080812.1943,
+    "hash": "2e9cc9915bc9524d1a8fbcc35891f06d"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/home/StorySection.tsx": {
+    "mtime": 1785493836808.6943,
+    "hash": "9f08b9cf591cf8eee7016b0f4e94cf74"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/layout/Footer.tsx": {
+    "mtime": 1787480640805.8008,
+    "hash": "e87b39a7a8bf7676c31505f39ad7865c"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/layout/Header.tsx": {
+    "mtime": 1785513636901.4424,
+    "hash": "be387bb2738b82900e33ca395f3c4933"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/layout/Layout.tsx": {
+    "mtime": 1785482080815.7058,
+    "hash": "4377f264adf4255b34f1025f43a6586d"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/layout/MobileNav.tsx": {
+    "mtime": 1786535993157.7678,
+    "hash": "c86634c1129e24f02dcbdec08ef3556e"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/layout/PromoBar.tsx": {
+    "mtime": 1785513636905.442,
+    "hash": "210172e1023e62cd564a711ed2eb7df2"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/layout/SocialProofPopup.tsx": {
+    "mtime": 1785482080816.7046,
+    "hash": "6ed46410e894eef9105f69137d2edab5"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/product/ProductCard.tsx": {
+    "mtime": 1785493836821.926,
+    "hash": "82c45031b24f424488b74af9b6cd7188"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/product/QuickViewModal.tsx": {
+    "mtime": 1785493836825.2454,
+    "hash": "b15e7771e42dcd0fb120b2a5ddc23262"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/search/SearchModal.tsx": {
+    "mtime": 1785493836827.2473,
+    "hash": "21fce71217aec2335c11ac3ad0f00ffb"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/LoadingScreen.tsx": {
+    "mtime": 1785482080821.2122,
+    "hash": "fcebe2e3869d21530f8546626a48a4e3"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/Reveal.tsx": {
+    "mtime": 1785482080822.2153,
+    "hash": "464859a0588c3916ce00458cc6ebe47e"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/RouteLoading.tsx": {
+    "mtime": 1785482080822.2153,
+    "hash": "e9da351e14fd31fcd81f672da79913da"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/accordion.tsx": {
+    "mtime": 1785482080823.2112,
+    "hash": "ff8f54b79a7a2bc4fed8c092dd7a1f4b"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/alert-dialog.tsx": {
+    "mtime": 1785482080824.2166,
+    "hash": "9e4e4984ede953adcc023d60c017a968"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/alert.tsx": {
+    "mtime": 1785482080824.2166,
+    "hash": "eba34d3096d7c23bcdf5dfb1e725ecff"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/aspect-ratio.tsx": {
+    "mtime": 1785482080825.216,
+    "hash": "14c12661aad8c80328c86a18b506c088"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/avatar.tsx": {
+    "mtime": 1785482080825.216,
+    "hash": "7b447f617f7d654c70050259fbf6dbc0"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/badge.tsx": {
+    "mtime": 1785482080826.216,
+    "hash": "09261d891c581ebf021af2989fe75d60"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/breadcrumb.tsx": {
+    "mtime": 1785482080826.216,
+    "hash": "c277fb2bb0886444a6c8a00296ad924e"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/button.tsx": {
+    "mtime": 1785482080827.2175,
+    "hash": "42e46fd55c4c069216abd2870fa94ee5"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/calendar.tsx": {
+    "mtime": 1785482080827.2175,
+    "hash": "1a2e76319e667991b06dc99e74b9b631"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/card.tsx": {
+    "mtime": 1785482080828.216,
+    "hash": "0e2d94c650cf4fae76b4c5e0f14dd858"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/carousel.tsx": {
+    "mtime": 1785482080829.2153,
+    "hash": "7d3e5a6ed21d4690d498e8a60b52868a"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/chart.tsx": {
+    "mtime": 1785482080829.2153,
+    "hash": "4360d46060e32c8aafbc140a482a03fa"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/checkbox.tsx": {
+    "mtime": 1785482080830.216,
+    "hash": "76ca6b8de39bdac0ff7620b301077963"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/collapsible.tsx": {
+    "mtime": 1785482080830.216,
+    "hash": "72fafa9d8b58f83ec9b7c8f141bfdd42"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/command.tsx": {
+    "mtime": 1785482080831.2175,
+    "hash": "0390099f76c1a9eeb97041c572c752c0"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/context-menu.tsx": {
+    "mtime": 1785482080831.2175,
+    "hash": "bf02a92d910af3af76b1e417a76cbd6a"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/dialog.tsx": {
+    "mtime": 1785482080832.2185,
+    "hash": "8c4a577dcf79d0ba30c2749f909fa932"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/drawer.tsx": {
+    "mtime": 1785482080833.2192,
+    "hash": "a73521d8fbccde731eae7f2f81f5875b"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/dropdown-menu.tsx": {
+    "mtime": 1785482080833.2192,
+    "hash": "deab6e248bcccb2e52ad13736bf5952e"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/form.tsx": {
+    "mtime": 1785482080834.2183,
+    "hash": "4d27bc8211e0505103bbd930275570c6"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/hover-card.tsx": {
+    "mtime": 1785482080835.2168,
+    "hash": "a7927cc49ef796b0c725ecd0869c9f95"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/input-otp.tsx": {
+    "mtime": 1785482080835.2168,
+    "hash": "7217a7c6bceca8030298e2252204ae40"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/input.tsx": {
+    "mtime": 1785482080836.219,
+    "hash": "3b09c82b75490b75e90d7877023a30d1"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/label.tsx": {
+    "mtime": 1785482080836.219,
+    "hash": "a8c075269b5971c2ab072603b5166cc2"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/menubar.tsx": {
+    "mtime": 1785482080837.2168,
+    "hash": "8d6dd42e35e9410e97a725c64c02f0a6"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/navigation-menu.tsx": {
+    "mtime": 1785482080838.7217,
+    "hash": "2d91ffeee8627f37b4733949b3373a23"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/pagination.tsx": {
+    "mtime": 1785482080838.7217,
+    "hash": "4d09c500f83dd4b754b74d03b79527ba"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/popover.tsx": {
+    "mtime": 1785482080839.7305,
+    "hash": "63380a8f575f8a1a5277caeb4971919f"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/progress.tsx": {
+    "mtime": 1785482080840.7295,
+    "hash": "b0d4b1791f1da120f5eed107f235edce"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/radio-group.tsx": {
+    "mtime": 1785482080841.73,
+    "hash": "6c2a4c39fb3f889fe94b854b7198b5ed"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/resizable.tsx": {
+    "mtime": 1785482080841.73,
+    "hash": "ed49053e380e461e2ca75f7a3fe67236"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/scroll-area.tsx": {
+    "mtime": 1785482080842.7314,
+    "hash": "f86e3f716ed7c692309c1a48d85ce2c9"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/select.tsx": {
+    "mtime": 1785482080843.7307,
+    "hash": "7a89fad24599af514ca0e28a9f5c4370"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/separator.tsx": {
+    "mtime": 1785482080844.7292,
+    "hash": "1810b24a008c00cd43c0b5ad9f3e4c6b"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/sheet.tsx": {
+    "mtime": 1785482080845.7302,
+    "hash": "d01d85069ebcb54849277fce060ebfea"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/sidebar.tsx": {
+    "mtime": 1785482080846.7268,
+    "hash": "47158040377f0ab1d4610e976529ef9c"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/skeleton.tsx": {
+    "mtime": 1785482080846.7268,
+    "hash": "6433d7c535e132083b2c1bcb57373fff"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/slider.tsx": {
+    "mtime": 1785482080847.7273,
+    "hash": "977286428ad957ed73e428525450f9cb"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/sonner.tsx": {
+    "mtime": 1785482080847.7273,
+    "hash": "f375774f847d020348cd21d524d28c75"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/switch.tsx": {
+    "mtime": 1785482080848.73,
+    "hash": "57fa755b8dcfe75538bc523ac3e0bb0e"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/table.tsx": {
+    "mtime": 1785482080849.7285,
+    "hash": "d73905fa73678181cb9f8baa91b3f222"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/tabs.tsx": {
+    "mtime": 1785482080849.7285,
+    "hash": "33c494eaa3811114e89a89fbbb0a1a02"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/textarea.tsx": {
+    "mtime": 1785482080850.7275,
+    "hash": "05d1ec7d6c3a836dc5b28d56935174fd"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/toast.tsx": {
+    "mtime": 1785482080851.7278,
+    "hash": "0e2ba363f7d8b176dea467284711fea5"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/toaster.tsx": {
+    "mtime": 1785482080851.7278,
+    "hash": "0f5d0fdbcc2d4611e59994af4393e27e"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/toggle-group.tsx": {
+    "mtime": 1785482080852.728,
+    "hash": "fc5bff5bf4bb6714e6eaf85dcdeb65b9"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/toggle.tsx": {
+    "mtime": 1785482080852.728,
+    "hash": "2342cfa40b5b31148997f87d1642359e"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/tooltip.tsx": {
+    "mtime": 1785482080853.7283,
+    "hash": "c050f1e97cf8e200ecf88681073c90cb"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/components/ui/use-toast.ts": {
+    "mtime": 1785482080853.7283,
+    "hash": "5bff9ea3904b15a9e1908b128c88e75f"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/contexts/AuthContext.tsx": {
+    "mtime": 1785482080855.7288,
+    "hash": "0cf6820e2a818cda4c60bbbd13f7870e"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/contexts/CartContext.tsx": {
+    "mtime": 1785482080855.7288,
+    "hash": "c56fde9909265f1d8242b69d4392d1b9"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/contexts/QuickViewContext.tsx": {
+    "mtime": 1785482080856.7295,
+    "hash": "df381043266f9b074f40cb5472da7ebb"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/contexts/SearchContext.tsx": {
+    "mtime": 1785482080857.7297,
+    "hash": "dc7ba8354fbef0f5da3e5a887d79215f"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/contexts/WishlistContext.tsx": {
+    "mtime": 1785482080857.7297,
+    "hash": "79932572f3ab96efbf5ceeadd56c6e69"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/data/products.ts": {
+    "mtime": 1785482080858.7305,
+    "hash": "1b258c8cdf43c6c9dcf1f17456088246"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/hooks/use-mobile.tsx": {
+    "mtime": 1785482080859.7295,
+    "hash": "1bb3ebac7752b497a78d34e341975bbd"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/hooks/use-toast.ts": {
+    "mtime": 1785482080860.7278,
+    "hash": "895be3e18021c7c5cd4fac68ea522dd4"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/hooks/useHomeConfig.ts": {
+    "mtime": 1787566165317.802,
+    "hash": "1773fd6e1b5564338419bf709a89c92d"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/hooks/useScrollReveal.ts": {
+    "mtime": 1785482080861.7297,
+    "hash": "84b91e755ccf0d1bbd9b923fed78b21d"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/hooks/useWooCommerce.ts": {
+    "mtime": 1786535993159.9873,
+    "hash": "e377ecbb5e4281eba6c514f3b06727ae"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/integrations/supabase/client.ts": {
+    "mtime": 1785482080864.7295,
+    "hash": "8cbc837200552502e544dcd4d195de98"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/integrations/supabase/types.ts": {
+    "mtime": 1785482080865.729,
+    "hash": "1fc2e816d6479bc29485e29a6a324379"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/lib/icons.ts": {
+    "mtime": 1785482080866.7358,
+    "hash": "d5086dde66e166effe461a749f3b544e"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/lib/imageOptimizer.ts": {
+    "mtime": 1785482080866.7358,
+    "hash": "be3f45d0b09f2ef7654a971fa8866f38"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/lib/indiaStates.ts": {
+    "mtime": 1786532402317.9187,
+    "hash": "4d1fafd22a9bc21607233629db7db69a"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/lib/queryClient.ts": {
+    "mtime": 1785482080867.7341,
+    "hash": "1963a838c8fcc282075f31c8593e07c1"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/lib/queryPersister.ts": {
+    "mtime": 1785513636913.9688,
+    "hash": "a872af26844c2da0f5a2f211a876f0c3"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/lib/tax.ts": {
+    "mtime": 1786534403076.6626,
+    "hash": "d55f4f16ff03208a094c003ab9b76a45"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/lib/utils.ts": {
+    "mtime": 1785493836832.2034,
+    "hash": "9cf4e814d196586bd407362b868284c2"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/main.tsx": {
+    "mtime": 1785482080869.7354,
+    "hash": "bbb0d18cf4ac12f0169bf6736f80d071"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/Account.tsx": {
+    "mtime": 1787134267767.0876,
+    "hash": "e67da22909e0720dfaadb3d673bf6557"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/Cart.tsx": {
+    "mtime": 1786535993164.679,
+    "hash": "6e71b36bc93f419b0a0f921513fbc9fc"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/Checkout.tsx": {
+    "mtime": 1786535993166.9075,
+    "hash": "a830d46991b7d467daa69ce5612b6b38"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/Collection.tsx": {
+    "mtime": 1786535993168.9214,
+    "hash": "a17a3a11e83c5a4184a2d924418be0f4"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/Contact.tsx": {
+    "mtime": 1787480641061.9917,
+    "hash": "d412b24da0a2aaf746099e606edbb6f9"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/Index.tsx": {
+    "mtime": 1787566082592.0066,
+    "hash": "3bbad70d2e45da424be1d427a2f69cb4"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/NotFound.tsx": {
+    "mtime": 1785482080875.7349,
+    "hash": "56c0e8759328865e67fc2c480b916804"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/Orders.tsx": {
+    "mtime": 1785482080876.7356,
+    "hash": "e5dffa4d5d8f5b0a5be7a6c190a47c35"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/ProductDetail.tsx": {
+    "mtime": 1787480640959.519,
+    "hash": "af94ff98f42a513be71688a9607eae93"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/SizeChart.tsx": {
+    "mtime": 1785482080877.7336,
+    "hash": "9681982154fb4bbd37a841bc37a646f7"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/ThankYou.tsx": {
+    "mtime": 1787480640885.9392,
+    "hash": "0a5c152c205a8fc02e1be377045ebda8"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/TrackOrder.tsx": {
+    "mtime": 1785482080878.7356,
+    "hash": "76390718b5c0f9a8207d327504f08fbe"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/Wishlist.tsx": {
+    "mtime": 1785493836845.4514,
+    "hash": "3c67f01d54052f490a6eaa7ed9a09d1b"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/pages/WordPressPage.tsx": {
+    "mtime": 1785482080879.734,
+    "hash": "19c027a5e7baec2a6bb03d3a860acb42"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/types/product.ts": {
+    "mtime": 1785482080881.2424,
+    "hash": "c7b303244d83000388220785511d6163"
+  },
+  "C:/Users/sathi/Downloads/minikki/src/vite-env.d.ts": {
+    "mtime": 1785482080882.2512,
+    "hash": "8f68c27c3fc38817b2726b20e2d4f1ee"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/_runtime/router.ts": {
+    "mtime": 1789139542791.2014,
+    "hash": "2568faf4bc70a6ef213afff30563270b"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/_runtime/serve.ts": {
+    "mtime": 1789139523027.2185,
+    "hash": "cb2ac542c9cdf5f35127b6fa36bee3c1"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/create-cashfree-order/index.ts": {
+    "mtime": 1789139552268.908,
+    "hash": "53c1987c226476c8ef89404ccfce9044"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/create-razorpay-order/index.ts": {
+    "mtime": 1789139552295.9163,
+    "hash": "3078671ed410030ed5a03e9603a68493"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/home-banners/index.ts": {
+    "mtime": 1789139552346.6797,
+    "hash": "f691f814cd23941a145aa51e5bbade6a"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/pincode-lookup/index.ts": {
+    "mtime": 1789139552396.995,
+    "hash": "dd6c48c4369e75352f19efd01f660116"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/razorpay-reconcile/index.ts": {
+    "mtime": 1789139552438.184,
+    "hash": "308d69ce522cd37ef6d64bd70b1b54d9"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/razorpay-webhook/index.ts": {
+    "mtime": 1789139552471.9563,
+    "hash": "46216a69b801b5c9bc7490cbce190549"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/update-user-details/index.ts": {
+    "mtime": 1789139552516.9392,
+    "hash": "c1483a782f9210ee9cb9fe60149ba05a"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/verify-cashfree-payment/index.ts": {
+    "mtime": 1789139552562.587,
+    "hash": "6b7ffbdced9d9ce11eea85353579f36d"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/verify-otp/index.ts": {
+    "mtime": 1789139552600.7632,
+    "hash": "e7b69938674ef176e0e42e2d9154c13b"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/verify-razorpay-payment/index.ts": {
+    "mtime": 1789139552637.6377,
+    "hash": "90acee24cb22b70cb74079e9a7fea3ed"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/wati-order-notification/index.ts": {
+    "mtime": 1789139552678.3782,
+    "hash": "cf7e54dbd903a1336a31a80b29b182ed"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/wati-send-otp/index.ts": {
+    "mtime": 1789139552717.1086,
+    "hash": "9f921be43e5d0a33722e1d79f2189d7f"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/whatsapp-send-otp/index.ts": {
+    "mtime": 1789139552757.6333,
+    "hash": "e3b3ba8a7337bc4324cc305278c8583a"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/woocommerce-categories/index.ts": {
+    "mtime": 1789139552793.7346,
+    "hash": "2a1c889a79e396387fc26d3881990bc0"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/woocommerce-orders/index.ts": {
+    "mtime": 1789139552830.8333,
+    "hash": "dc8925254df8fe536944676c8db8a133"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/woocommerce-pages/index.ts": {
+    "mtime": 1789139552871.2944,
+    "hash": "b974c9e1e59940f641862c54d8d63295"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/woocommerce-payment-gateways/index.ts": {
+    "mtime": 1789139552912.6975,
+    "hash": "19002ce2eaf961011f3b14b9d0e674e7"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/woocommerce-products/index.ts": {
+    "mtime": 1789139552947.1074,
+    "hash": "b981a4cd646e51aead61098c39c23a00"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/woocommerce-reviews/index.ts": {
+    "mtime": 1789139552994.0234,
+    "hash": "429da0eb09fb141b2dca62a46174566f"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/woocommerce-taxes/index.ts": {
+    "mtime": 1789139553062.344,
+    "hash": "02d507798ba08de1674a1b5a81460bec"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/functions/woocommerce-variation-gallery/index.ts": {
+    "mtime": 1789139553094.6636,
+    "hash": "97f14905338db8ba68a290604dd15674"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/migrations/20240117_create_review_media.sql": {
+    "mtime": 1785482080913.3086,
+    "hash": "2faad8e88df23825528eb35a962c464d"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/migrations/20240121_create_otp_auth.sql": {
+    "mtime": 1785482080914.3086,
+    "hash": "9a634353e1dd5169c33421ff7af10574"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/migrations/20240127_fix_otp_phone_key.sql": {
+    "mtime": 1785482080915.307,
+    "hash": "af7abddea761b35ab76675fb555494d6"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/migrations/20240128_create_product_cache.sql": {
+    "mtime": 1785482080916.3076,
+    "hash": "7ed6ca60faf78ad24a5e181b57e3230f"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/migrations/20260810_create_payment_initiation_logs.sql": {
+    "mtime": 1786381870754.0737,
+    "hash": "06e10e1d1fa2c86ac668e4af738bbea0"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/migrations/20260812_create_payment_attempts.sql": {
+    "mtime": 1786530295912.4297,
+    "hash": "e58b95869a8141ab17974767cafb0e55"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/migrations/20260824_create_payment_overview.sql": {
+    "mtime": 1787564546349.152,
+    "hash": "05b8053567a161755e565ef43abdeb3f"
+  },
+  "C:/Users/sathi/Downloads/minikki/supabase/schema.sql": {
+    "mtime": 1786535993195.1482,
+    "hash": "b65a13eb6eb376412c9fa006eea3842e"
+  },
+  "C:/Users/sathi/Downloads/minikki/tailwind.config.ts": {
+    "mtime": 1785482080917.3079,
+    "hash": "d7e130b61a2fc34e0851aa54a2adcdcc"
+  },
+  "C:/Users/sathi/Downloads/minikki/vite.config.ts": {
+    "mtime": 1785482080919.8147,
+    "hash": "e4aadcae390d70c13c9ab52b65de2ff5"
+  },
+  "C:/Users/sathi/Downloads/minikki/wordpress-plugin/build-zips.py": {
+    "mtime": 1787511154678.6812,
+    "hash": "810960869206d9c39479939e64b3c067"
+  },
+  "C:/Users/sathi/Downloads/minikki/wordpress-plugin/minikki-gst/minikki-gst.php": {
+    "mtime": 1787510484282.1467,
+    "hash": "62ba118ad3cc74239bddb408660aa892"
+  },
+  "C:/Users/sathi/Downloads/minikki/wordpress-plugin/minikki-home/assets/admin.js": {
+    "mtime": 1787566158543.325,
+    "hash": "afb2878da9ee160cf44999ef0a8f4098"
+  },
+  "C:/Users/sathi/Downloads/minikki/wordpress-plugin/minikki-home/includes/class-minikki-admin.php": {
+    "mtime": 1787510344712.776,
+    "hash": "10c534e71cf91bb49792c3a22cde3a6e"
+  },
+  "C:/Users/sathi/Downloads/minikki/wordpress-plugin/minikki-home/includes/class-minikki-config.php": {
+    "mtime": 1787566095881.108,
+    "hash": "8bc286073be6e5484e0702bc95b60506"
+  },
+  "C:/Users/sathi/Downloads/minikki/wordpress-plugin/minikki-home/includes/class-minikki-rest.php": {
+    "mtime": 1787566335017.6025,
+    "hash": "71c064b850edbe5ab17f26224e956e7b"
+  },
+  "C:/Users/sathi/Downloads/minikki/wordpress-plugin/minikki-home/minikki-home.php": {
+    "mtime": 1787566342171.6555,
+    "hash": "e1c7c5a61a279bc0649c642f01634732"
+  },
+  "C:/Users/sathi/Downloads/minikki/README.md": {
+    "mtime": 1785482080750.1643,
+    "hash": "3281893c34253b07df2ec3acb5389253"
+  },
+  "C:/Users/sathi/Downloads/minikki/deploy/README.md": {
+    "mtime": 1786535286335.164,
+    "hash": "364bd5ad620742a0ed65160f4ab305e1"
+  },
+  "C:/Users/sathi/Downloads/minikki/docs/RAZORPAY_SETUP.md": {
+    "mtime": 1786533914541.2185,
+    "hash": "d94003683200bf70893ca732952c5e1e"
+  },
+  "C:/Users/sathi/Downloads/minikki/index.html": {
+    "mtime": 1787480640540.6084,
+    "hash": "511192278c63ec3b3425215986d2ba53"
+  },
+  "C:/Users/sathi/Downloads/minikki/public/icon-preview.html": {
+    "mtime": 1785482080795.192,
+    "hash": "812ea0722c2d2640618d6cded9764ba6"
+  },
+  "C:/Users/sathi/Downloads/minikki/public/robots.txt": {
+    "mtime": 1785513636875.43,
+    "hash": "e503454f38955fadec6861e5228f9c8b"
+  },
+  "C:/Users/sathi/Downloads/minikki/public/account-icon.png": {
+    "mtime": 1785482080762.1626,
+    "hash": "736dd5d04a029cb187fa4b436ae0c468"
+  },
+  "C:/Users/sathi/Downloads/minikki/public/banner-fallback.png": {
+    "mtime": 1785482080784.6748,
+    "hash": "652eae024925624ad0588f436a488236"
+  },
+  "C:/Users/sathi/Downloads/minikki/public/cart-icon.png": {
+    "mtime": 1785482080786.6768,
+    "hash": "f47d83c2390e4ca10e6841905d392c7a"
+  },
+  "C:/Users/sathi/Downloads/minikki/public/founder.jpg": {
+    "mtime": 1785482080794.1892,
+    "hash": "95ae156726eee9b55ce0cbcaa0d9219c"
+  },
+  "C:/Users/sathi/Downloads/minikki/public/logo.png": {
+    "mtime": 1785482080796.1887,
+    "hash": "725b9da001e3fbbbffbdca245d0a05c5"
+  },
+  "C:/Users/sathi/Downloads/minikki/public/logo.webp": {
+    "mtime": 1785482080797.1892,
+    "hash": "6c3f68255e0ee41790766a37630cccc5"
+  },
+  "C:/Users/sathi/Downloads/minikki/public/logo_new.png": {
+    "mtime": 1785482080799.1948,
+    "hash": "d223398e9d3aa411393e853bd181f70f"
+  },
+  "C:/Users/sathi/Downloads/minikki/public/new_arrival_banner.jpg": {
+    "mtime": 1785482080800.195,
+    "hash": "83b3c821698c8513d0793c96f9153e97"
+  },
+  "C:/Users/sathi/Downloads/minikki/public/placeholder.svg": {
+    "mtime": 1785482080801.195,
+    "hash": "35707bd9960ba5281c72af927b79291f"
+  },
+  "C:/Users/sathi/Downloads/minikki/public/size-chart.jpg": {
+    "mtime": 1786535993150.762,
+    "hash": "958efc1de29b06da221e6ceaf06ccf62"
+  }
+}

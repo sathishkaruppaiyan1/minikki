@@ -203,6 +203,7 @@ class Minikki_Home_Config {
 
 		update_option( MINIKKI_HOME_OPTION, $clean );
 		update_option( MINIKKI_HOME_OPTION . '_updated_at', time() );
+		Minikki_Home_Rest::flush_sections_cache();
 
 		return $clean;
 	}
@@ -233,6 +234,7 @@ class Minikki_Home_Config {
 	 */
 	public static function bump_catalog_stamp() {
 		update_option( MINIKKI_HOME_OPTION . '_catalog_updated_at', time() );
+		Minikki_Home_Rest::flush_sections_cache();
 	}
 
 	/**

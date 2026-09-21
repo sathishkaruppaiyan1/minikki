@@ -7,11 +7,14 @@ import { Link } from "react-router-dom";
 // Selection and order come from the WordPress plugin when it is set to
 // "manual"; otherwise every WooCommerce category is shown, as before.
 const CategoryCarousel = () => {
-  const { data, isLoading } = useWooCommerceCategories();
   const { data: config, isLoading: configLoading } = useHomeConfig();
 
   const section = config?.circle_categories;
   const curated = section?.source === "manual" ? section.items : null;
+
+  // Only hit Supabase for the full category list when the config has settled
+  // without a curated set (plugin missing, or source left on "auto").
+  const { data, isLoading } = useWooCommerceCategories(!configLoading && !curated);
 
   const categories = curated
     ? curated.map((item) => ({

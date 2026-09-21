@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { Product } from "@/types/product";
 
 /**
  * Homepage configuration served by the "Minikki Home Builder" WordPress plugin
@@ -63,6 +64,13 @@ export interface HomeProductSection {
   product_ids: number[];
   /** Cap for the automatic sources (tag / category). */
   limit: number;
+  /**
+   * The row's products, already resolved and ordered by WordPress (plugin >=
+   * 1.5.0). When present the storefront renders straight from this and makes
+   * no Supabase calls for the row; an older plugin omits it and the row falls
+   * back to resolving `product_ids` / `tag` / `category_slug` itself.
+   */
+  products?: Product[];
 }
 
 export interface HomeReviewItem {

@@ -273,9 +273,10 @@ export const useWooCommerceProductsInfinite = (params: Omit<ProductsParams, 'pag
   });
 };
 
-export const useWooCommerceCategories = () => {
+export const useWooCommerceCategories = (enabled = true) => {
   return useQuery({
     queryKey: ["woocommerce-categories"],
+    enabled,
     queryFn: async (): Promise<CategoriesResponse> => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -883,9 +884,10 @@ export interface HomeBanner {
   display_order: number;
 }
 
-export const useHomeBanners = () => {
+export const useHomeBanners = (enabled = true) => {
   return useQuery({
     queryKey: ["home-banners"],
+    enabled,
     queryFn: async (): Promise<HomeBanner[]> => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
