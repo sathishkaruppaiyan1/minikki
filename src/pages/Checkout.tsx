@@ -140,10 +140,13 @@ const Checkout = () => {
     // called from the browser. zippopotam.us has spotty coverage for rural
     // Indian pincodes. Solution: call a deployed edge function that proxies
     // postalpincode.in server-side (full India Post coverage, public data only).
-    const PINCODE_LOOKUP_URL = "https://tjjpedhwruqiiybuwsgy.supabase.co/functions/v1/pincode-lookup";
+    const PINCODE_LOOKUP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pincode-lookup`;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
     try {
-      const response = await fetch(`${PINCODE_LOOKUP_URL}?pincode=${pincode}`);
+      const response = await fetch(`${PINCODE_LOOKUP_URL}?pincode=${pincode}`, {
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+      });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }

@@ -64,9 +64,70 @@ async function denyIfUnauthorized(req: Request): Promise<Response | null> {
 
 const PORT = Number(Deno.env.get("PORT") ?? 8000);
 
+// The functions' supabase-js clients use SUPABASE_URL = this router, so their
+// /rest/v1 calls land here and are forwarded to PostgREST on localhost.
+// Internal only: nginx always sets X-Forwarded-For, so its presence means the
+// request came from the internet. The frontend never calls /rest/v1 directly.
+const POSTGREST_URL = Deno.env.get("POSTGREST_URL") ?? "http://127.0.0.1:3000";
+
+async function proxyRest(req: Request, url: URL): Promise<Response> {
+  if (req.headers.has("x-forwarded-for")) return json(404, { error: "Not found" });
+  const target = POSTGREST_URL + url.pathname.slice("/rest/v1".length) + url.search;
+  const headers = new Headers(req.headers);
+  headers.delete("host");
+  const res = await fetch(target, {
+    method: req.method,
+    headers,
+    body: req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
+  });
+  return new Response(res.body, { status: res.status, headers: res.headers });
+}
+
+// Review media written by woocommerce-reviews when MEDIA_DIR is set. Filenames
+// are unique per upload and never rewritten, so they can be cached forever.
+const MEDIA_DIR = Deno.env.get("MEDIA_DIR");
+const MEDIA_TYPES: Record<string, string> = {
+  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+  gif: "image/gif", heic: "image/heic", avif: "image/avif",
+  mp4: "video/mp4", webm: "video/webm", quicktime: "video/quicktime", mov: "video/quicktime",
+};
+
+async function serveMedia(req: Request, pathname: string): Promise<Response> {
+  if (!MEDIA_DIR || (req.method !== "GET" && req.method !== "HEAD")) {
+    return json(404, { error: "Not found" });
+  }
+  const rel = decodeURIComponent(pathname.slice("/media/".length));
+  if (!/^[A-Za-z0-9/_.-]+$/.test(rel) || rel.split("/").some((p) => p === "" || p.startsWith("."))) {
+    return json(404, { error: "Not found" });
+  }
+  const type = MEDIA_TYPES[rel.slice(rel.lastIndexOf(".") + 1).toLowerCase()];
+  if (!type) return json(404, { error: "Not found" });
+  try {
+    const file = await Deno.open(`${MEDIA_DIR}/${rel}`, { read: true });
+    const { size } = await file.stat();
+    const headers = {
+      "content-type": type,
+      "content-length": String(size),
+      "cache-control": "public, max-age=31536000, immutable",
+      "access-control-allow-origin": "*",
+      "x-content-type-options": "nosniff",
+    };
+    if (req.method === "HEAD") {
+      file.close();
+      return new Response(null, { headers });
+    }
+    return new Response(file.readable, { headers });
+  } catch {
+    return json(404, { error: "Not found" });
+  }
+}
+
 Deno.serve({ port: PORT, hostname: "127.0.0.1" }, async (req) => {
-  const { pathname } = new URL(req.url);
+  const url = new URL(req.url);
+  const { pathname } = url;
   if (pathname === "/health") return new Response("ok");
+  if (pathname === "/rest/v1" || pathname.startsWith("/rest/v1/")) return proxyRest(req, url);
+  if (pathname.startsWith("/media/")) return serveMedia(req, pathname);
 
   const m = pathname.match(/^\/functions\/v1\/([a-z0-9-]+)(\/.*)?$/);
   if (!m) return json(404, { error: "Not found" });

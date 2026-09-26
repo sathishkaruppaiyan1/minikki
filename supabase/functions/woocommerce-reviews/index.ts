@@ -191,8 +191,26 @@ serve(async (req) => {
                             bytes[j] = binaryString.charCodeAt(j);
                         }
 
-                        // Upload to Supabase Storage
                         const filePath = `reviews/${product_id}/${reviewId}-${Date.now()}-${i}.${extension}`;
+
+                        // On the VPS (MEDIA_DIR set) files go to local disk and the router
+                        // serves them at MEDIA_PUBLIC_URL. On Supabase, Storage as before.
+                        const mediaDir = Deno.env.get('MEDIA_DIR');
+                        const mediaPublicUrl = Deno.env.get('MEDIA_PUBLIC_URL');
+                        if (mediaDir && mediaPublicUrl) {
+                            if (!/^(image|video)\/[a-z0-9.+-]+$/i.test(mimeType) || !/^[a-z0-9]+$/i.test(extension)) {
+                                console.error(`Rejected media type for image ${i + 1}: ${mimeType}`);
+                                continue;
+                            }
+                            const localPath = `${mediaDir}/${filePath}`;
+                            await Deno.mkdir(localPath.slice(0, localPath.lastIndexOf('/')), { recursive: true });
+                            await Deno.writeFile(localPath, bytes, { createNew: true });
+                            uploadedMedia.push(`${mediaPublicUrl}/${filePath}`);
+                            console.log(`Saved image ${i + 1} to ${localPath} (${bytes.length} bytes)`);
+                            continue;
+                        }
+
+                        // Upload to Supabase Storage
                         console.log(`Uploading to Supabase Storage: ${filePath} (${bytes.length} bytes)`);
 
                         const { data: uploadData, error: uploadError } = await supabase.storage
