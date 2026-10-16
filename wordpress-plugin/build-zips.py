@@ -14,7 +14,7 @@ import os
 import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PLUGINS = ('minikki-home', 'minikki-gst')
+PLUGINS = ('minikki-home', 'minikki-gst', 'minikki-images')
 SKIP_EXT = ('.zip',)
 SKIP_NAMES = {'.DS_Store', 'Thumbs.db', '__MACOSX'}
 

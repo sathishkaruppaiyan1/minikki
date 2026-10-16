@@ -610,7 +610,9 @@ const ProductDetail = () => {
                       >
                         {variationImage ? (
                           <img
-                            src={variationImage}
+                            src={variationImage.startsWith("/") || variationImage.startsWith("data:")
+                              ? variationImage
+                              : getGalleryThumbnail(variationImage)}
                             alt={colorName}
                             className="w-full h-full object-cover object-top border-2 border-white"
                           />

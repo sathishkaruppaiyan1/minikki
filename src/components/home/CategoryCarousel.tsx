@@ -2,6 +2,7 @@ import { useWooCommerceCategories } from "@/hooks/useWooCommerce";
 import { useHomeConfig } from "@/hooks/useHomeConfig";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
+import { getCategoryImage } from "@/lib/imageOptimizer";
 
 // Category list with continuous sword-shine effect.
 // Selection and order come from the WordPress plugin when it is set to
@@ -74,7 +75,7 @@ const CategoryCarousel = () => {
               <div className="category-shine">
                 <div className="category-shine-inner">
                   <img
-                    src={category.image}
+                    src={getCategoryImage(category.image)}
                     alt={category.name}
                     loading="lazy"
                     decoding="async"

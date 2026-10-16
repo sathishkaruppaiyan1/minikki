@@ -5,6 +5,14 @@ import { useHomeBanners } from "@/hooks/useWooCommerce";
 import { useHomeConfig } from "@/hooks/useHomeConfig";
 import type { HomeBanner } from "@/hooks/useWooCommerce";
 import type { HomeBannerItem } from "@/hooks/useHomeConfig";
+import { getBannerImage, getMobileBannerImage } from "@/lib/imageOptimizer";
+
+/** 800w / 1600w WebP copies so phones don't download the desktop-size file. */
+const bannerSrcSet = (url: string) => {
+  const small = getMobileBannerImage(url);
+  const large = getBannerImage(url);
+  return small === url ? url : `${small} 800w, ${large} 1600w`;
+};
 
 /** Map a WordPress-plugin banner onto the existing Supabase banner shape. */
 const fromConfig = (banner: HomeBannerItem): HomeBanner => ({
@@ -193,10 +201,16 @@ const BannerSlide = ({ banner }: { banner: HomeBanner }) => {
           block that fills the box. */}
       <picture className="absolute inset-0 block w-full h-full">
         {banner.mobile_image_url && (
-          <source media="(max-width: 768px)" srcSet={banner.mobile_image_url} />
+          <source
+            media="(max-width: 768px)"
+            srcSet={bannerSrcSet(banner.mobile_image_url)}
+            sizes="100vw"
+          />
         )}
         <img
-          src={banner.image_url}
+          src={getBannerImage(banner.image_url)}
+          srcSet={bannerSrcSet(banner.image_url)}
+          sizes="100vw"
           alt={banner.alt_text || "Banner"}
           className="block w-full h-full object-cover object-top"
           loading="eager"

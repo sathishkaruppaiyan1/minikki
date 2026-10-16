@@ -11,8 +11,36 @@ export interface ImageOptimizeOptions {
 }
 
 /**
- * Optimize image URL with size and quality parameters
- * Supports WordPress image resizing via query params or CDN
+ * WebP copies made by the "Minikki Images" WordPress plugin
+ * (wordpress-plugin/minikki-images). Keep the folder and widths in sync with
+ * Minikki_Images_Generator::WIDTHS:
+ *   /wp-content/uploads/2026/10/photo.jpeg
+ *   -> /wp-content/uploads/minikki-img/2026/10/photo.jpeg.800.webp
+ *
+ * Neither WordPress nor nginx understands ?w=/&format= query params, so the
+ * old approach downloaded the full original for every thumbnail.
+ */
+const VARIANT_DIR = 'minikki-img';
+const VARIANT_WIDTHS = [150, 400, 800, 1600];
+const UPLOADS_MARKER = '/wp-content/uploads/';
+const VARIANT_PATTERN = new RegExp(
+  `${UPLOADS_MARKER}${VARIANT_DIR}/(.+\\.(?:jpe?g|png))\\.\\d+\\.webp$`,
+  'i'
+);
+
+/**
+ * Original upload URL for a WebP copy URL, or null if `src` isn't one.
+ * Used to fall back when a copy hasn't been generated yet.
+ */
+export const originalFromVariant = (src: string): string | null => {
+  const match = src.match(VARIANT_PATTERN);
+  if (!match) return null;
+  return src.slice(0, match.index) + UPLOADS_MARKER + match[1];
+};
+
+/**
+ * Point an uploads image URL at its pre-generated WebP copy of the smallest
+ * width that still covers `width`. Anything else is returned unchanged.
  */
 export const optimizeImage = (
   src: string,
@@ -22,26 +50,71 @@ export const optimizeImage = (
     return src; // Local or data URLs - return as-is
   }
 
-  const { width, height, quality = 85, format } = options;
+  const { width } = options;
+  if (!width) return src;
 
   try {
     const url = new URL(src);
+    const markerAt = url.pathname.indexOf(UPLOADS_MARKER);
+    if (markerAt === -1) return src;
 
-    // WordPress image optimization via query params
-    // Many WordPress sites support ?w=, ?h=, ?q=, ?format=webp
-    if (width) url.searchParams.set('w', width.toString());
-    if (height) url.searchParams.set('h', height.toString());
-    if (quality !== 85) url.searchParams.set('q', quality.toString());
-    if (format === 'webp') url.searchParams.set('format', 'webp');
+    const relative = url.pathname.slice(markerAt + UPLOADS_MARKER.length);
+    if (relative.startsWith(`${VARIANT_DIR}/`) || !/\.(jpe?g|png)$/i.test(relative)) {
+      return src;
+    }
 
-    // Alternative: If using a CDN (Cloudinary, Imgix, etc.), use their format:
-    // return `https://cdn.example.com/w_${width || 'auto'},q_${quality}/${src}`;
+    const variantWidth =
+      VARIANT_WIDTHS.find((w) => w >= width) ?? VARIANT_WIDTHS[VARIANT_WIDTHS.length - 1];
 
+    url.pathname = `${url.pathname.slice(0, markerAt)}${UPLOADS_MARKER}${VARIANT_DIR}/${relative}.${variantWidth}.webp`;
+    url.search = '';
     return url.toString();
   } catch {
     // If URL parsing fails, return original
     return src;
   }
+};
+
+/**
+ * When a WebP copy is missing (e.g. an image uploaded before the plugin's
+ * backfill reached it), swap the <img> — and any <source> in its <picture> —
+ * back to the original upload before the component's own onError shows a
+ * placeholder. Call once at startup.
+ */
+export const installImageFallback = (): void => {
+  if (typeof window === 'undefined') return;
+
+  window.addEventListener(
+    'error',
+    (event) => {
+      const img = event.target;
+      if (!(img instanceof HTMLImageElement)) return;
+
+      const original = originalFromVariant(img.currentSrc || img.src);
+      if (!original) return;
+
+      // Capture phase on window runs before React's onError on the element;
+      // stopping here keeps that handler from replacing the image with a placeholder.
+      event.stopImmediatePropagation();
+
+      // A srcset lists several copies of one upload; collapse it to the original.
+      const srcsetOriginal = (srcset: string) =>
+        originalFromVariant(srcset.trim().split(/\s+/)[0] ?? '');
+
+      const picture = img.parentElement;
+      if (picture instanceof HTMLPictureElement) {
+        picture.querySelectorAll('source').forEach((source) => {
+          const sourceOriginal = srcsetOriginal(source.srcset);
+          if (sourceOriginal) source.srcset = sourceOriginal;
+        });
+      }
+      if (img.srcset) {
+        img.srcset = srcsetOriginal(img.srcset) ?? original;
+      }
+      img.src = originalFromVariant(img.src) ?? original;
+    },
+    true
+  );
 };
 
 /**
@@ -67,6 +140,21 @@ export const getProductDetailImage = (src: string): string => {
     format: 'webp',
   });
 };
+
+/**
+ * Full-width homepage banners (desktop) and their mobile versions.
+ */
+export const getBannerImage = (src: string): string =>
+  optimizeImage(src, { width: 1600 });
+
+export const getMobileBannerImage = (src: string): string =>
+  optimizeImage(src, { width: 800 });
+
+/**
+ * Category tiles and circles.
+ */
+export const getCategoryImage = (src: string): string =>
+  optimizeImage(src, { width: 400 });
 
 /**
  * Get optimized image URL for gallery thumbnails

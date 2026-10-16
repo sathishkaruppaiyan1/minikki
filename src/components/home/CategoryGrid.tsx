@@ -99,6 +99,7 @@ import { useWooCommerceCategories } from "@/hooks/useWooCommerce";
 import { useHomeConfig } from "@/hooks/useHomeConfig";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Reveal } from "@/components/ui/Reveal";
+import { getCategoryImage } from "@/lib/imageOptimizer";
 
 const CategoryGrid = () => {
   const { data, isLoading, error } = useWooCommerceCategories();
@@ -176,7 +177,7 @@ const CategoryGrid = () => {
                 {/* Image */}
                 <div className="relative aspect-[3/4] overflow-hidden rounded-lg">
                   <img
-                    src={category.image}
+                    src={getCategoryImage(category.image)}
                     alt={category.name}
                     loading="lazy"
                     decoding="async"
