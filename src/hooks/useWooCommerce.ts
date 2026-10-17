@@ -64,7 +64,6 @@ export interface OrderLineItem {
 export interface CreateOrderData {
   payment_method: string;
   payment_method_title: string;
-  set_paid: boolean;
   billing: {
     first_name: string;
     last_name: string;

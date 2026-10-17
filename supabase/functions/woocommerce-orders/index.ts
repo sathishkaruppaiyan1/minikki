@@ -50,6 +50,48 @@ const normalizePhone = (phoneStr: string) => {
     return phoneStr.replace(/\D/g, '').replace(/^91/, '').slice(-10);
 };
 
+// --- Payment gateway checks for order creation ---
+
+interface EnabledGateway { id: string; title: string; }
+
+let gatewayCache: { at: number; gateways: Map<string, EnabledGateway> } | null = null;
+const GATEWAY_CACHE_MS = 5 * 60 * 1000;
+
+async function getEnabledGateways(storeUrl: string, authHeader: string): Promise<Map<string, EnabledGateway>> {
+    if (gatewayCache && Date.now() - gatewayCache.at < GATEWAY_CACHE_MS) {
+        return gatewayCache.gateways;
+    }
+    const res = await fetch(`${storeUrl}/wp-json/wc/v3/payment_gateways`, {
+        headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) {
+        throw new Error(`Could not load payment gateways: ${res.status}`);
+    }
+    const list = await res.json();
+    const gateways = new Map<string, EnabledGateway>();
+    for (const gw of Array.isArray(list) ? list : []) {
+        if (gw?.enabled === true) gateways.set(gw.id, { id: gw.id, title: gw.title || gw.id });
+    }
+    gatewayCache = { at: Date.now(), gateways };
+    return gateways;
+}
+
+// Online gateways start unpaid and are moved on by the payment webhook /
+// verify functions. Offline ones follow WooCommerce's own defaults.
+function initialStatusFor(gatewayId: string): string {
+    if (gatewayId === 'cod') return 'processing';
+    if (gatewayId === 'bacs' || gatewayId === 'cheque') return 'on-hold';
+    return 'pending';
+}
+
+// Drop protected meta (leading underscore, e.g. _transaction_id, _paid_date).
+function publicMeta(meta: unknown) {
+    if (!Array.isArray(meta)) return [];
+    return meta
+        .filter((m: any) => m && typeof m.key === 'string' && !m.key.startsWith('_'))
+        .map((m: any) => ({ key: m.key, value: m.value }));
+}
+
 // Minimal, PII-free order view for unauthenticated (guest) tracking
 const sanitizeOrderForGuest = (order: any) => ({
     id: order.id,
@@ -204,8 +246,50 @@ serve(async (req) => {
         }
 
         // POST Request: Create Order
+        // The client body is untrusted. Only the fields checkout needs are
+        // forwarded, the payment method must be a gateway WooCommerce has
+        // enabled, and status / paid state are decided here. Previously the body
+        // went through verbatim, so a missing method became an unpaid "cod"
+        // order created as processing even with COD disabled.
         if (req.method === 'POST') {
             const body = await req.json();
+
+            const gateways = await getEnabledGateways(storeUrl, authHeader);
+            const gateway = gateways.get(String(body.payment_method || ''));
+            if (!gateway) {
+                console.error(`Rejected order: payment method '${body.payment_method}' is not enabled`);
+                return new Response(
+                    JSON.stringify({ error: 'Selected payment method is not available. Please choose another and try again.' }),
+                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+            }
+
+            const lineItems = Array.isArray(body.line_items) ? body.line_items : [];
+            if (lineItems.length === 0) {
+                return new Response(
+                    JSON.stringify({ error: 'Order has no items' }),
+                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+            }
+
+            const orderData = {
+                payment_method: gateway.id,
+                payment_method_title: gateway.title,
+                set_paid: false,
+                status: initialStatusFor(gateway.id),
+                billing: body.billing,
+                shipping: body.shipping,
+                customer_note: typeof body.customer_note === 'string' ? body.customer_note : undefined,
+                line_items: lineItems.map((li: any) => ({
+                    product_id: li.product_id,
+                    variation_id: li.variation_id,
+                    quantity: li.quantity,
+                    subtotal: li.subtotal,
+                    total: li.total,
+                    meta_data: publicMeta(li.meta_data),
+                })),
+                meta_data: publicMeta(body.meta_data),
+            };
 
             const apiUrl = `${storeUrl}/wp-json/wc/v3/orders`;
 
@@ -215,7 +299,7 @@ serve(async (req) => {
                     'Authorization': authHeader,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(body)
+                body: JSON.stringify(orderData)
             });
 
             if (!response.ok) {
@@ -294,7 +378,7 @@ serve(async (req) => {
                 }
                 update.status = body.status;
             }
-            if (Array.isArray(body.meta_data)) update.meta_data = body.meta_data;
+            if (Array.isArray(body.meta_data)) update.meta_data = publicMeta(body.meta_data);
             if (Array.isArray(body.line_items)) update.line_items = body.line_items;
 
             if (Object.keys(update).length === 0) {

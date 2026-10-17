@@ -67,6 +67,11 @@ const Checkout = () => {
     }
   }, [paymentGateways, paymentMethod]);
 
+  // An order may only be placed with a gateway WooCommerce reports as enabled.
+  // Never fall back to a default: a missing method used to become an unpaid
+  // "cod" order created straight as processing.
+  const selectedEnabledGateway = paymentGateways?.find(g => g.enabled && g.id === paymentMethod);
+
   // Load Razorpay Script
   useEffect(() => {
     const script = document.createElement("script");
@@ -237,6 +242,15 @@ const Checkout = () => {
       return;
     }
 
+    if (!selectedEnabledGateway) {
+      toast({
+        variant: "destructive",
+        title: "Payment method not loaded",
+        description: "Please wait for the payment options to load, choose one, and try again.",
+      });
+      return;
+    }
+
     setShowConfirmDialog(true);
   };
 
@@ -268,8 +282,15 @@ const Checkout = () => {
         navigate("/cart");
         return;
       }
-      // Find selected payment gateway details
-      const selectedGateway = paymentGateways?.find(g => g.id === paymentMethod);
+      if (!selectedEnabledGateway) {
+        toast({
+          variant: "destructive",
+          title: "Payment method not loaded",
+          description: "Please choose a payment method and try again.",
+        });
+        setIsProcessing(false);
+        return;
+      }
 
       // WooCommerce matches tax rates on the ISO country + state code. Sending
       // "Tamil Nadu" instead of "TN" means no state rate matches and the order
@@ -287,10 +308,10 @@ const Checkout = () => {
           : String(gross);
 
       const orderData = {
-        payment_method: paymentMethod || "cod",
-        payment_method_title: selectedGateway?.title || "Cash on Delivery",
-        set_paid: false,
-        status: (paymentMethod === "razorpay" || paymentMethod.includes("cashfree")) ? "pending" : "processing",
+        // Status and paid flag are decided by the woocommerce-orders function
+        // from the gateway, never by the client.
+        payment_method: selectedEnabledGateway.id,
+        payment_method_title: selectedEnabledGateway.title,
         billing: {
           first_name: formData.name,
           last_name: "",
@@ -1122,7 +1143,7 @@ const Checkout = () => {
                   {/* Place Order Button */}
                   <Button
                     type="submit"
-                    disabled={isProcessing}
+                    disabled={isProcessing || !selectedEnabledGateway}
                     className="w-full h-14 mt-6 bg-black text-white hover:bg-black/90 rounded-none font-bold text-base"
                   >
                     {isProcessing ? (
