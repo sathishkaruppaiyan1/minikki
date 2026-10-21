@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "../_runtime/serve.ts";
+import { debugLog } from "../_runtime/log.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -104,7 +105,7 @@ serve(async (req) => {
       const categorySlug = categoryId;
       const categoryUrl = `${storeUrl}/wp-json/wc/v3/products/categories?slug=${encodeURIComponent(categorySlug)}&per_page=1&hide_empty=false`;
 
-      console.log(`Resolving category slug "${categorySlug}" from: ${categoryUrl}`);
+      debugLog(`Resolving category slug "${categorySlug}" from: ${categoryUrl}`);
 
       const categoryResponse = await fetch(categoryUrl, {
         method: 'GET',
@@ -136,7 +137,7 @@ serve(async (req) => {
       }
 
       categoryId = matchingCategories[0].id?.toString() || '';
-      console.log(`Resolved category slug "${categorySlug}" to ID ${categoryId}`);
+      debugLog(`Resolved category slug "${categorySlug}" to ID ${categoryId}`);
     }
 
     // Build cache key from all query parameters
@@ -147,7 +148,7 @@ serve(async (req) => {
     // L1: In-memory cache (same isolate, ~0ms)
     const cached = responseCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < cacheTTL) {
-      console.log(`L1 cache hit for key: ${cacheKey}`);
+      debugLog(`L1 cache hit for key: ${cacheKey}`);
       return new Response(cached.data, {
         headers: { ...cacheHeaders, 'Content-Type': 'application/json' },
       });
@@ -173,23 +174,23 @@ serve(async (req) => {
           setL1(cacheKey, responseBody);
 
           if (cachedAge < DB_CACHE_FRESH_TTL) {
-            console.log(`L2 DB cache FRESH hit for key: ${cacheKey} (age: ${cachedAge}ms)`);
+            debugLog(`L2 DB cache FRESH hit for key: ${cacheKey} (age: ${cachedAge}ms)`);
           } else {
-            console.log(`L2 DB cache STALE hit for key: ${cacheKey} (age: ${cachedAge}ms) — serving stale`);
+            debugLog(`L2 DB cache STALE hit for key: ${cacheKey} (age: ${cachedAge}ms) — serving stale`);
           }
 
           return new Response(responseBody, {
             headers: { ...cacheHeaders, 'Content-Type': 'application/json' },
           });
         } else {
-          console.log(`L2 DB cache EXPIRED for key: ${cacheKey} (age: ${cachedAge}ms)`);
+          debugLog(`L2 DB cache EXPIRED for key: ${cacheKey} (age: ${cachedAge}ms)`);
         }
       }
     } catch (dbErr) {
       console.error('L2 DB cache check failed (proceeding to WooCommerce):', dbErr);
     }
 
-    console.log(`Cache miss for key: ${cacheKey} — fetching from WooCommerce`);
+    debugLog(`Cache miss for key: ${cacheKey} — fetching from WooCommerce`);
 
     // Build WooCommerce API URL
     let apiUrl: string;
@@ -225,7 +226,7 @@ serve(async (req) => {
           const cachedTag = tagSlugCache.get(tag);
           if (cachedTag && (Date.now() - cachedTag.timestamp) < TAG_CACHE_TTL) {
             apiUrl += `&tag=${cachedTag.id}`;
-            console.log(`Tag slug "${tag}" resolved from cache to ID ${cachedTag.id}`);
+            debugLog(`Tag slug "${tag}" resolved from cache to ID ${cachedTag.id}`);
           } else {
             try {
               const tagResponse = await fetch(
@@ -240,7 +241,7 @@ serve(async (req) => {
                 if (tags.length > 0) {
                   apiUrl += `&tag=${tags[0].id}`;
                   tagSlugCache.set(tag, { id: tags[0].id, timestamp: Date.now() });
-                  console.log(`Resolved tag slug "${tag}" to ID ${tags[0].id}`);
+                  debugLog(`Resolved tag slug "${tag}" to ID ${tags[0].id}`);
                 } else {
                   console.warn(`Tag slug "${tag}" not found`);
                 }
@@ -253,7 +254,7 @@ serve(async (req) => {
       }
     }
 
-    console.log('Fetching products from:', apiUrl);
+    debugLog('Fetching products from:', apiUrl);
 
     const response = await fetch(apiUrl, {
       method: 'GET',
@@ -295,7 +296,7 @@ serve(async (req) => {
     if (productId) {
       // Single product: check if it's published
       if (responseData.status && responseData.status !== 'publish') {
-        console.log(`Product ${productId} is not published (status: ${responseData.status}), returning empty`);
+        debugLog(`Product ${productId} is not published (status: ${responseData.status}), returning empty`);
         return new Response(
           JSON.stringify({ products: [], total: 0, totalPages: 0, currentPage: parseInt(page) }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -307,7 +308,7 @@ serve(async (req) => {
         const before = responseData.length;
         responseData = responseData.filter((p: any) => !p.status || p.status === 'publish');
         if (responseData.length < before) {
-          console.log(`Filtered out ${before - responseData.length} non-published products from list`);
+          debugLog(`Filtered out ${before - responseData.length} non-published products from list`);
         }
       }
     }
@@ -316,7 +317,7 @@ serve(async (req) => {
     const fetchVariations = async (productId: string): Promise<any[]> => {
       try {
         const variationsUrl = `${storeUrl}/wp-json/wc/v3/products/${productId}/variations?per_page=100`;
-        console.log(`Fetching variations from: ${variationsUrl}`);
+        debugLog(`Fetching variations from: ${variationsUrl}`);
         const variationsResponse = await fetch(variationsUrl, {
           method: 'GET',
           headers: {
@@ -327,9 +328,9 @@ serve(async (req) => {
 
         if (variationsResponse.ok) {
           const variations = await variationsResponse.json();
-          console.log(`Found ${variations.length} variations for product ${productId}`);
+          debugLog(`Found ${variations.length} variations for product ${productId}`);
           if (variations.length > 0) {
-            console.log(`First variation sample:`, JSON.stringify(variations[0], null, 2));
+            debugLog(`First variation sample:`, JSON.stringify(variations[0], null, 2));
           }
           return variations;
         } else {
@@ -374,7 +375,7 @@ serve(async (req) => {
         const extractField = (keys: string[]) => {
           // Log keys for debugging if it's a specific product (or just first few)
           if (product.meta_data && Array.isArray(product.meta_data) && product.meta_data.length > 0) {
-            console.log(`Product ${product.id} meta keys:`, product.meta_data.map(m => m.key).join(', '));
+            debugLog(`Product ${product.id} meta keys:`, product.meta_data.map(m => m.key).join(', '));
           }
           // Check ACF
           if (product.acf && typeof product.acf === 'object') {
@@ -460,25 +461,25 @@ serve(async (req) => {
           imageIdToUrl[img.id.toString()] = img.src;
         }
       });
-      console.log(`Product ${product.id} initial image ID map: ${Object.keys(imageIdToUrl).length} images`);
+      debugLog(`Product ${product.id} initial image ID map: ${Object.keys(imageIdToUrl).length} images`);
 
       // Helper to resolve image ID to URL using the map first, then fallback to API
       const resolveImageUrl = async (imageId: string): Promise<string | null> => {
         // Normalize image ID
         const normalizedId = String(imageId).trim();
         if (!normalizedId || isNaN(Number(normalizedId))) {
-          console.log(`Invalid image ID: ${imageId}`);
+          debugLog(`Invalid image ID: ${imageId}`);
           return null;
         }
 
         // First check if it's in the images map (includes product + variation images)
         if (imageIdToUrl[normalizedId]) {
-          console.log(`Image ${normalizedId} found in images map`);
+          debugLog(`Image ${normalizedId} found in images map`);
           return imageIdToUrl[normalizedId];
         }
 
         // Fallback to fetching from media API
-        console.log(`Image ${normalizedId} not in map, trying media API`);
+        debugLog(`Image ${normalizedId} not in map, trying media API`);
         const url = await fetchMediaUrl(normalizedId);
 
         // Cache it if found
@@ -494,11 +495,11 @@ serve(async (req) => {
       let allVariationImageUrls: string[] = [];
 
       // If product is variable, fetch variations (skip if skipVariations flag is set for performance)
-      console.log(`Product ${product.id} type: ${product.type}, variations count: ${product.variations?.length || 0}, skipVariations: ${skipVariations}`);
+      debugLog(`Product ${product.id} type: ${product.type}, variations count: ${product.variations?.length || 0}, skipVariations: ${skipVariations}`);
 
       if (product.type === 'variable' && !skipVariations) {
         const variations = await fetchVariations(product.id.toString());
-        console.log(`Fetched ${variations.length} variations for product ${product.id}`);
+        debugLog(`Fetched ${variations.length} variations for product ${product.id}`);
 
         // Add variation images to the map BEFORE processing gallery images
         variations.forEach((variation: any) => {
@@ -506,7 +507,7 @@ serve(async (req) => {
             imageIdToUrl[variation.image.id.toString()] = variation.image.src;
           }
         });
-        console.log(`Updated image ID map with variation images: ${Object.keys(imageIdToUrl).length} total images`);
+        debugLog(`Updated image ID map with variation images: ${Object.keys(imageIdToUrl).length} total images`);
 
         // Group variations by color to merge images from multiple variations with same color
         const colorVariationMap: Record<string, { images: string[]; variations: any[] }> = {};
@@ -517,8 +518,8 @@ serve(async (req) => {
           );
           // Normalize color name for consistent matching
           const colorName = colorAttr?.option ? colorAttr.option.trim() : 'Default';
-          console.log(`Variation ${variation.id} color: ${colorName}`);
-          console.log(`Variation ${variation.id} has main image:`, !!variation.image?.src);
+          debugLog(`Variation ${variation.id} color: ${colorName}`);
+          debugLog(`Variation ${variation.id} has main image:`, !!variation.image?.src);
 
           // Initialize color entry if not exists
           if (!colorVariationMap[colorName]) {
@@ -535,7 +536,7 @@ serve(async (req) => {
           if (variationMainImage && !colorVariationMap[colorName].images.includes(variationMainImage)) {
             colorVariationMap[colorName].images.push(variationMainImage);
             allVariationImageUrls.push(variationMainImage);
-            console.log(`Added main image for variation ${variation.id}, color ${colorName}`);
+            debugLog(`Added main image for variation ${variation.id}, color ${colorName}`);
           }
 
           // Check multiple possible meta keys for additional variation images
@@ -563,7 +564,7 @@ serve(async (req) => {
 
           const allImageIds: string[] = [];
 
-          console.log(`Variation ${variation.id} available meta keys:`, variation.meta_data?.map((m: any) => m.key));
+          debugLog(`Variation ${variation.id} available meta keys:`, variation.meta_data?.map((m: any) => m.key));
 
           // Collect image IDs from all matching meta keys
           for (const metaKey of possibleMetaKeys) {
@@ -572,7 +573,7 @@ serve(async (req) => {
             );
 
             if (additionalImagesMeta?.value) {
-              console.log(`Found meta key ${metaKey} with value:`, additionalImagesMeta.value);
+              debugLog(`Found meta key ${metaKey} with value:`, additionalImagesMeta.value);
 
               // Handle multiple formats: JSON array, comma-separated string, single number, array, or object
               let imageIds: string[] = [];
@@ -644,7 +645,7 @@ serve(async (req) => {
               });
 
               if (imageIds.length > 0) {
-                console.log(`Extracted image IDs for variation ${variation.id} from ${metaKey}:`, imageIds);
+                debugLog(`Extracted image IDs for variation ${variation.id} from ${metaKey}:`, imageIds);
                 allImageIds.push(...imageIds);
               }
             }
@@ -653,7 +654,7 @@ serve(async (req) => {
           // Fetch all unique image IDs
           if (allImageIds.length > 0) {
             const uniqueImageIds = [...new Set(allImageIds)];
-            console.log(`Total unique image IDs for variation ${variation.id}:`, uniqueImageIds);
+            debugLog(`Total unique image IDs for variation ${variation.id}:`, uniqueImageIds);
             const imagePromises = uniqueImageIds.map((id: string) => resolveImageUrl(id.trim()));
             const fetchedImages = await Promise.all(imagePromises);
             const validImages = fetchedImages.filter((url): url is string => url !== null);
@@ -665,9 +666,9 @@ serve(async (req) => {
                 allVariationImageUrls.push(url);
               }
             });
-            console.log(`Added ${validImages.length} gallery images for variation ${variation.id}, color ${colorName}`);
+            debugLog(`Added ${validImages.length} gallery images for variation ${variation.id}, color ${colorName}`);
           } else {
-            console.log(`Variation ${variation.id} has no gallery images in meta_data`);
+            debugLog(`Variation ${variation.id} has no gallery images in meta_data`);
           }
         }
 
@@ -712,9 +713,9 @@ serve(async (req) => {
               stockQuantity: minStock !== Infinity ? minStock : null,
               stockStatus: firstVariation.stock_status || 'instock',
             });
-            console.log(`Added variation images for color ${colorName}: ${colorData.images.length} images from ${colorData.variations.length} variations`);
+            debugLog(`Added variation images for color ${colorName}: ${colorData.images.length} images from ${colorData.variations.length} variations`);
           } else {
-            console.log(`Warning: Color ${colorName} has no images (${colorData.variations.length} variations)`);
+            debugLog(`Warning: Color ${colorName} has no images (${colorData.variations.length} variations)`);
           }
         }
       }
@@ -739,7 +740,7 @@ serve(async (req) => {
       let dispatchTime: string | undefined = undefined;
       const extractField = (keys: string[]) => {
         if (product.meta_data && Array.isArray(product.meta_data) && product.meta_data.length > 0) {
-          console.log(`Product ${product.id} meta keys:`, product.meta_data.map(m => m.key).join(', '));
+          debugLog(`Product ${product.id} meta keys:`, product.meta_data.map(m => m.key).join(', '));
         }
         // Check ACF
         if (product.acf && typeof product.acf === 'object') {
@@ -787,7 +788,7 @@ serve(async (req) => {
       }
 
       if (dispatchTime) {
-        console.log(`✓ Final dispatch time for product ${product.id}:`, dispatchTime);
+        debugLog(`✓ Final dispatch time for product ${product.id}:`, dispatchTime);
       }
 
       return {
@@ -877,7 +878,7 @@ serve(async (req) => {
         let dispatchTime: string | undefined = undefined;
         const extractRespField = (keys: string[]) => {
           if (responseData.meta_data && Array.isArray(responseData.meta_data) && responseData.meta_data.length > 0) {
-            console.log(`Product ${responseData.id} meta keys:`, responseData.meta_data.map(m => m.key).join(', '));
+            debugLog(`Product ${responseData.id} meta keys:`, responseData.meta_data.map(m => m.key).join(', '));
           }
           if (responseData.acf && typeof responseData.acf === 'object') {
             for (const key of keys) {
@@ -964,12 +965,12 @@ serve(async (req) => {
             manageStock: v.manage_stock || false,
           })),
         }];
-        console.log(`Fetched product (fast path): ${responseData.name}`);
+        debugLog(`Fetched product (fast path): ${responseData.name}`);
       } else {
         // Full processing with gallery images
         const transformed = await transformProduct(responseData);
         transformedProducts = [transformed];
-        console.log(`Fetched product: ${responseData.name}`);
+        debugLog(`Fetched product: ${responseData.name}`);
       }
     } else {
       // Multiple products response (array)
@@ -1118,11 +1119,11 @@ serve(async (req) => {
             })),
           };
         });
-        console.log(`Fetched ${responseData.length} products (fast path with variation images, cached for ${LIST_CACHE_TTL/1000}s)`);
+        debugLog(`Fetched ${responseData.length} products (fast path with variation images, cached for ${LIST_CACHE_TTL/1000}s)`);
       } else {
         // Full processing with variations
         transformedProducts = await Promise.all(responseData.map(transformProduct));
-        console.log(`Fetched ${responseData.length} products`);
+        debugLog(`Fetched ${responseData.length} products`);
       }
     }
 

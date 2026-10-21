@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "../_runtime/serve.ts";
+import { debugLog } from "../_runtime/log.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,9 +37,9 @@ serve(async (req) => {
       try {
         const body = await req.json();
         productId = body?.product_id ? String(body.product_id) : null;
-        console.log('Parsed product_id from body:', productId);
+        debugLog('Parsed product_id from body:', productId);
       } catch (e) {
-        console.log('No JSON body or failed to parse:', e);
+        debugLog('No JSON body or failed to parse:', e);
       }
     }
 
@@ -46,11 +47,11 @@ serve(async (req) => {
       throw new Error('product_id is required');
     }
 
-    console.log('Processing product_id:', productId);
+    debugLog('Processing product_id:', productId);
 
     // First fetch the product to get its images for the ID-to-URL map
     const productUrl = `${storeUrl}/wp-json/wc/v3/products/${productId}`;
-    console.log(`Fetching product from: ${productUrl}`);
+    debugLog(`Fetching product from: ${productUrl}`);
 
     const productResponse = await fetch(productUrl, {
       method: 'GET',
@@ -76,11 +77,11 @@ serve(async (req) => {
       }
     });
     
-    console.log(`Built initial image ID map with ${Object.keys(imageIdToUrl).length} product images`);
+    debugLog(`Built initial image ID map with ${Object.keys(imageIdToUrl).length} product images`);
 
     // Fetch variations for the product using authenticated WC REST API
     const variationsUrl = `${storeUrl}/wp-json/wc/v3/products/${productId}/variations?per_page=100`;
-    console.log(`Fetching variations from: ${variationsUrl}`);
+    debugLog(`Fetching variations from: ${variationsUrl}`);
 
     const variationsResponse = await fetch(variationsUrl, {
       method: 'GET',
@@ -111,10 +112,10 @@ serve(async (req) => {
     }
 
     const variations = JSON.parse(responseText);
-    console.log(`Found ${variations.length} variations`);
+    debugLog(`Found ${variations.length} variations`);
     
     if (variations.length === 0) {
-      console.log('No variations found for product', productId);
+      debugLog('No variations found for product', productId);
       return new Response(
         JSON.stringify({ variationGallery: [] }),
         {
@@ -129,10 +130,10 @@ serve(async (req) => {
         imageIdToUrl[variation.image.id.toString()] = variation.image.src;
       }
     });
-    console.log(`Updated image ID map with variation images: ${Object.keys(imageIdToUrl).length} total images`);
+    debugLog(`Updated image ID map with variation images: ${Object.keys(imageIdToUrl).length} total images`);
     
     // Log first variation structure for debugging
-    console.log('Sample variation structure:', JSON.stringify({
+    debugLog('Sample variation structure:', JSON.stringify({
       id: variations[0]?.id,
       image: variations[0]?.image,
       attributes: variations[0]?.attributes,
@@ -235,7 +236,7 @@ serve(async (req) => {
           }
 
           if (ids.length > 0) {
-            console.log(`Found gallery images for key ${key}:`, ids);
+            debugLog(`Found gallery images for key ${key}:`, ids);
             allIds.push(...ids);
           }
         }
@@ -255,18 +256,18 @@ serve(async (req) => {
       // Normalize media ID
       const normalizedId = String(mediaId).trim();
       if (!normalizedId || isNaN(Number(normalizedId))) {
-        console.log(`Invalid media ID: ${mediaId}`);
+        debugLog(`Invalid media ID: ${mediaId}`);
         return null;
       }
 
       // First check if it's in the images map (includes product + variation images)
       if (imageIdToUrl[normalizedId]) {
-        console.log(`Image ${normalizedId} found in images map`);
+        debugLog(`Image ${normalizedId} found in images map`);
         return imageIdToUrl[normalizedId];
       }
 
       // Fallback to fetching from media API
-      console.log(`Image ${normalizedId} not in map, trying media API`);
+      debugLog(`Image ${normalizedId} not in map, trying media API`);
       try {
         const mediaUrl = `${storeUrl}/wp-json/wp/v2/media/${normalizedId}`;
         const mediaResponse = await fetch(mediaUrl, {
@@ -284,12 +285,12 @@ serve(async (req) => {
           // Cache it for future use
           if (imageUrl) {
             imageIdToUrl[normalizedId] = imageUrl;
-            console.log(`Image ${normalizedId} resolved from API and cached:`, imageUrl);
+            debugLog(`Image ${normalizedId} resolved from API and cached:`, imageUrl);
           }
           
           return imageUrl;
         } else {
-          console.log(`Failed to fetch media ${normalizedId}: ${mediaResponse.status} ${mediaResponse.statusText}`);
+          debugLog(`Failed to fetch media ${normalizedId}: ${mediaResponse.status} ${mediaResponse.statusText}`);
         }
       } catch (err) {
         console.error(`Error fetching media ${normalizedId}:`, err);
@@ -303,8 +304,8 @@ serve(async (req) => {
 
     for (const variation of variations) {
       // Log all attributes for debugging
-      console.log(`\n=== Processing Variation ${variation.id} ===`);
-      console.log('Variation attributes:', JSON.stringify(variation.attributes, null, 2));
+      debugLog(`\n=== Processing Variation ${variation.id} ===`);
+      debugLog('Variation attributes:', JSON.stringify(variation.attributes, null, 2));
       
       const colorAttr = variation.attributes?.find(
         (attr: any) => attr.name?.toLowerCase() === 'color' || attr.name?.toLowerCase() === 'colour'
@@ -315,19 +316,19 @@ serve(async (req) => {
       
       // If no color attribute found, try to use variation ID or other identifier
       if (!colorAttr && variation.attributes && variation.attributes.length > 0) {
-        console.log(`No color attribute found. Available attributes:`, variation.attributes.map((a: any) => `${a.name}: ${a.option}`).join(', '));
+        debugLog(`No color attribute found. Available attributes:`, variation.attributes.map((a: any) => `${a.name}: ${a.option}`).join(', '));
       }
 
-      console.log(`Variation ${variation.id} - Color: "${colorName}"`);
-      console.log(`Variation ${variation.id} - Has main image:`, !!variation.image?.src);
+      debugLog(`Variation ${variation.id} - Color: "${colorName}"`);
+      debugLog(`Variation ${variation.id} - Has main image:`, !!variation.image?.src);
       if (variation.image?.src) {
-        console.log(`Variation ${variation.id} - Main image URL:`, variation.image.src);
+        debugLog(`Variation ${variation.id} - Main image URL:`, variation.image.src);
       }
-      console.log(`Variation ${variation.id} - Meta data keys:`, variation.meta_data?.map((m: any) => m.key) || []);
+      debugLog(`Variation ${variation.id} - Meta data keys:`, variation.meta_data?.map((m: any) => m.key) || []);
       
       // Log all meta_data for debugging
       if (variation.meta_data && variation.meta_data.length > 0) {
-        console.log(`Variation ${variation.id} - Meta data sample:`, JSON.stringify(
+        debugLog(`Variation ${variation.id} - Meta data sample:`, JSON.stringify(
           variation.meta_data.slice(0, 5).map((m: any) => ({ key: m.key, value_type: typeof m.value, value_preview: String(m.value).substring(0, 100) })),
           null, 2
         ));
@@ -346,13 +347,13 @@ serve(async (req) => {
         const mainImageUrl = variation.image.src;
         if (!colorImagesMap[colorName].includes(mainImageUrl)) {
           colorImagesMap[colorName].push(mainImageUrl);
-          console.log(`Added main image for variation ${variation.id}, color ${colorName}:`, mainImageUrl);
+          debugLog(`Added main image for variation ${variation.id}, color ${colorName}:`, mainImageUrl);
         }
       }
 
       // Get gallery image IDs and fetch URLs
       const galleryIds = extractGalleryImageIds(variation.meta_data || []);
-      console.log(`Variation ${variation.id} - Extracted ${galleryIds.length} gallery image IDs:`, galleryIds);
+      debugLog(`Variation ${variation.id} - Extracted ${galleryIds.length} gallery image IDs:`, galleryIds);
       
       if (galleryIds.length > 0) {
         const imagePromises = galleryIds.map((id: string) => resolveImageUrl(id));
@@ -361,7 +362,7 @@ serve(async (req) => {
         const failedUrls = galleryIds.filter((id, idx) => fetchedUrls[idx] === null);
         
         if (failedUrls.length > 0) {
-          console.log(`Variation ${variation.id} - Failed to resolve ${failedUrls.length} image IDs:`, failedUrls);
+          debugLog(`Variation ${variation.id} - Failed to resolve ${failedUrls.length} image IDs:`, failedUrls);
         }
         
         // Add gallery images that aren't already in the list
@@ -370,28 +371,28 @@ serve(async (req) => {
             colorImagesMap[colorName].push(url);
           }
         });
-        console.log(`Variation ${variation.id} - Successfully added ${validUrls.length} gallery images for color "${colorName}"`);
+        debugLog(`Variation ${variation.id} - Successfully added ${validUrls.length} gallery images for color "${colorName}"`);
       } else {
-        console.log(`Variation ${variation.id} - No gallery images found in meta_data`);
+        debugLog(`Variation ${variation.id} - No gallery images found in meta_data`);
         if (variation.meta_data && variation.meta_data.length > 0) {
-          console.log(`Variation ${variation.id} - Checking all meta_data values for potential image references...`);
+          debugLog(`Variation ${variation.id} - Checking all meta_data values for potential image references...`);
           variation.meta_data.forEach((meta: any) => {
             if (meta.value && typeof meta.value === 'string' && /^\d+/.test(meta.value)) {
-              console.log(`Variation ${variation.id} - Found potential image ID in meta key "${meta.key}": ${meta.value.substring(0, 50)}`);
+              debugLog(`Variation ${variation.id} - Found potential image ID in meta key "${meta.key}": ${meta.value.substring(0, 50)}`);
             }
           });
         }
       }
       
-      console.log(`Variation ${variation.id} - Current images for color "${colorName}": ${colorImagesMap[colorName].length} images`);
+      debugLog(`Variation ${variation.id} - Current images for color "${colorName}": ${colorImagesMap[colorName].length} images`);
     }
 
     // Build result array - include all colors, even if they only have main images
     const result = Object.entries(colorImagesMap).map(([color, images]) => {
       const uniqueImages = [...new Set(images)].filter(Boolean);
-      console.log(`\nColor "${color}": ${uniqueImages.length} total images from ${colorVariationMap[color]?.length || 0} variation(s)`);
+      debugLog(`\nColor "${color}": ${uniqueImages.length} total images from ${colorVariationMap[color]?.length || 0} variation(s)`);
       if (uniqueImages.length > 0) {
-        console.log(`  Image URLs:`, uniqueImages.slice(0, 3).join(', '), uniqueImages.length > 3 ? '...' : '');
+        debugLog(`  Image URLs:`, uniqueImages.slice(0, 3).join(', '), uniqueImages.length > 3 ? '...' : '');
       }
       return {
         color,
@@ -399,12 +400,12 @@ serve(async (req) => {
       };
     }).filter(item => item.images.length > 0); // Only filter out if truly no images
 
-    console.log('\n=== FINAL RESULT ===');
-    console.log(`Total colors with images: ${result.length}`);
+    debugLog('\n=== FINAL RESULT ===');
+    debugLog(`Total colors with images: ${result.length}`);
     result.forEach(item => {
-      console.log(`  - ${item.color}: ${item.images.length} images`);
+      debugLog(`  - ${item.color}: ${item.images.length} images`);
     });
-    console.log('Final variation gallery:', JSON.stringify(result, null, 2));
+    debugLog('Final variation gallery:', JSON.stringify(result, null, 2));
 
     return new Response(
       JSON.stringify({ variationGallery: result }),
