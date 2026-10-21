@@ -20,6 +20,27 @@ const responseCache = new Map<string, { data: string; timestamp: number }>();
 const LIST_CACHE_TTL = 10_000;   // 10 seconds for listings
 const DETAIL_CACHE_TTL = 2_000;  // 2 seconds for detail
 
+// On the VPS this process lives for days, not seconds like a Supabase isolate,
+// so entries must be evicted or every product/page/search ever requested stays
+// in memory. That grew past the service's 1 GB limit and the API stalled on swap.
+const L1_MAX_ENTRIES = 500;
+const L1_MAX_AGE = Math.max(LIST_CACHE_TTL, DETAIL_CACHE_TTL);
+
+const setL1 = (key: string, data: string) => {
+  const now = Date.now();
+  if (responseCache.size >= L1_MAX_ENTRIES) {
+    for (const [k, v] of responseCache) {
+      if (now - v.timestamp > L1_MAX_AGE) responseCache.delete(k);
+    }
+    // Still full of fresh entries: drop the oldest (Map keeps insertion order).
+    while (responseCache.size >= L1_MAX_ENTRIES) {
+      responseCache.delete(responseCache.keys().next().value as string);
+    }
+  }
+  responseCache.delete(key); // re-insert so it becomes the newest
+  responseCache.set(key, { data, timestamp: now });
+};
+
 // Tag slug → ID cache (tags rarely change)
 const tagSlugCache = new Map<string, { id: number; timestamp: number }>();
 const TAG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -149,7 +170,7 @@ serve(async (req) => {
         if (cachedAge < DB_CACHE_STALE_TTL) {
           const responseBody = JSON.stringify(dbCached.response_data);
           // Populate L1 cache for subsequent same-isolate hits
-          responseCache.set(cacheKey, { data: responseBody, timestamp: Date.now() });
+          setL1(cacheKey, responseBody);
 
           if (cachedAge < DB_CACHE_FRESH_TTL) {
             console.log(`L2 DB cache FRESH hit for key: ${cacheKey} (age: ${cachedAge}ms)`);
@@ -1113,7 +1134,7 @@ serve(async (req) => {
     });
 
     // L1: Store in in-memory cache for subsequent requests within the same isolate
-    responseCache.set(cacheKey, { data: responseBody, timestamp: Date.now() });
+    setL1(cacheKey, responseBody);
 
     // L2: Store in DB cache for cross-isolate sharing (fire-and-forget)
     if (supabase) {
