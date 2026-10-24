@@ -130,7 +130,10 @@ serve(async (req) => {
             response_payload: data,
         });
 
-        return new Response(JSON.stringify(data), {
+        // key_id is public (it is what Checkout opens with). Returning it keeps
+        // the checkout key and the account that created the order in lockstep,
+        // so switching Razorpay accounts only needs functions.env changed.
+        return new Response(JSON.stringify({ ...data, key_id: RAZORPAY_KEY_ID }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
     } catch (error: any) {

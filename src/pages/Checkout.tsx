@@ -409,7 +409,9 @@ const Checkout = () => {
           let lastFailure: { code?: string; description?: string } | null = null;
 
           const options = {
-            key: import.meta.env.VITE_RAZORPAY_KEY_ID, // Enter the Key ID generated from the Dashboard
+            // Prefer the key of the account that created this order; the build-time
+            // key is only a fallback for an older create-razorpay-order.
+            key: razorpayOrder.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID,
             amount: razorpayOrder.amount,
             currency: razorpayOrder.currency,
             name: "Minikki",

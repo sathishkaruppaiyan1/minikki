@@ -123,9 +123,16 @@ serve(async (req) => {
       return new Response("Missing signature", { status: 400 });
     }
 
-    // Verify webhook signature
-    const expectedSignature = await hmacSha256Hex(RAZORPAY_WEBHOOK_SECRET, rawBody);
-    if (!secureCompare(expectedSignature, razorpaySignature)) {
+    // Verify webhook signature. The secret may be a comma-separated list so a
+    // Razorpay account switch can accept both accounts' webhooks for a while.
+    let signatureOk = false;
+    for (const secret of RAZORPAY_WEBHOOK_SECRET.split(",").map((s) => s.trim()).filter(Boolean)) {
+      if (secureCompare(await hmacSha256Hex(secret, rawBody), razorpaySignature)) {
+        signatureOk = true;
+        break;
+      }
+    }
+    if (!signatureOk) {
       console.error("Webhook signature verification FAILED");
       return new Response("Invalid signature", { status: 400 });
     }
